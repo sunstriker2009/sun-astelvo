@@ -1,6 +1,12 @@
-# ASTELVO by Sun
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/astelvo-lockup-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/brand/astelvo-lockup-light.png">
+    <img src="assets/brand/astelvo-lockup-dark.png" alt="ASTELVO by Sun — Organize. Script. Explore." width="760">
+  </picture>
+</p>
 
-![ASTELVO by Sun — Organize. Script. Explore.](assets/brand/astelvo-lockup-dark.svg)
+# ASTELVO by Sun
 
 **Organize. Script. Explore.**
 
