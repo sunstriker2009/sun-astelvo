@@ -1,15 +1,15 @@
-# ASTELVO by Sun — Brand assets v0.1
+# ASTELVO by Sun — Brand assets v0.2
 
 **Organize. Script. Explore.**
 
-The owner approved concept 01 and its visual direction: layered A, play cutout, exploration star and periwinkle blue. These SVG masters are a deliberate geometric reconstruction of that raster concept, with outlined typography and simplified small-size variants. They are usable implementation assets, not a pixel-perfect vector trace of the generated board. The product interface on that board remains illustrative.
+The owner approved concept 02: three layered script files over a sun arc, a play cutout and periwinkle blue. This supersedes concept 01's layered A and detached star. These SVG masters are a deliberate geometric reconstruction of that raster concept, with outlined typography and simplified small-size variants. They are usable implementation assets, not a pixel-perfect vector trace of the generated board. The product interface on that board remains illustrative.
 
 ## Identity
 
 - Public name: **ASTELVO by Sun**. Wordmark: **ASTELVO**; endorsement: **by Sun**.
 - Tagline: **Organize. Script. Explore.** Preserve spelling, capitalization and punctuation.
 - Product ID: SUN-009. Technical identity: `Sun.Workspace`.
-- Layered strokes express organization; the negative-space triangle expresses Try It; the star connects exploration to the SUN family.
+- Layered script files express organization; the negative-space triangle expresses Try It; the sun arc connects the workspace to the SUN family.
 
 ## Assets
 
@@ -20,7 +20,7 @@ All assets live in `assets/brand/`.
 | `astelvo-mark-color.svg` | Primary standalone mark; transparent background |
 | `astelvo-mark-light.svg` | Single-colour light mark on dark surfaces |
 | `astelvo-mark-dark.svg` | Single-colour dark mark on light surfaces |
-| `astelvo-mark-small.svg` | Flat compact mark without detached star |
+| `astelvo-mark-small.svg` | Flat compact files-and-arc mark without script strokes |
 | `astelvo-lockup-dark.svg` / `.png` | Logo, endorsement and tagline on navy |
 | `astelvo-lockup-light.svg` / `.png` | Logo, endorsement and tagline on white |
 | `astelvo-app-icon.svg` | App tile master; transparent outer corners |
@@ -46,16 +46,16 @@ The intermediate mark layer uses `#7184F2`. Light lockups use a darker gold `#76
 ## Usage
 
 - Keep the aspect ratio and negative spaces intact. Never stretch, skew or rotate the mark.
-- Minimum recommended full mark size: 32 px; use the starless compact variant at 16–24 px.
+- Minimum recommended full mark size: 32 px; use the simplified compact variant at 16–24 px.
 - Leave clear space of at least one eighth of the mark width around a standalone mark.
 - Show the complete lockup at 420 CSS px or wider; use the mark alone where the tagline is too small to read.
 - Use flat or monochrome marks for small UI placements. Glows and decorative backgrounds are optional presentation effects, not part of recognition.
-- Do not add a security shield, database cylinder, planet or unrelated language logo to the mark.
+- Keep the sun arc and three file layers together. Do not substitute the superseded layered A or detached star, or add a security shield, database cylinder, planet or unrelated language logo.
 - SVG text is outlined: rendering has no installed-font dependency. Set an accessible label at the consuming UI; decorative duplicates should be hidden from assistive technology.
 
 ## Typography and provenance
 
-The raster concept's typography is approximated with Liberation Sans Bold and Regular converted to paths, with deliberate wordmark tracking. No font binary is distributed. The accompanying `FONT-LICENSE.txt` preserves the upstream Liberation Fonts OFL notice. A future typography revision should update the assets together rather than substituting fonts inside one logo.
+Concept 02's typography is approximated with Liberation Sans Bold and Regular converted to paths, with deliberate wordmark tracking. No font binary is distributed. The accompanying `FONT-LICENSE.txt` preserves the upstream Liberation Fonts OFL notice. A future typography revision should update the assets together rather than substituting fonts inside one logo.
 
 ## Rebuilding and validation
 
@@ -64,3 +64,4 @@ Run `python3 scripts/brand/build_brand.py` from the repository root. Requirement
 Validation performed: SVG XML parsing, no embedded scripts/external font references, PNG dimensions/alpha, ICO frame sizes, and visual review of both lockups and actual-size icon exports. OS installer/taskbar validation remains part of M0/M5 packaging work. Brand generation does not complete the desktop milestone.
 
 Commercial naming/logo similarity clearance remains pending; visual approval is not a clearance claim. These files do not grant third-party rights to the brand.
+
