@@ -29,6 +29,8 @@ All assets live in `assets/brand/`.
 | `astelvo.ico` | Windows multi-resolution icon: 16–256 px |
 | `tokens.json` / `tokens.css` | Brand colour values; not a complete application theme |
 
+README headers use `astelvo-files-sun-arc-v02-dark.png` and `astelvo-files-sun-arc-v02-light.png`. These are exact copies of the corresponding generic lockups with identity-specific filenames to avoid stale cached images. The generator maintains both names.
+
 ## Colour
 
 | Role | Hex |
