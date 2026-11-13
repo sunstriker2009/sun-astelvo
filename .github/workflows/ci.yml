@@ -5,6 +5,9 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   repository-validation:
     name: repository-validation
@@ -19,4 +22,35 @@ jobs:
           test -f .github/PULL_REQUEST_TEMPLATE.md
           test -f .github/CODEOWNERS
           test -f docs/REPOSITORY-SETUP.md
-          echo "SUN repository foundation valid"
+  backend:
+    name: backend
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: dotnet build Sun.Workspace.slnx -c Release
+      - run: node --test --test-timeout=15000 tests/host.integration.test.mjs
+  frontend:
+    name: frontend
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
