@@ -29,7 +29,9 @@ All assets live in `assets/brand/`.
 | `astelvo.ico` | Windows multi-resolution icon: 16–256 px |
 | `tokens.json` / `tokens.css` | Brand colour values; not a complete application theme |
 
-README headers use `astelvo-files-sun-arc-v02-dark.png` and `astelvo-files-sun-arc-v02-light.png`. These are exact copies of the corresponding generic lockups with identity-specific filenames to avoid stale cached images. The generator maintains both names.
+The README uses the owner-approved panoramic artwork, `astelvo-readme-panoramic-v1.png`, at full available width on both GitHub themes. It is a separate raster presentation asset, not an output of the vector generator. Preserve its aspect ratio; do not crop or stretch it.
+
+The compact `astelvo-lockup-dark.svg` and `astelvo-lockup-light.svg` remain available for internal screens, documentation and other compact placements. Their PNG aliases `astelvo-files-sun-arc-v02-dark.png` and `astelvo-files-sun-arc-v02-light.png` remain supported; the generator maintains them. This banner changes the README presentation, not the icon identity.
 
 ## Colour
 

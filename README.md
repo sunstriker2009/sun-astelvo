@@ -1,9 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/astelvo-files-sun-arc-v02-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="assets/brand/astelvo-files-sun-arc-v02-light.png">
-    <img src="assets/brand/astelvo-files-sun-arc-v02-dark.png" alt="ASTELVO by Sun — Organize. Script. Explore." width="760">
-  </picture>
+  <img src="assets/brand/astelvo-readme-panoramic-v1.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
 </p>
 
 # ASTELVO by Sun
