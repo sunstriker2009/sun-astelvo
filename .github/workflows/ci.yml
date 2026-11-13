@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  repository-validation:
+    name: repository-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f .github/PULL_REQUEST_TEMPLATE.md
+          test -f .github/CODEOWNERS
+          test -f docs/REPOSITORY-SETUP.md
+          echo "SUN repository foundation valid"

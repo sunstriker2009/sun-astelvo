@@ -1,0 +1,8 @@
+# SUN CODEOWNERS starter
+# Replace these comments with valid GitHub usernames/teams for each new repository.
+# Example (uncomment after verifying owner permissions):
+# * @sunstriker2009
+# .github/workflows/ @sunstriker2009
+# docs/security/ @sunstriker2009
+# IMPORTANT: CODEOWNERS alone does not require review. Enable the GitHub
+# branch ruleset's "Require review from Code Owners" setting separately.
