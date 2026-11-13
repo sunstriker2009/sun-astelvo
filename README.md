@@ -1,5 +1,7 @@
 # ASTELVO by Sun
 
+![ASTELVO by Sun — Organize. Script. Explore.](assets/brand/astelvo-lockup-dark.svg)
+
 **Organize. Script. Explore.**
 
 A local code organizer and interactive scripting workspace. Organize scripts using folders, tags and smart collections, edit with language-aware tools, and try JavaScript, Python and C# through local runtime adapters.
@@ -7,6 +9,10 @@ A local code organizer and interactive scripting workspace. Organize scripts usi
 ## Project status
 
 M0 foundation is in progress. This repository currently contains governance and architecture documentation; no runnable application is implemented yet. Proposed stack: Electron + React/Monaco and a local .NET 10 host. Validate it in the M0 technical spike.
+
+## Brand
+
+[Brand guide](docs/brand/BRAND-GUIDE.md) · [Assets](assets/brand/)
 
 ## Planning
 
