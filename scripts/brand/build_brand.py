@@ -16,17 +16,22 @@ FONT = Path(os.environ.get('ASTELVO_FONT_DIR', '/usr/share/fonts/truetype/libera
 COLORS = dict(background='#0B1020', surface='#151D30', accent='#879BFF', accentDeep='#5865D8', text='#F5F7FA', muted='#9CA8BC', sun='#F6C453')
 
 # Deliberate geometric reconstruction of approved raster concept; not an automatic trace.
-LAYERS = [
- 'M18 218 96 87Q109 65 133 65H161L174 94H136Q121 94 112 109L42 218Z',
- 'M50 235 123 121Q133 105 150 105H177L190 135H156Q145 135 139 145L80 235Z',
- 'M91 247 151 155Q158 144 173 144H192L244 247Z M170 181Q169 179 169 183V218Q169 222 173 220L202 203Q205 201 202 199Z'
+CARDS = [
+ 'M132 29H230Q245 29 242 44L205 222H94L132 29Z',
+ 'M98 61H201Q216 61 213 76L181 228H62L98 61Z',
+ 'M63 95H172Q187 95 184 110L158 229H33L63 95Z'
 ]
-STAR = 'M152 16C150 27 147 31 139 34C147 37 150 41 152 52C154 41 157 37 165 34C157 31 154 27 152 16Z'
+ARC = 'M8 237Q128 172 248 237Q128 195 8 237Z'
 
-def mark(palette, star=True):
-    parts = [f'<path d="{d}" fill="{color}" fill-rule="evenodd"/>' for d,color in zip(LAYERS,palette)]
-    if star: parts.append(f'<path d="{STAR}" fill="{palette[-1]}"/>')
-    return ''.join(parts)
+def mark(palette, detail=True):
+    # Transparent keyline gaps separate overlapping cards even in monochrome.
+    gaps=''.join(f'<path d="{d}" fill="white" stroke="black" stroke-width="9" stroke-linejoin="round"/>' for d in CARDS[1:])
+    holes='<path d="M111 155 111 187 138 171Z" fill="black"/>'
+    if detail:
+        holes+='<path d="M145 51H214M111 83H184M77 119H151M74 134H130" fill="none" stroke="black" stroke-width="7" stroke-linecap="round"/>'
+    defs=f'<defs><clipPath id="card-horizon"><path d="M0 0H256V232Q128 167 0 232Z"/></clipPath><mask id="card-gaps" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256"><rect width="256" height="256" fill="white"/>{gaps}{holes}</mask></defs>'
+    cards=''.join(f'<path d="{d}" fill="{c}"/>' for d,c in zip(CARDS,palette))
+    return defs+f'<g clip-path="url(#card-horizon)" mask="url(#card-gaps)">{cards}</g><path d="{ARC}" fill="{palette[-1]}"/>'
 
 def svg(w,h,body,title):
     return f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-labelledby="title"><title id="title">{title}</title>{body}</svg>\n'
@@ -43,10 +48,10 @@ def outline(text,x,y,size,bold=False,spacing=0,color='#F5F7FA'):
 
 def write(name,text): (OUT / name).write_text(text)
 
-write('astelvo-mark-color.svg',svg(256,256,mark([COLORS['accentDeep'],'#7184F2',COLORS['accent']]),'ASTELVO layered A with play cutout and exploration star'))
+write('astelvo-mark-color.svg',svg(256,256,mark([COLORS['accentDeep'],'#7184F2',COLORS['accent']]),'ASTELVO layered script files over a sun arc'))
 write('astelvo-mark-light.svg',svg(256,256,mark([COLORS['text']]*3),'ASTELVO monochrome light mark'))
 write('astelvo-mark-dark.svg',svg(256,256,mark([COLORS['background']]*3),'ASTELVO monochrome dark mark'))
-write('astelvo-mark-small.svg',svg(256,256,mark([COLORS['accent']]*3,False),'ASTELVO compact mark without star'))
+write('astelvo-mark-small.svg',svg(256,256,mark([COLORS['accent']]*3,False),'ASTELVO compact files and sun arc mark'))
 
 for mode in ['dark','light']:
     bg=COLORS['background'] if mode=='dark' else '#FFFFFF'
@@ -62,13 +67,13 @@ for mode in ['dark','light']:
 icon=f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/>'
 icon+=f'<g transform="translate(28 21) scale(.78)">{mark([COLORS["accentDeep"],"#7184F2",COLORS["accent"]])}</g>'
 write('astelvo-app-icon.svg',svg(256,256,icon,'ASTELVO application icon'))
-write('astelvo-app-icon-small.svg',svg(256,256,f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/><g transform="translate(9 -16) scale(.94)">{mark([COLORS["accent"]]*3,False)}</g>','ASTELVO small app icon'))
+write('astelvo-app-icon-small.svg',svg(256,256,f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/><g transform="translate(17 15) scale(.86)">{mark([COLORS["accent"]]*3,False)}</g>','ASTELVO small app icon'))
 
-(OUT/'tokens.json').write_text(json.dumps({'brand':'ASTELVO by Sun','tagline':'Organize. Script. Explore.','version':'0.1.0','colors':COLORS},indent=2)+'\n')
+(OUT/'tokens.json').write_text(json.dumps({'brand':'ASTELVO by Sun','tagline':'Organize. Script. Explore.','version':'0.2.0','colors':COLORS},indent=2)+'\n')
 (OUT/'tokens.css').write_text(':root {\n'+''.join(f'  --astelvo-{k}: {v};\n' for k,v in COLORS.items())+'}\n')
 
 for n in [16,24,32,48,64,128,256,512,1024]:
-    # Optical small-size variant: one flat fill, larger silhouette, no detached star.
+    # Optical small-size variant: one flat fill, larger silhouette, no code strokes.
     source=OUT/'astelvo-app-icon.svg'
     if n<=24:
         source=OUT/'astelvo-app-icon-small.svg'
