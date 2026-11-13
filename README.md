@@ -1,15 +1,22 @@
-# SUN Repository Template
+# ASTELVO by Sun
 
-Reusable, stack-agnostic GitHub repository starter for SUN products.
+**Organize. Script. Explore.**
 
-Includes:
-- Baseline `CI` workflow (repository structure validation)
-- Conventional Commit pull request title check
-- Pull request template and CODEOWNERS starter
-- Setup checklist and template usage guide
+A local code organizer and interactive scripting workspace. Organize scripts using folders, tags and smart collections, edit with language-aware tools, and try JavaScript, Python and C# through local runtime adapters.
 
-**Get started:** [Template guide](docs/TEMPLATE-GUIDE.md) · [Repository setup](docs/REPOSITORY-SETUP.md)
+## Project status
 
-**Important:** This template copies files, **not** GitHub branch protection, repository settings, secrets, environment approval rules or CI history. After creating a repository, follow the setup checklist. Stack-specific build and test workflows must be added separately.
+M0 foundation is in progress. This repository currently contains governance and architecture documentation; no runnable application is implemented yet. Proposed stack: Electron + React/Monaco and a local .NET 10 host. Validate it in the M0 technical spike.
 
-Governance: [SUN Git Workflow & Merge Policy v1.0](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/GIT-WORKFLOW.md).
+## Planning
+
+- [ASTELVO Roadmap](docs/ASTELVO%20Roadmap.md)
+- [Milestones](docs/roadmap/MILESTONES.md)
+- [Master checklist](docs/roadmap/MASTER-CHECKLIST.md)
+- [Architecture](docs/architecture/OVERVIEW.md)
+- [Repository adoption evidence](docs/operations/REPOSITORY-ADOPTION.md)
+- [Repository setup](docs/REPOSITORY-SETUP.md)
+
+SQL/database connections, Kubernetes and additional execution providers are future extensions. Local user scripts run with the user's OS permissions; separate processes are not a security sandbox.
+
+Governance: [SUN Git Workflow & Merge Policy](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/GIT-WORKFLOW.md). Product ID SUN-009; capability namespace Sun.Workspace.
