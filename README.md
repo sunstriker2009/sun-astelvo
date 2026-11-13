@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/astelvo-lockup-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="assets/brand/astelvo-lockup-light.png">
-    <img src="assets/brand/astelvo-lockup-dark.png" alt="ASTELVO by Sun — Organize. Script. Explore." width="760">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/astelvo-files-sun-arc-v02-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/brand/astelvo-files-sun-arc-v02-light.png">
+    <img src="assets/brand/astelvo-files-sun-arc-v02-dark.png" alt="ASTELVO by Sun — Organize. Script. Explore." width="760">
   </picture>
 </p>
 

@@ -81,6 +81,8 @@ for n in [16,24,32,48,64,128,256,512,1024]:
 Image.open(OUT/'astelvo-icon-256.png').save(OUT/'astelvo.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)],append_images=[Image.open(OUT/f'astelvo-icon-{n}.png') for n in [16,24,32,48,64,128]])
 for mode in ['dark','light']:
     subprocess.run(['inkscape',str(OUT/f'astelvo-lockup-{mode}.svg'),'--export-type=png',f'--export-filename={OUT/f"astelvo-lockup-{mode}.png"}','--export-width=1590'],check=True,capture_output=True)
+    # Identity-specific URLs prevent stale README images when generic assets change.
+    shutil.copyfile(OUT/f'astelvo-lockup-{mode}.png', OUT/f'astelvo-files-sun-arc-v02-{mode}.png')
 
 # Preview is a QA artefact, outside the reusable asset directory.
 preview=Image.new('RGB',(1590,900),COLORS['surface'])
