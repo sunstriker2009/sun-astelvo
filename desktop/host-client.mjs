@@ -7,8 +7,8 @@ export class HostClient {
   #pending = new Map();
   #stopped = false;
   #exit;
-  constructor(executable, args = []) {
-    this.#child = spawn(executable, args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, shell: false });
+  constructor(executable, args = [], { env = process.env } = {}) {
+    this.#child = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, shell: false });
     this.#exit = new Promise(resolve => this.#child.once('close', resolve));
     const decoder = new FrameDecoder();
     const fail = () => {
