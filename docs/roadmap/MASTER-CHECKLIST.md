@@ -9,9 +9,11 @@
 - [x] Generate product repository from template: `sunstriker2009/sun-astelvo`, public, `main`. Template files inspected; branch reports protected.
 - [ ] Discover exact template CI checks; plan/apply/verify governance and test failed-CI blocking.
 - [ ] Enforce sensitive-change review and real CODEOWNERS separately from baseline bootstrap.
-- [ ] ADR-001 shell/IPC; ADR-002 storage/recovery; ADR-003 local execution boundary.
-- [ ] .NET 10 solution, UI skeleton, dependency locks, worker lifecycle and packaged Monaco spike.
-- [ ] Add short backend/frontend CI with stable check names and concurrency cancellation.
+- [x] Draft ADR-001 shell/IPC, ADR-002 storage/recovery and ADR-003 execution boundary. Shell is selected for the spike; packaged desktop acceptance remains pending.
+- [x] .NET 10 solution, UI skeleton, npm lockfile and worker protocol/lifecycle tests.
+- [ ] Validate Monaco/host launch on desktop and self-contained worker packaging.
+- [x] Add backend/frontend PR CI definitions and concurrency cancellation.
+- [ ] Verify new CI runs and add exact emitted checks to protection through the reviewed adoption process.
 
 ### M1 — Organizer
 
@@ -55,4 +57,3 @@
 - [ ] Decide installer signing/update strategy. Publishing is a deliberate release step.
 
 v1 acceptance: import JS/Python/C#, organize via folders and overlapping tags, save a collection, search/edit/format with undo, run saved input, stop an infinite loop without closing the app, recover an unsaved buffer and export/restore the workspace on another supported installation.
-

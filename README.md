@@ -10,7 +10,11 @@ A local code organizer and interactive scripting workspace. Organize scripts usi
 
 ## Project status
 
-M0 foundation is in progress. This repository currently contains governance and architecture documentation; no runnable application is implemented yet. Proposed stack: Electron + React/Monaco and a local .NET 10 host. Validate it in the M0 technical spike.
+M0 foundation is in progress. The first development scaffold includes an Electron/React/Monaco editor and a local .NET 10 information-only host over framed stdio. The buffer is temporary; saving and script execution are not implemented. Builds and IPC tests pass locally; desktop launch and Windows packaging acceptance remain pending.
+
+## Development
+
+See [local development](docs/operations/LOCAL-DEVELOPMENT.md) for prerequisites and build/start commands, and [foundation validation](docs/operations/M0-VALIDATION.md) for evidence and pending gates.
 
 ## Brand
 
