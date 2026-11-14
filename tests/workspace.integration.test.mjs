@@ -545,3 +545,20 @@ test('abrupt host death during a folder copy exposes either the whole subtree or
     for (const script of recovered.scripts) assert.deepEqual(await readFile(source(root, script)), bytes);
   } finally { watcher?.close(); clearTimeout(deadline); writer.kill(); await closed; }
 }));
+
+
+test('exhausted workspace revision rejects script writes before staging any source', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const metadata = JSON.parse(await readFile(file, 'utf8')); metadata.revision = Number.MAX_SAFE_INTEGER;
+  const before = JSON.stringify(metadata); await writeFile(file, before);
+  await host.request('workspace.open', { path: root, create: false });
+  const dirs = await readdir(path.join(root, 'scripts'));
+  const revisions = await readdir(path.join(root, 'scripts', initial.document.id));
+  for (const action of [() => create(host), () => save(host, initial.document, 'must not stage'), () => duplicate(host, initial.document, 'Copy')]) {
+    await assert.rejects(action(), { code: 'invalid_workspace' });
+    assert.equal(await readFile(file, 'utf8'), before);
+    assert.deepEqual(await readdir(path.join(root, 'scripts')), dirs);
+    assert.deepEqual(await readdir(path.join(root, 'scripts', initial.document.id)), revisions);
+  }
+}));

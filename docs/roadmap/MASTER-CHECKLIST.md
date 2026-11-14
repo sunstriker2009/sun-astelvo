@@ -66,3 +66,5 @@
 - [ ] Decide installer signing/update strategy. Publishing is a deliberate release step.
 
 v1 acceptance: import JS/Python/C#, organize via folders and overlapping tags, save a collection, search/edit/format with undo, run saved input, stop an infinite loop without closing the app, recover an unsaved buffer and export/restore the workspace on another supported installation.
+
+- [x] Script write preflight rejects exhausted revisions/manifest size before staging source files; Release build and 25 host tests passed (2026-11-14). Windows acceptance remains open.
