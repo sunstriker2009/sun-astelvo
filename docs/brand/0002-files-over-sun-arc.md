@@ -11,3 +11,7 @@ Rebuild all vector masters, monochrome variants, light/dark lockups, icon export
 The source artwork is a raster concept; SVGs deliberately reconstruct its geometry with outlined typography, rather than claiming a pixel-perfect trace. Colour and flat monochrome versions share the same silhouette. The rendered workspace in the concept remains illustrative; it does not establish implemented functionality.
 
 This changes branding assets only. It does not change roadmap milestones, application code, release configuration or commercial-clearance status.
+
+## Superseding asset implementation — 2026-11-14
+
+The visual direction remains accepted. The owner approved raster variants and the transparent symbol. The vector implementation described above is historical and is archived under `branding/archive/retired/vector-v0.2/`. Use [the current brand guide](../../branding/BRAND-GUIDE.md) and raster exports; do not rebuild active icons from SVGs.
