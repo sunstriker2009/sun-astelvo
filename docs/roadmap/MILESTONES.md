@@ -24,3 +24,8 @@ New organizer Windows, interactive/clean-machine and governance enforcement foll
 ## M0 foundation evidence
 
 The first implementation provides the Electron/React/Monaco shell, bounded information-only .NET stdio host, narrow preload API, build checks and protocol/host integration tests. See [validation](../operations/M0-VALIDATION.md). [Windows automated foundation acceptance passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). M0 remains open for interactive/clean-machine and governance evidence.
+
+
+## Script write preflight follow-up — 2026-11-14
+
+Folder duplication merged in PR #18. Script create/save/duplicate now validate the next revision and serialized manifest size before writing source revisions, matching the bulk-copy preflight. This prevents unnecessary orphan files when revision or metadata limits already prohibit committing. Release build passed with zero warnings/errors; all 25 development-host integration tests passed, including exhausted-revision rejection with byte-identical manifest and unchanged source directories/revisions. No new Windows, packaged desktop or power-loss acceptance was run. Delete/restore remains the next organizer feature.

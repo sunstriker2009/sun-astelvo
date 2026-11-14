@@ -130,7 +130,7 @@ internal sealed class WorkspaceStore : IDisposable
     {
         var script = new Script(Guid.NewGuid(), Name(name), Language(language), folderId, Hash([]));
         var next = manifest with { Scripts = [.. manifest.Scripts, script] };
-        Validate(next);
+        PreflightCommit(next);
         CheckManifest();
         WriteRevision(script, []);
         Commit(next);
@@ -208,7 +208,7 @@ internal sealed class WorkspaceStore : IDisposable
         _ = Utf8.GetString(bytes);
         var copy = original with { Id = Guid.NewGuid(), Name = Name(name), FolderId = folderId };
         var next = manifest with { Scripts = [.. manifest.Scripts, copy] };
-        Validate(next);
+        PreflightCommit(next);
         WriteRevision(copy, bytes);
         if (Hash(ReadBytes(SourcePath(original), MaxSourceBytes)) != expectedHash)
             throw Error("conflict", "The source changed during duplication. Review it before retrying; the original was not overwritten.");
@@ -226,7 +226,7 @@ internal sealed class WorkspaceStore : IDisposable
         if (bytes.Length > MaxSourceBytes) throw Error("limit_exceeded", "Scripts are limited to 256 KiB in this preview.");
         var script = original with { Name = Name(name), Language = Language(language), FolderId = folderId, SourceHash = Hash(bytes) };
         var next = manifest with { Scripts = manifest.Scripts.Select(s => s.Id == id ? script : s).ToList() };
-        Validate(next);
+        PreflightCommit(next);
         WriteRevision(script, bytes);
         // Recheck before the manifest commit so ordinary external edits made
         // during the revision write are detected as well.
@@ -256,6 +256,14 @@ internal sealed class WorkspaceStore : IDisposable
     {
         if (Hash(ReadBytes(ManifestPath, MaxManifestBytes)) != manifestHash)
             throw Error("conflict", "Workspace metadata changed outside this instance. Reopen the same workspace to refresh it before saving.");
+    }
+
+    private void PreflightCommit(Manifest next)
+    {
+        var candidate = next with { Revision = checked(manifest.Revision + 1) };
+        Validate(candidate);
+        if (JsonSerializer.SerializeToUtf8Bytes(candidate, Json).Length > MaxManifestBytes)
+            throw Error("limit_exceeded", "Workspace metadata exceeds the preview limit.");
     }
 
     private void Commit(Manifest next)
