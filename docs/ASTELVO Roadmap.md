@@ -1,9 +1,9 @@
 # ASTELVO by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
-SUN-002 · `Sun.Workspace` · Updated 2026-11-12 · Architecture v0.1 (proposed)
+SUN-002 · `Sun.Workspace` · Updated 2026-11-14 · Architecture v0.1 (proposed)
 
-This revision supersedes the database-first kickoff. Name, tagline and product direction are approved. Architecture choices are recommendations to validate in M0; no application implementation exists yet. SQL Server/PostgreSQL connections and Kubernetes forwarding move to future extensions.
+This revision supersedes the database-first kickoff. Name, tagline and product direction are approved. The Electron/Monaco/.NET foundation is implemented and automated Windows portable acceptance passed. The first M1 workspace/folder/script persistence slice is implemented; remaining organizer, editor and execution work is tracked below. SQL Server/PostgreSQL connections and Kubernetes forwarding move to future extensions.
 
 ## Product and v1 scope
 
@@ -108,8 +108,8 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
-| M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | In progress — repository created; architecture PR being prepared |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | Planned |
+| M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-Registration PR #6 is merged. Revised scope/tagline remains in [SUN ecosystem PR #7](https://github.com/sunstriker2009/sun-ecosystem/pull/7), open and unmerged at inspection. The product repository is created and M0 is in progress. Architecture documents are being added by PR. M1–M5 implementation is planned; no application builds, runner tests or packaged desktop acceptance have run. Future reports show current milestone, merged evidence, open PR/check state, next deliverable and specific blockers.
+The foundation and branding are merged. Automated Windows portable acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). The first M1 slice adds local workspace/folder/script persistence and guarded manual saves; [Workspace format v1](architecture/WORKSPACE-FORMAT.md) records schema, recovery behavior, limits and tests. Remaining M1 organizer acceptance and M2–M5 implementation stay open; no script runner is implemented. Interactive Windows and governance follow-ups remain tracked separately.
 
 ## Sources
 

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { HostClient } from './host-client.mjs';
@@ -38,21 +38,58 @@ async function startDesktop() {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
+  function trusted(event) {
+    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame?.url !== trustedUrl) throw new Error('Untrusted sender');
+  }
+  function getHost() {
+    if (!host) {
+      const launch = hostLaunch({ appRoot: root, resourcesPath: process.resourcesPath, isPackaged: app.isPackaged });
+      host = new HostClient(launch.executable, launch.args);
+    }
+    return host;
+  }
+  async function command(method, params) {
+    try { return { ok: true, value: await getHost().request(method, params) }; }
+    catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
+  }
+  function discard() {
+    return dialog.showMessageBoxSync(window, { type: 'question', title: 'Unsaved script', message: 'Discard unsaved script changes?', detail: 'Choose Cancel to return to the editor and save or copy your changes.', buttons: ['Discard changes', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true }) === 0;
+  }
+  window.webContents.on('will-prevent-unload', event => { if (discard()) event.preventDefault(); });
+  ipcMain.handle('astelvo:confirm-discard', event => { trusted(event); return discard(); });
+  let choosing = false;
+  ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
+    trusted(event);
+    if (typeof create !== 'boolean' || choosing) return { ok: false, code: 'invalid_request', message: 'A folder selection is already in progress.' };
+    choosing = true;
+    try {
+      const selection = await dialog.showOpenDialog(window, { title: create ? 'Create workspace in an empty folder' : 'Open ASTELVO workspace', properties: ['openDirectory', 'createDirectory'] });
+      if (selection.canceled || selection.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Selection cancelled.' };
+      return await command('workspace.open', { path: selection.filePaths[0], create });
+    } finally { choosing = false; }
+  });
+  ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
+    trusted(event);
+    // Paths and executables cannot be supplied through this renderer channel.
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'script.create', 'script.read', 'script.save'].includes(method))
+      return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
+    return command(method, params);
+  });
   ipcMain.handle('astelvo:host-info', async event => {
-    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame || event.senderFrame.url !== trustedUrl) throw new Error('Untrusted sender');
+    trusted(event);
     try {
       if (smoke) report('requesting host information');
-      if (!host) {
-        const launch = hostLaunch({ appRoot: root, resourcesPath: process.resourcesPath, isPackaged: app.isPackaged });
-        host = new HostClient(launch.executable, launch.args);
-      }
-      return { ok: true, info: await host.info() };
+      return { ok: true, info: await getHost().info() };
     } catch { return { ok: false, message: app.isPackaged ? 'Bundled host unavailable. Extract the complete portable folder and restart ASTELVO.' : 'Host unavailable. Build the .NET host, then restart ASTELVO.' }; }
   });
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {
     if (!quitting && host) {
-      event.preventDefault(); quitting = true;
+      event.preventDefault();
+      // Closing the window runs its unsaved-buffer guard before releasing the
+      // workspace lease. A cancelled quit must leave the host usable.
+      if (!window.isDestroyed()) { window.close(); return; }
+      quitting = true;
       void host.close().finally(() => app.quit());
     }
   });

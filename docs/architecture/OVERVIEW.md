@@ -1,25 +1,21 @@
 # ASTELVO architecture overview
 
-Status: proposed, subject to M0 validation. [Canonical roadmap](../ASTELVO%20Roadmap.md#architecture).
+The merged M0 foundation provides Electron/React/Monaco, an owned .NET 10 host and framed stdio. Automated Windows portable acceptance [passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). Interactive clean-machine and governance follow-ups remain open.
 
-Proposed stack: Electron, React/TypeScript and Monaco with an owned .NET 10 worker; portable files/manifests and SQLite indexing. JavaScript, Python and C# run through separate local processes and adapters.
+The first M1 slice adds native workspace selection, plain source revisions, a versioned manifest, exclusive writer lease and optimistic conflict checks. Save is manual; the editor holds one script at a time. See [Workspace format v1](WORKSPACE-FORMAT.md).
 
 ```mermaid
 flowchart TD
-  UI["Library, editor and Try It"] --> Bridge["Validated desktop bridge"]
-  Bridge --> Host["Local .NET workspace host"]
-  Host --> Store["Storage and search"]
-  Host --> Language["Language and formatter adapters"]
-  Host --> Runs["Run coordinator"]
-  Runs --> Supervisor["Owned process supervisor"]
-  Supervisor --> Runtimes["Node.js, Python and .NET SDK"]
+  UI["Folder library and Monaco editor"] --> Bridge["Native picker and validated bridge"]
+  Bridge --> Client["Bounded correlated stdio client"]
+  Client --> Host["Local .NET workspace session"]
+  Host --> Manifest["Versioned workspace manifest"]
+  Host --> Sources["Plain UTF-8 source revisions"]
+  Host --> Lease["Exclusive writer lease"]
 ```
 
+The manifest references staged source revisions; replacing the manifest commits the operation. A failed/conflicting save keeps the editor buffer and avoids overwriting the external source.
 
-## Decisions to validate
+Search/SQLite indexing, tags/collections, import/export and backup/restore remain M1 work. Multi-tab editing, autosave/recovery and formatting remain M2. Execution adapters, runtime supervision and cancellation remain M3/M4. No script content is executed by the workspace host.
 
-- ADR-001: shell and framed stdio IPC; packaged Monaco workers and worker lifecycle.
-- ADR-002: manifest authority, journalled file changes, rebuildable indexes and conflicts.
-- ADR-003: local execution trust boundary, process-tree cleanup and bounded output.
-
-Renderer isolation does not sandbox user scripts. Local execution uses user OS permissions. Database execution and Kubernetes are outside v1.
+Renderer isolation does not sandbox future user scripts; local execution will use user OS permissions. Database execution and Kubernetes are outside v1. [Canonical roadmap](../ASTELVO%20Roadmap.md).

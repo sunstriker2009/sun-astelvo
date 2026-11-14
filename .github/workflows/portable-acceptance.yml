@@ -37,6 +37,7 @@ jobs:
         id: desktop
         run: npm run smoke:portable
       - name: Upload built preview (desktop acceptance may have failed)
+        # Storage/editor acceptance is a separate development-entry test below.
         if: ${{ !cancelled() && steps.package.outcome == 'success' && steps.host.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
@@ -52,3 +53,7 @@ jobs:
           path: artifacts/diagnostics/
           retention-days: 7
           if-no-files-found: warn
+      - name: Build development host for workspace editor acceptance
+        run: dotnet build Sun.Workspace.slnx -c Release
+      - name: Workspace editor acceptance (isolated temporary workspace)
+        run: npm run smoke:workspace

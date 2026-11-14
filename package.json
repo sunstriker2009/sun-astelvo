@@ -11,12 +11,13 @@
     "build": "node tools/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test --test-timeout=10000 tests/protocol.test.mjs tests/host-client.test.mjs tests/portable.test.mjs tests/startup.test.mjs",
-    "test:host": "node --test --test-timeout=15000 tests/host.integration.test.mjs",
+    "test:host": "node --test --test-timeout=15000 tests/host.integration.test.mjs tests/workspace.integration.test.mjs",
     "build:host": "dotnet build src/Sun.Workspace.Host -c Release",
     "start": "electron .",
     "smoke": "electron desktop/smoke.mjs",
     "package:portable": "node tools/package.mjs",
-    "smoke:portable": "node tools/portable-smoke.mjs"
+    "smoke:portable": "node tools/portable-smoke.mjs",
+    "smoke:workspace": "node tools/workspace-smoke.mjs"
   },
   "dependencies": {
     "monaco-editor": "0.57.0",

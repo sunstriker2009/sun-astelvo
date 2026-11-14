@@ -15,11 +15,13 @@ export async function verifyDesktop(window, { packaged }) {
     return {
       nodeDisabled: typeof window.require === 'undefined' && typeof window.process === 'undefined',
       bridge: Object.keys(window.astelvo),
+      workspaceMethods: Object.keys(window.astelvo.workspace),
       host: await window.astelvo.hostInfo()
     };
   })()`);
   assert.equal(result.nodeDisabled, true);
-  assert.deepEqual(result.bridge, ['hostInfo']);
+  assert.deepEqual(result.bridge.sort(), ['confirmDiscard', 'hostInfo', 'workspace']);
+  assert.deepEqual(result.workspaceMethods.sort(), ['close', 'create', 'createFolder', 'createScript', 'open', 'readScript', 'renameFolder', 'saveScript']);
   assert.equal(result.host.ok, true, result.host.message);
   assert.equal(result.host.info.product, 'ASTELVO');
   assert.equal(result.host.info.protocol, 1);

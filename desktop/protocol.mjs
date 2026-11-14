@@ -1,4 +1,4 @@
-export const MAX_FRAME = 4096;
+export const MAX_FRAME = 4 * 1024 * 1024;
 
 export function encodeFrame(value) {
   const body = Buffer.from(JSON.stringify(value), 'utf8');

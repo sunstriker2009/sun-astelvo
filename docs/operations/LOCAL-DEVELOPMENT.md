@@ -1,4 +1,4 @@
-# Local development — M0 foundation
+# Local development — organizer preview
 
 Prerequisites: Node.js 24 and .NET 10 SDK on your development machine. Windows is the first release target; Linux checks validate code/protocol behaviour only.
 
@@ -12,7 +12,7 @@ npm run build
 npm start
 ```
 
-The app opens a temporary Monaco buffer with JavaScript/Python/C# highlighting and a language selector. **Check host connection** validates the real .NET process boundary. Saving, organization, formatting and running scripts are not implemented yet. Close the window to stop the owned host. Build both sides again and restart after source changes; hot reload is outside this spike.
+Create a workspace in an empty local folder or open an existing workspace through the native picker. Add logical folders and JavaScript/Python/C# scripts. Select a script, edit in Monaco, and save with the button or Ctrl/Cmd+S. Script name, language and folder controls are saved together. Reload explicitly reviews external changes; stale saves fail while preserving the buffer. Dirty navigation/quit asks before discarding. Closing the workspace releases its writer lease. Formatting and runners are not implemented. Build both sides and restart after source changes.
 
 `npm run smoke` is an optional desktop acceptance check after both builds. It requires a functioning graphical session and a supported Electron runtime environment. It mounts Monaco and checks real host IPC with renderer Node access disabled, sandbox/context isolation enabled, and a 20-second deadline. It does not replace Windows installer, packaged-worker or accessibility validation.
 
@@ -50,4 +50,8 @@ node node_modules/electron/cli.js desktop/smoke.mjs --ozone-platform=headless --
 
 Run it after building both sides. This selects a headless display backend and software rendering; the smoke still asserts renderer sandboxing, context isolation and web security. It does not replace Windows or interactive visual validation.
 
-Desktop launch, Windows acceptance and governance enforcement remain open in [M0 validation](M0-VALIDATION.md). M1 will add storage and organization; this preview still loses its editor buffer on close.
+Automated Windows foundation acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). The first organizer slice still needs its own Windows acceptance run; interactive/clean-machine and governance follow-ups remain open. See [workspace format/limits](../architecture/WORKSPACE-FORMAT.md). Save is manual; a crash can lose unsaved edits.
+
+## Workspace editor acceptance
+
+After building the development host and renderer, run `npm run smoke:workspace`. On Linux without a display, append `-- --ozone-platform=headless --disable-gpu`. It uses the real UI, bridge and host with a temporary workspace, covering folder/script creation, typing/save/reopen, rename, and cancellation of a dirty app quit. Native dialog overrides exist only in this development test entry, which is excluded from portable assets. The wrapper requires an explicit success marker. The manual Windows workflow also runs this editor acceptance; automatic PR CI retains bounded host/unit checks without an added OS matrix.

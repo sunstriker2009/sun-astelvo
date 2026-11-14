@@ -11,7 +11,8 @@
 - [ ] Enforce sensitive-change review and real CODEOWNERS separately from baseline bootstrap.
 - [x] Draft ADR-001 shell/IPC, ADR-002 storage/recovery and ADR-003 execution boundary. Shell is selected for the spike; packaged desktop acceptance remains pending.
 - [x] .NET 10 solution, UI skeleton, npm lockfile and worker protocol/lifecycle tests.
-- [ ] Validate Monaco/host launch on desktop and self-contained worker packaging.
+- [x] Automated Windows portable Monaco/host and self-contained worker acceptance passed: [run](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010).
+- [ ] Interactive/relocated Windows clean-machine checks; remaining governance enforcement.
 - [x] Add native Windows/Linux portable staging and bundled-host selection; Linux x64 package and runtime-independent host tests pass. Windows/full desktop acceptance remains open.
 - [x] Add manual-only Windows package/host/desktop acceptance and short-lived artifact; no automatic Windows CI runs.
 - [x] Replace CODEOWNERS placeholder and inspect live rules read-only; document remaining enforcement gaps in M0 validation.
@@ -20,7 +21,9 @@
 
 ### M1 — Organizer
 
-- [ ] Workspace create/open, manifest schema, writer lease and recoverable writes.
+- [x] First slice: native workspace create/open/close, manifest v1, exclusive writer lease, copy-on-write revisions and conflict checks; [format and limits](../architecture/WORKSPACE-FORMAT.md).
+- [x] Script create/read/save/rename/language/move and folder create/rename with stable IDs; manual Ctrl/Cmd+S, dirty-buffer navigation/quit guard.
+- [ ] Validate the new organizer on Windows through the extended manual acceptance workflow.
 - [ ] Script/folder CRUD, move, duplicate, delete/restore and stable IDs.
 - [ ] Tags, favourites, smart collection filters and indexed search.
 - [ ] Safe import/export, index rebuild and backup/restore.

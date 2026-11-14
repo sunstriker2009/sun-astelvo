@@ -2,7 +2,7 @@ import path from 'node:path';
 import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 
 // Copy an explicit application allowlist, complete Electron and complete .NET runtime.
-const desktopFiles = ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs'];
+const desktopFiles = ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs', 'workspace-contract.mjs'];
 
 export async function stagePortable({ root, runtimeDirectory, hostDirectory, destination, platform }) {
   if (!['win32', 'linux'].includes(platform)) throw new Error('Unsupported portable platform');
@@ -21,5 +21,5 @@ export async function stagePortable({ root, runtimeDirectory, hostDirectory, des
     try { await rename(path.join(destination, 'electron_wer.dll'), path.join(destination, 'ASTELVO_wer.dll')); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  await writeFile(path.join(destination, 'PORTABLE-NOTES.txt'), `ASTELVO by Sun ${version} — M0 portable preview\n\nExtract the whole folder, then launch ${platform === 'win32' ? 'ASTELVO.exe' : './astelvo'}.\nNode.js and .NET are bundled; no SDK or runtime installation is required.\nThe editor buffer is temporary. Saving and script execution are not yet implemented.\nThis is an unsigned portable spike, not an installer or a production release.\nThe native executable still carries Electron's default resource icon/metadata.\nFor acceptance use --astelvo-smoke; exit 0 means Monaco and bundled host IPC passed.\nKeep Electron and .NET license notices with the bundle.\n`);
+  await writeFile(path.join(destination, 'PORTABLE-NOTES.txt'), `ASTELVO by Sun ${version} — M0 portable preview\n\nExtract the whole folder, then launch ${platform === 'win32' ? 'ASTELVO.exe' : './astelvo'}.\nNode.js and .NET are bundled; no SDK or runtime installation is required.\nCreate/open a local workspace and save scripts explicitly with Ctrl/Cmd+S. Unsaved edits can be lost on a crash. Script execution is not implemented.\nThis is an unsigned portable spike, not an installer or a production release.\nThe native executable still carries Electron's default resource icon/metadata.\nFor acceptance use --astelvo-smoke; exit 0 means Monaco and bundled host IPC passed.\nKeep Electron and .NET license notices with the bundle.\n`);
 }
