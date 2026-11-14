@@ -1,6 +1,8 @@
 # M0 foundation validation
 
-Updated 2026-11-14. This records foundation checks and a portable spike, not completed M0 or a release.
+Updated 2026-11-14. Automated Windows foundation acceptance passed on commit 517277cbee5bd958748d5e5a25bb77c1a2c81cb1 in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010), including package, bundled host and desktop smoke. The historical diagnostics below describe the foundation path and its earlier failures. M0 still has interactive/clean-machine and governance gates; this is not a release.
+
+The first M1 slice extends the formerly information-only bridge with validated workspace operations and a 4 MiB frame ceiling. Current storage/bridge limits and evidence live in [Workspace format v1](../architecture/WORKSPACE-FORMAT.md). Its new Windows editor acceptance remains pending.
 
 | Check | Evidence |
 | --- | --- |
@@ -60,10 +62,10 @@ The GitHub connection has read capability for rules but no repository-administra
 ## Gates before closing M0
 
 - [x] Windows portable build and real bundled-host tests pass (manual run 2).
-- [ ] Windows packaged desktop smoke passes with the startup fix.
+- [x] Windows packaged desktop smoke passed with the startup fix: run 43609933010.
 - [ ] Interactive Windows launch shows Monaco and the approved icon, host check succeeds, closing exits the owned host, and a relocated complete folder launches without installed Node/.NET.
 - [ ] Aggregate gate behavior is observed in CI, direct named backend/frontend checks and sensitive-change reviews are enforced, and failed-check blocking has governed evidence.
 
 The optional Windows workflow remains manual-only, with a 12-minute timeout and seven-day artifacts. The preview requires a successful package and host tests; failed desktop smoke also produces diagnostics and keeps the workflow failed. No scheduled jobs, publishing or OS matrix are added. Standard PR backend validation includes one Linux self-contained host publish/test; full builds still do not repeat on main.
 
-See [local development](LOCAL-DEVELOPMENT.md). M1 persistence is planned; this update does not close the outstanding M0 gates.
+See [local development](LOCAL-DEVELOPMENT.md). M1 persistence is implemented as a first slice; remaining organizer work and the outstanding M0 gates remain open.

@@ -56,7 +56,7 @@ for (const platform of ['win32', 'linux']) {
     }
     try {
       await fixture(path.join(root, 'package.json'), JSON.stringify({ name: '@sun-workspace/desktop', version: '0.0.1', dependencies: { unwanted: '1.0.0' } }));
-      for (const name of ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs']) await fixture(path.join(root, 'desktop', name));
+      for (const name of ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs', 'workspace-contract.mjs']) await fixture(path.join(root, 'desktop', name));
       await fixture(path.join(root, 'dist/index.html'));
       await fixture(path.join(root, 'dist/editor.worker.js'));
       await fixture(path.join(root, 'node_modules/private-development-file'));
