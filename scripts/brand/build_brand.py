@@ -4,13 +4,15 @@ Run from repository root: python3 scripts/brand/build_brand.py
 Optional ASTELVO_FONT_DIR overrides /usr/share/fonts/truetype/liberation.
 """
 from pathlib import Path
-import os, json, subprocess, shutil
+import os, json, subprocess
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2] if Path(__file__).parent.name == 'brand' else Path(__file__).parent / 'package'
-OUT = ROOT / 'branding/assets'\nICONS = OUT / 'icons'\nICONS.mkdir(parents=True, exist_ok=True)
+OUT = ROOT / 'branding/assets'
+ICONS = OUT / 'icons'
+ICONS.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 FONT = Path(os.environ.get('ASTELVO_FONT_DIR', '/usr/share/fonts/truetype/liberation'))
 COLORS = dict(background='#0B1020', surface='#151D30', accent='#879BFF', accentDeep='#5865D8', text='#F5F7FA', muted='#9CA8BC', sun='#F6C453')
@@ -81,8 +83,6 @@ for n in [16,24,32,48,64,128,256,512,1024]:
 Image.open(ICONS/'icon-256.png').save(ICONS/'app.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)],append_images=[Image.open(ICONS/f'icon-{n}.png') for n in [16,24,32,48,64,128]])
 for mode in ['dark','light']:
     subprocess.run(['inkscape',str(OUT/f'lockup-{mode}.svg'),'--export-type=png',f'--export-filename={OUT/f"lockup-{mode}.png"}','--export-width=1590'],check=True,capture_output=True)
-    # Identity-specific URLs prevent stale README images when generic assets change.
-    shutil.copyfile(OUT/f'lockup-{mode}.png', OUT/f'astelvo-files-sun-arc-v02-{mode}.png')
 
 # Preview is a QA artefact, outside the reusable asset directory.
 preview=Image.new('RGB',(1590,900),COLORS['surface'])
@@ -90,6 +90,8 @@ preview.paste(Image.open(OUT/'lockup-dark.png').convert('RGB'),(0,0))
 d=ImageDraw.Draw(preview); d.text((50,585),'APP ICONS  /  PIXEL-SIZE REVIEW',fill=COLORS['text'])
 x=50
 for n in [16,24,32,48,64,128]:
-    im=Image.open(OUT/f'icon-{n}.png'); preview.paste(im,(x,640),im); d.text((x,790),str(n),fill=COLORS['text']); x+=n+55
-review_dir = ROOT/'branding/archive/intermediate'\nreview_dir.mkdir(parents=True, exist_ok=True)\npreview.save(review_dir/'brand-preview.png')
+    im=Image.open(ICONS/f'icon-{n}.png'); preview.paste(im,(x,640),im); d.text((x,790),str(n),fill=COLORS['text']); x+=n+55
+review_dir = ROOT/'branding/archive/intermediate'
+review_dir.mkdir(parents=True, exist_ok=True)
+preview.save(review_dir/'brand-preview.png')
 print(OUT)
