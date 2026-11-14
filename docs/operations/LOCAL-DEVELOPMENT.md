@@ -38,6 +38,16 @@ The application window uses the approved raster icon; the native executable reta
 
 `smoke:portable` launches the native package with an empty PATH, invalid DOTNET_ROOT and invalid developer runtime override. It checks Monaco, renderer isolation and real bundled-host IPC. The app deadline is 20 seconds; the outer launcher deadline is 30 seconds. Run it in a functioning graphical session. Do not disable the sandbox or web security to pass. For host-only checks, set `ASTELVO_HOST_EXECUTABLE` to the absolute bundled host executable and run `npm run test:host`; those tests clear the child PATH automatically.
 
-The **Windows portable acceptance** workflow is manual-only. Once merged, open Actions, choose that workflow and Run workflow on the desired branch. It builds and tests a Windows bundle, runs packaged desktop smoke and uploads a seven-day artifact only on success. No schedule, push trigger, matrix or release publication is configured. Use the downloaded artifact for separate interactive and clean-machine checks; a hosted runner result alone is not installer acceptance.
+The **Windows portable acceptance** workflow is manual-only. Once merged, open Actions, choose that workflow and start a new run on the desired branch. It builds and tests a Windows bundle, runs packaged desktop smoke, and uploads a seven-day unsigned preview if package and host tests passed. A desktop failure keeps the run red and also uploads diagnostics; preview availability does not establish desktop acceptance. Retrying an old run uses its old commit, so start a new run after merging a fix. No schedule, push trigger, matrix or release publication is configured. Use the preview for separate interactive and clean-machine checks; a hosted runner result alone is not installer acceptance.
+
+Smoke output names its startup stage and records preload/load/renderer failures. The portable launcher saves bounded output to `artifacts/diagnostics/portable-smoke.log` (at most 1 MiB), including exit/watchdog status, without dumping environment values. Startup schedules window creation after readiness and lets the main ESM entry finish immediately; do not add a top-level wait on app readiness.
+
+For a Linux environment without an X display, a separate headless development check is available:
+
+```sh
+node node_modules/electron/cli.js desktop/smoke.mjs --ozone-platform=headless --disable-gpu
+```
+
+Run it after building both sides. This selects a headless display backend and software rendering; the smoke still asserts renderer sandboxing, context isolation and web security. It does not replace Windows or interactive visual validation.
 
 Desktop launch, Windows acceptance and governance enforcement remain open in [M0 validation](M0-VALIDATION.md). M1 will add storage and organization; this preview still loses its editor buffer on close.
