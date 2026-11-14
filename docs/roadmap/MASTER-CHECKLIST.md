@@ -34,6 +34,8 @@
 
 ### M2 — Editor
 
+- [x] Register Monaco find/replace and command palette with explicit toolbar access; TypeScript/build and real headless widget activation checks passed (2026-11-14). Full editor/Windows acceptance remains open.
+
 - [ ] Monaco tabs, language selection, shortcuts, find/replace and command palette.
 - [ ] Three formatter adapters with undo and failure handling.
 - [ ] Autosave/recovery and external-change conflict handling.

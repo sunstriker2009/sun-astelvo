@@ -4,6 +4,8 @@ import * as monaco from 'monaco-editor/editor/editor.api';
 import 'monaco-editor/languages/definitions/javascript/register';
 import 'monaco-editor/languages/definitions/python/register';
 import 'monaco-editor/languages/definitions/csharp/register';
+import 'monaco-editor/features/find/register';
+import 'monaco-editor/features/quickCommand/register';
 import './style.css';
 
 type Language = 'javascript' | 'python' | 'csharp';
@@ -277,6 +279,9 @@ function App() {
           <label>Folder<select value={draft.folderId ?? ''} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, folderId: e.target.value || null })}><option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}</select></label>
           <button disabled={busy || !document || (!dirty && !document.externalChanged)} onClick={save}>Save</button>
           <button disabled={busy || !document} onClick={() => document && openScript(document.id, true)}>Reload</button>
+          <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'actions.find', null); }}>Find</button>
+          <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.startFindReplaceAction', null); }}>Replace</button>
+          <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.quickCommand', null); }}>Commands</button>
           <button disabled title="Script runners are planned">Run</button>
         </div>
         <div className="editor" ref={container} aria-label="Script editor" />

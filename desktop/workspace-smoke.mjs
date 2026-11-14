@@ -165,6 +165,18 @@ void app.whenReady().then(async () => {
     await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Renamed greeting')).click()");
     await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Renamed greeting'", 'open folder copied script');
     assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copiedScript.id)})`)).value.content, 'console.log("external accepted");');
+    await click('Find');
+    await wait("!!document.querySelector('.find-widget.visible')", 'find widget');
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    await click('Replace');
+    await wait("!!document.querySelector('.find-widget.visible.replaceToggled')", 'replace widget');
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    await click('Commands');
+    await wait("!!document.querySelector('.quick-input-widget') && document.querySelector('.quick-input-widget').style.display !== 'none'", 'command palette');
+    window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
+    window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
