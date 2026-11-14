@@ -1,6 +1,6 @@
 # ASTELVO master checklist
 
-[Full roadmap](../ASTELVO%20Roadmap.md). Record PRs and validation evidence beside completed items.
+[Full roadmap](../ASTELVO%20Roadmap.md). Record PRs and validation evidence beside completed items. [Owner development authorization](../operations/DEVELOPMENT-AUTHORIZATION.md) defers manual code review to final product acceptance and permits CI-gated squash auto-merge; configured GitHub protections remain unchanged.
 
 ### M0 — Foundation
 
@@ -21,12 +21,13 @@
 
 ### M1 — Organizer
 
-- [x] First slice: native workspace create/open/close, manifest v1, exclusive writer lease, copy-on-write revisions and conflict checks; [format and limits](../architecture/WORKSPACE-FORMAT.md).
+- [x] Merged [PR #14](https://github.com/sunstriker2009/sun-astelvo/pull/14): native workspace create/open/close, manifest v1, exclusive writer lease, copy-on-write revisions and conflict checks; [format and limits](../architecture/WORKSPACE-FORMAT.md).
 - [x] Script create/read/save/rename/language/move and folder create/rename with stable IDs; manual Ctrl/Cmd+S, dirty-buffer navigation/quit guard.
 - [ ] Validate the new organizer on Windows through the extended manual acceptance workflow.
-- [x] Folder move to another parent/root with stable subtree/script identities; rejects cycles, missing destinations and case-insensitive sibling collisions. Implemented in stacked draft `feature/m1-folder-moves`; [local evidence](../operations/M1-FOLDER-MOVES-VALIDATION.md). Human review and Windows organizer acceptance remain open.
-- [x] Script duplication with explicit name/destination, new identity, reviewed committed content and independent source storage; implemented in stacked draft `feature/m1-script-duplicate` ([evidence](../operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Human review and Windows acceptance remain open.
-- [ ] Remaining script/folder CRUD: folder duplication and delete/restore.
+- [x] Folder move to another parent/root with stable subtree/script identities; rejects cycles, missing destinations and case-insensitive sibling collisions. Merged [PR #15](https://github.com/sunstriker2009/sun-astelvo/pull/15); [local evidence](../operations/M1-FOLDER-MOVES-VALIDATION.md). Windows organizer acceptance remains open.
+- [x] Script duplication with explicit name/destination, new identity, reviewed committed content and independent source storage; merged [PR #16](https://github.com/sunstriker2009/sun-astelvo/pull/16) ([evidence](../operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Windows acceptance remains open.
+- [x] Folder subtree duplication with new identities, all-source preflight, aggregate limits and one manifest commit; locally validated in `feature/m1-folder-duplicate` ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); Windows acceptance remains open.
+- [ ] Remaining script/folder CRUD: delete/restore.
 - [ ] Tags, favourites, smart collection filters and indexed search.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.

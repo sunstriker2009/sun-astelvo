@@ -33,6 +33,11 @@ internal sealed class WorkspaceSession : IDisposable
                 Keys(p, "id", "name"); return active.RenameFolder(Id(p, "id"), Text(p, "name"));
             case "folder.move":
                 Keys(p, "id", "parentId"); return active.MoveFolder(Id(p, "id"), OptionalId(p, "parentId"));
+            case "folder.duplicate":
+                Keys(p, "id", "name", "parentId", "expectedRevision");
+                var revision = p.GetProperty("expectedRevision").GetInt64();
+                if (revision is < 0 or > 9_007_199_254_740_991) throw Invalid();
+                return active.DuplicateFolder(Id(p, "id"), Text(p, "name"), OptionalId(p, "parentId"), revision);
             case "script.create":
                 Keys(p, "name", "language", "folderId"); return active.CreateScript(Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"));
             case "script.read":

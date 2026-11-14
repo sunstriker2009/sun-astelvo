@@ -29,3 +29,19 @@ test('duplicate contract rejects path/content overrides and mismatched copy resu
   for (const change of [{ id }, { name: 'Wrong' }, { folderId: copyId }, { hash: 'b'.repeat(64) }])
     assert.throws(() => assertResult('script.duplicate', { workspace, document: { ...document, ...change } }, params));
 });
+
+test('folder duplicate contract validates revision bounds and the new destination identity', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001', copyId = '10000000-0000-0000-0000-000000000002';
+  const params = { id, name: 'Copy', parentId: null, expectedRevision: 10 };
+  assert.doesNotThrow(() => assertRequest('folder.duplicate', params));
+  for (const expectedRevision of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, '10'])
+    assert.throws(() => assertRequest('folder.duplicate', { ...params, expectedRevision }));
+  assert.throws(() => assertRequest('folder.duplicate', { ...params, path: '/outside' }));
+  const folder = { id: copyId, name: 'Copy', parentId: null };
+  const workspace = { root: '/workspace', schemaVersion: 1, id, name: 'Workspace', revision: 11, folders: [folder], scripts: [] };
+  assert.doesNotThrow(() => assertResult('folder.duplicate', { workspace, folderId: copyId }, params));
+  for (const folderId of [id, null]) assert.throws(() => assertResult('folder.duplicate', { workspace, folderId }, params));
+  assert.throws(() => assertResult('folder.duplicate', { workspace: { ...workspace, folders: [] }, folderId: copyId }, params));
+  assert.throws(() => assertResult('folder.duplicate', { workspace: { ...workspace, revision: 10 }, folderId: copyId }, params));
+});

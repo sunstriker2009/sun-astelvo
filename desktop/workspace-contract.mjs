@@ -9,6 +9,7 @@ const fields = (value, keys) => object(value) && Object.keys(value).length === k
 const shapes = {
   'host.info': [], 'workspace.open': ['path', 'create'], 'workspace.close': [],
   'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'], 'folder.move': ['id', 'parentId'],
+  'folder.duplicate': ['id', 'name', 'parentId', 'expectedRevision'],
   'script.create': ['name', 'language', 'folderId'], 'script.read': ['id'],
   'script.duplicate': ['id', 'name', 'folderId', 'expectedHash'],
   'script.save': ['id', 'name', 'language', 'folderId', 'content', 'expectedHash']
@@ -23,6 +24,7 @@ export function assertRequest(method, params) {
       : key === 'name' ? name(value)
       : key === 'language' ? language(value)
       : key === 'expectedHash' ? hash(value)
+      : key === 'expectedRevision' ? Number.isSafeInteger(value) && value >= 0
       : key === 'content' ? typeof value === 'string' && Buffer.byteLength(value, 'utf8') <= MAX_SOURCE : false;
     if (!valid) throw new Error(`Invalid ${key}`);
   }
@@ -41,6 +43,9 @@ export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : method === 'folder.duplicate' ? object(value) && snapshot(value.workspace) && id(value.folderId) && value.folderId !== params.id
+      && value.workspace.revision === params.expectedRevision + 1
+      && value.workspace.folders.some(f => f.id === value.folderId && f.name === params.name && f.parentId === params.parentId)
     : method === 'script.read' ? document(value) && value.id === params.id
     : ['script.create', 'script.save', 'script.duplicate'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document)
       && (method !== 'script.save' || value.document.id === params.id)

@@ -49,7 +49,7 @@ async function startDesktop() {
     return host;
   }
   async function command(method, params) {
-    try { return { ok: true, value: await getHost().request(method, params) }; }
+    try { return { ok: true, value: await getHost().request(method, params, method === 'folder.duplicate' ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
   }
   function discard() {
@@ -71,7 +71,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'script.create', 'script.read', 'script.save', 'script.duplicate'].includes(method))
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'script.create', 'script.read', 'script.save', 'script.duplicate'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

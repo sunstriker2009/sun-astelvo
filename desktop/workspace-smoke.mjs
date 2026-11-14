@@ -70,6 +70,7 @@ void app.whenReady().then(async () => {
     await window.webContents.insertText('// unsaved edit');
     await wait("!!document.querySelector('.unsaved')", 'dirty buffer');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate script').disabled"), true, 'Duplication must require a saved buffer');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate folder').disabled"), true, 'Folder duplication must require saved open edits');
     // Move a parent while its script buffer is dirty. No editor discard or
     // source write is needed for a logical folder move.
     const beforeMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
@@ -143,13 +144,34 @@ void app.whenReady().then(async () => {
     await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Greeting copy')).click()");
     await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Greeting copy'", 'reopen copied script');
     assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copy.id)})`)).value.content, 'console.log("external accepted");');
+    await click('Utilities');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Duplicate selected folder').click()");
+    const beforeFolderCopy = await readFile(path.join(root, 'workspace.json'), 'utf8');
+    await input('Folder copy name', 'Utilities'); await click('Duplicate folder');
+    await wait("!!document.querySelector('.error')", 'folder copy name conflict');
+    assert.equal(await readFile(path.join(root, 'workspace.json'), 'utf8'), beforeFolderCopy);
+    await input('Folder copy name', 'Utilities copy'); await select('Folder copy destination', 'Archive'); await click('Duplicate folder');
+    await wait("!!Array.from(document.querySelectorAll('.folder')).find(b => b.textContent === 'Archive / Utilities copy' && b.getAttribute('aria-pressed') === 'true')", 'folder copy selected');
+    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value"), 'Greeting copy', 'Folder copy must retain the current editor');
+    const afterFolderCopy = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    const copiedFolder = afterFolderCopy.folders.find(f => f.name === 'Utilities copy');
+    const copiedScript = afterFolderCopy.scripts.find(s => s.folderId === copiedFolder.id);
+    assert.notEqual(copiedScript.id, source.id);
+    assert.deepEqual(afterFolderCopy.scripts.filter(s => s.id !== copiedScript.id), JSON.parse(beforeFolderCopy).scripts);
+    await click('Close workspace');
+    await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'close folder copied workspace');
+    await click('Open workspace');
+    await click('Archive / Utilities copy');
+    await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Renamed greeting')).click()");
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Renamed greeting'", 'open folder copied script');
+    assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copiedScript.id)})`)).value.content, 'console.log("external accepted");');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move, keyboard save/reopen, external adoption, rename, duplicate conflict/copy/reopen, dirty duplication guard and cancelled-quit preservation.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication guards and cancelled-quit preservation.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);
