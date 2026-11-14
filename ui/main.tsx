@@ -29,6 +29,7 @@ declare global {
         moveFolder: (input: { id: string; parentId: string | null }) => Promise<Result<Workspace>>;
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
+        duplicateScript: (input: { id: string; name: string; folderId: string | null; expectedHash: string }) => Promise<Result<WriteResult>>;
         saveScript: (input: Draft & { id: string; content: string; expectedHash: string }) => Promise<Result<WriteResult>>;
       };
     };
@@ -65,6 +66,8 @@ function App() {
   const [moveParent, setMoveParent] = useState<string | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
+  const [duplicateName, setDuplicateName] = useState('');
+  const [duplicateFolder, setDuplicateFolder] = useState<string | null>(null);
 
   function calculateDirty() {
     const saved = documentRef.current;
@@ -79,6 +82,7 @@ function App() {
     calculateDirty();
   }
   function display(next: Document | null) {
+    setDuplicateName(''); setDuplicateFolder(next?.folderId ?? null);
     documentRef.current = next; setDocument(next);
     draftRef.current = next ? { name: next.name, language: next.language, folderId: next.folderId } : emptyDraft;
     setDraft(draftRef.current);
@@ -229,6 +233,20 @@ function App() {
             <label>New script language<select value={newLanguage} disabled={busy} onChange={e => setNewLanguage(e.target.value as Language)}>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <button disabled={busy}>Create script</button>
           </form></details>
+          {document && <details><summary>Duplicate current script</summary>
+            <p className="muted">Copy the saved revision of {document.name}. Save any changes and resolve external edits first.</p>
+            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+              const current = documentRef.current!;
+              const next = unwrap(await window.astelvo.workspace.duplicateScript({ id: current.id, name: duplicateName.trim(), folderId: duplicateFolder, expectedHash: current.hash }));
+              setWorkspace(next.workspace); selectFolder(next.document.folderId); display(next.document); setStatus('Script duplicated. The original is unchanged.');
+            }); }}>
+              <label>Copy name<input required maxLength={120} disabled={busy || dirty || document.externalChanged} value={duplicateName} onChange={event => setDuplicateName(event.target.value)} /></label>
+              <label>Copy destination<select disabled={busy || dirty || document.externalChanged} value={duplicateFolder ?? ''} onChange={event => setDuplicateFolder(event.target.value || null)}>
+                <option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
+              </select></label>
+              <button disabled={busy || dirty || document.externalChanged}>Duplicate script</button>
+            </form>
+          </details>}
           <nav aria-label="Saved scripts">{scripts.map(script => <button className="script" aria-pressed={document?.id === script.id} key={script.id} disabled={busy} onClick={() => openScript(script.id)}><span>{script.name}</span><small>{languages[script.language]}{script.folderId ? ' · ' + folderLabel(script.folderId) : ''}</small></button>)}</nav>
           {scripts.length === 0 && <p className="muted">No scripts here yet.</p>}
         </>}

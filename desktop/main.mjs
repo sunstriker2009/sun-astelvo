@@ -71,7 +71,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'script.create', 'script.read', 'script.save'].includes(method))
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'script.create', 'script.read', 'script.save', 'script.duplicate'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

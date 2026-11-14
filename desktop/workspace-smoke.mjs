@@ -69,6 +69,7 @@ void app.whenReady().then(async () => {
     await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
     await window.webContents.insertText('// unsaved edit');
     await wait("!!document.querySelector('.unsaved')", 'dirty buffer');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate script').disabled"), true, 'Duplication must require a saved buffer');
     // Move a parent while its script buffer is dirty. No editor discard or
     // source write is needed for a logical folder move.
     const beforeMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
@@ -114,19 +115,41 @@ void app.whenReady().then(async () => {
     await writeFile(path.join(root, 'scripts', source.id, source.sourceHash + '.js'), 'console.log("external accepted");');
     await click('Reload');
     await wait("document.querySelector('[role=status]').textContent.includes('External edits loaded')", 'external reload');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate script').disabled"), true, 'Duplication must require adoption of external edits');
     // Reloaded external bytes are already on disk; adopting them into a new
     // revision must be possible without first modifying the editor again.
     await click('Save');
     await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'external revision adoption');
     await input('Script name', 'Renamed greeting'); await click('Save');
     await wait("!!Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Renamed greeting'))", 'script rename');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Duplicate current script').click()");
+    const beforeCopy = await readFile(path.join(root, 'workspace.json'), 'utf8');
+    await input('Copy name', 'Renamed greeting'); await click('Duplicate script');
+    await wait("!!document.querySelector('.error')", 'duplicate name conflict');
+    assert.equal(await readFile(path.join(root, 'workspace.json'), 'utf8'), beforeCopy, 'Failed duplicate must not rewrite metadata');
+    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value"), 'Renamed greeting');
+    await input('Copy name', 'Greeting copy'); await select('Copy destination', 'Workspace root'); await click('Duplicate script');
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Greeting copy'", 'duplicate opened');
+    assert.equal(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('external accepted')"), true);
+    const copied = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    const copy = copied.scripts.find(s => s.name === 'Greeting copy');
+    assert.notEqual(copy.id, source.id);
+    assert.equal(copy.folderId, null);
+    assert.deepEqual(copied.scripts.find(s => s.id === source.id), JSON.parse(beforeCopy).scripts.find(s => s.id === source.id));
+    await click('Close workspace');
+    await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'close duplicated workspace');
+    await click('Open workspace');
+    await wait("!!Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Greeting copy'))", 'reopen copy list');
+    await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Greeting copy')).click()");
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Greeting copy'", 'reopen copied script');
+    assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copy.id)})`)).value.content, 'console.log("external accepted");');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: create, folder move with dirty buffer, keyboard save/reopen, external revision adoption, rename and cancelled-quit preservation.');
+    console.log('Workspace editor smoke passed: folder move, keyboard save/reopen, external adoption, rename, duplicate conflict/copy/reopen, dirty duplication guard and cancelled-quit preservation.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

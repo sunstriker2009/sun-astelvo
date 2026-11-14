@@ -141,6 +141,7 @@ test('managed symlink/junction escape is rejected without modifying the target',
   await rename(path.join(root, 'scripts'), moved);
   await symlink(moved, path.join(root, 'scripts'), process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(host.request('script.read', { id: initial.document.id }), { code: 'invalid_workspace' });
+  await assert.rejects(duplicate(host, initial.document, 'Linked source copy'), { code: 'invalid_workspace' });
   assert.equal(await readFile(path.join(moved, initial.document.id, initial.document.hash + '.js'), 'utf8'), '');
 }));
 
@@ -252,4 +253,104 @@ test('folder move detects external metadata conflicts including no-ops and prese
     { id: state.folders[0].id, parentId: null, path: root }
   ]) await assert.rejects(host.request('folder.move', params), /invalid|Invalid/);
   assert.equal((await host.info()).product, 'ASTELVO');
+}));
+
+const duplicate = (host, document, name, folderId = document.folderId) => host.request('script.duplicate', { id: document.id, name, folderId, expectedHash: document.hash });
+
+test('duplicate gives each language a new independent identity and exact durable source bytes', async () => fixture(async (host, root) => {
+  const folders = await host.request('folder.create', { name: 'Copies', parentId: null });
+  for (const language of ['javascript', 'python', 'csharp']) {
+    const initial = await host.request('script.create', { name: language, language, folderId: null });
+    const content = language === 'csharp' ? '\0'.repeat(MAX_SOURCE) : '// বাংলা 🌞\r\n' + language;
+    const original = await save(host, initial.document, content);
+    const oldSource = source(root, original.workspace.scripts.find(s => s.id === original.document.id));
+    const oldBytes = await readFile(oldSource);
+    const copy = await duplicate(host, original.document, language, folders.folders[0].id);
+    assert.notEqual(copy.document.id, original.document.id);
+    assert.equal(copy.document.content, content);
+    assert.equal(copy.document.language, language);
+    assert.equal(copy.document.folderId, folders.folders[0].id);
+    assert.equal(copy.document.hash, original.document.hash);
+    assert.deepEqual(copy.workspace.scripts.find(s => s.id === original.document.id), original.workspace.scripts.find(s => s.id === original.document.id));
+    assert.deepEqual(await readFile(source(root, copy.workspace.scripts.find(s => s.id === copy.document.id))), oldBytes);
+    await save(host, copy.document, 'independent edit');
+    assert.deepEqual(await readFile(oldSource), oldBytes);
+    await host.request('workspace.close');
+    await host.request('workspace.open', { path: root, create: false });
+    assert.equal((await host.request('script.read', { id: copy.document.id })).content, 'independent edit');
+    assert.equal((await host.request('script.read', { id: original.document.id })).content, content);
+  }
+}));
+
+test('duplicate failures preserve metadata, original bytes and managed directories', async () => fixture(async (host, root) => {
+  const original = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file, 'utf8');
+  const directories = await readdir(path.join(root, 'scripts'));
+  for (const [name, folderId, code] of [
+    ['HELLO', null, 'invalid_request'], ['Missing folder', randomUUID(), 'invalid_workspace']
+  ]) {
+    await assert.rejects(duplicate(host, original.document, name, folderId), { code });
+    assert.equal(await readFile(file, 'utf8'), before);
+    assert.deepEqual(await readdir(path.join(root, 'scripts')), directories);
+  }
+  await assert.rejects(duplicate(host, { ...original.document, id: randomUUID() }, 'Missing'), { code: 'not_found' });
+  await assert.rejects(duplicate(host, { ...original.document, hash: 'a'.repeat(64) }, 'Stale'), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), before);
+  assert.equal(await readFile(source(root, original.workspace.scripts[0]), 'utf8'), '');
+  assert.equal((await duplicate(host, original.document, 'Recovered copy', null)).document.content, '');
+  // Simulate a copy revision staged before an interrupted manifest commit.
+  const orphan = path.join(root, 'scripts', randomUUID());
+  await mkdir(orphan);
+  const orphanFile = path.join(orphan, original.document.hash + '.js');
+  await writeFile(orphanFile, '');
+  await writeFile(path.join(root, 'workspace.json.duplicate-interrupted.tmp'), '{partial');
+  await host.request('workspace.close');
+  const reopened = await host.request('workspace.open', { path: root, create: false });
+  assert.equal(reopened.scripts.length, 2);
+  assert.equal((await host.request('script.read', { id: original.document.id })).content, '');
+  assert.equal(await readFile(orphanFile, 'utf8'), '');
+}));
+
+test('duplicate rejects unseen external source and metadata edits until reviewed and saved', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const committed = await readFile(file, 'utf8');
+  const originalSource = source(root, initial.workspace.scripts[0]);
+  await writeFile(originalSource, 'external source');
+  await assert.rejects(duplicate(host, initial.document, 'Unseen'), { code: 'conflict' });
+  const reviewed = await host.request('script.read', { id: initial.document.id });
+  // Reading alone does not adopt an external edit into the committed revision.
+  await assert.rejects(duplicate(host, reviewed, 'Uncommitted'), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), committed);
+  assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
+  const saved = await save(host, reviewed, reviewed.content);
+  assert.equal((await duplicate(host, saved.document, 'Reviewed')).document.content, reviewed.content);
+  const external = JSON.parse(await readFile(file, 'utf8')); external.name = 'External workspace';
+  const bytes = JSON.stringify(external); await writeFile(file, bytes);
+  await assert.rejects(duplicate(host, saved.document, 'Conflict'), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), bytes);
+  await host.request('workspace.open', { path: root, create: false });
+  assert.equal((await duplicate(host, saved.document, 'After refresh')).workspace.name, external.name);
+}));
+
+test('duplicate enforces catalog limits before staging and rejects invalid UTF-8 without copying', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const original = JSON.parse(await readFile(file, 'utf8'));
+  const full = { ...original, scripts: Array.from({ length: 1000 }, (_, i) => i === 0 ? original.scripts[0] : { ...original.scripts[0], id: randomUUID(), name: `Script ${i}` }) };
+  const fullBytes = JSON.stringify(full); await writeFile(file, fullBytes);
+  await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(duplicate(host, initial.document, 'Too many'), { code: 'limit_exceeded' });
+  assert.equal(await readFile(file, 'utf8'), fullBytes);
+  assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
+  const invalidBytes = Buffer.from([0xff, 0xfe]);
+  const invalidScript = { ...original.scripts[0], sourceHash: hash(invalidBytes) };
+  await writeFile(source(root, invalidScript), invalidBytes);
+  const invalidManifest = JSON.stringify({ ...original, scripts: [invalidScript] });
+  await writeFile(file, invalidManifest);
+  await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(duplicate(host, { ...initial.document, hash: invalidScript.sourceHash }, 'Invalid text'), { code: 'invalid_request' });
+  assert.equal(await readFile(file, 'utf8'), invalidManifest);
+  assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
 }));

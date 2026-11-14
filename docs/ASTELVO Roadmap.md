@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation and branding are merged. Automated Windows portable acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). Open [PR #14](https://github.com/sunstriker2009/sun-astelvo/pull/14) adds local workspace/folder/script persistence and guarded manual saves; stacked draft `feature/m1-folder-moves` adds metadata-only subtree moves ([evidence](operations/M1-FOLDER-MOVES-VALIDATION.md)); [Workspace format v1](architecture/WORKSPACE-FORMAT.md) records schema, recovery behavior, limits and tests. Remaining M1 organizer acceptance and M2–M5 implementation stay open; no script runner is implemented. Interactive Windows and governance follow-ups remain tracked separately.
+The foundation and branding are merged. Automated Windows portable acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). Open [PR #14](https://github.com/sunstriker2009/sun-astelvo/pull/14) adds local workspace/folder/script persistence and guarded manual saves; stacked draft `feature/m1-folder-moves` adds metadata-only subtree moves ([evidence](operations/M1-FOLDER-MOVES-VALIDATION.md)); [Workspace format v1](architecture/WORKSPACE-FORMAT.md) records schema, recovery behavior, limits and tests. Script duplication is implemented in stacked draft `feature/m1-script-duplicate` on #15 ([evidence](operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Remaining M1 organizer acceptance and M2–M5 implementation stay open; no script runner is implemented. Interactive Windows and governance follow-ups remain tracked separately.
 
 ## Sources
 

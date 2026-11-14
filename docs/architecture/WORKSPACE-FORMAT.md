@@ -36,6 +36,14 @@ The manifest replacement is the commit point. Interruption before it leaves the 
 
 This is copy-on-write recovery, not a journal spanning mutable source and metadata files. It assumes supported local filesystem rename semantics. File flushes do not establish a complete power-loss guarantee or cross-device/network atomicity. Backup/restore, fault-injected power-loss acceptance, retention and garbage collection remain future M1/M5 work.
 
+## Script duplication
+
+`script.duplicate` accepts the original ID, explicit new name/destination folder ID and expected source hash. It copies only the committed revision: the expected hash must match both the manifest reference and the actual file bytes. External edits require Reload followed by Save before duplication. The UI disables duplication while the current buffer or metadata is dirty or a loaded external revision has not been adopted.
+
+The copy gets a new GUID and its own source revision directory. Language and source bytes are copied exactly; later edits to either script are independent. The original metadata/source is never overwritten. The existing strict schema stays at v1: this operation adds no metadata fields and requires no migration. Unknown fields still fail closed rather than being silently dropped.
+
+Validate size, UTF-8, destination, sibling-name uniqueness and script-count limits before staging. Recheck the original bytes after staging and manifest freshness at commit. The same manifest replacement commit point and uncertain-outcome rules as Save apply: a late conflict/interruption may retain an unreferenced copy directory, which is ignored and preserved after reopening. There is no automatic cleanup/retry. Preflight rejection leaves the manifest and managed script directories unchanged. The UI preserves the current document and error context on failure; successful duplication opens the copy.
+
 ## External changes and locking
 
 An external source edit is loaded explicitly through Reload/read, returned with its actual hash, and marked as external. A stale editor save fails without replacing that external source. Once reviewed, saving creates a new revision and updates the manifest reference. Manual edits can modify historical revision bytes, so immutability describes application writes, not protection from other local programs.
@@ -49,10 +57,10 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
 - 200 folders and 1,000 scripts in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename/move, script create/read/save. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move, script create/read/save/duplicate. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, tags, favourites, collections, duplicate/delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, tags, favourites, collections, folder duplication, delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 

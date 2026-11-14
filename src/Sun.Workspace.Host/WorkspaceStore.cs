@@ -146,6 +146,26 @@ internal sealed class WorkspaceStore : IDisposable
         return new { script.Id, script.Name, script.Language, script.FolderId, content = Utf8.GetString(bytes), hash, externalChanged = hash != script.SourceHash };
     }
 
+    public object DuplicateScript(Guid id, string name, Guid? folderId, string expectedHash)
+    {
+        CheckManifest();
+        var original = Find(id);
+        var bytes = ReadBytes(SourcePath(original), MaxSourceBytes);
+        if (original.SourceHash != expectedHash || Hash(bytes) != expectedHash)
+            throw Error("conflict", "The saved script changed. Reload and save the reviewed revision before duplicating it.");
+        // Reject invalid UTF-8 before creating any copy; duplicate only the
+        // committed revision, never an unseen external edit or renderer buffer.
+        _ = Utf8.GetString(bytes);
+        var copy = original with { Id = Guid.NewGuid(), Name = Name(name), FolderId = folderId };
+        var next = manifest with { Scripts = [.. manifest.Scripts, copy] };
+        Validate(next);
+        WriteRevision(copy, bytes);
+        if (Hash(ReadBytes(SourcePath(original), MaxSourceBytes)) != expectedHash)
+            throw Error("conflict", "The source changed during duplication. Review it before retrying; the original was not overwritten.");
+        Commit(next);
+        return new { workspace = Snapshot(), document = ReadScript(copy.Id) };
+    }
+
     public object SaveScript(Guid id, string name, string language, Guid? folderId, string content, string expectedHash)
     {
         CheckManifest();

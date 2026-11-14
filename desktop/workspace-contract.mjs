@@ -10,6 +10,7 @@ const shapes = {
   'host.info': [], 'workspace.open': ['path', 'create'], 'workspace.close': [],
   'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'], 'folder.move': ['id', 'parentId'],
   'script.create': ['name', 'language', 'folderId'], 'script.read': ['id'],
+  'script.duplicate': ['id', 'name', 'folderId', 'expectedHash'],
   'script.save': ['id', 'name', 'language', 'folderId', 'content', 'expectedHash']
 };
 export function assertRequest(method, params) {
@@ -41,6 +42,8 @@ export function assertResult(method, value, params) {
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
     : method === 'script.read' ? document(value) && value.id === params.id
-    : ['script.create', 'script.save'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document) && (method !== 'script.save' || value.document.id === params.id) : false;
+    : ['script.create', 'script.save', 'script.duplicate'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document)
+      && (method !== 'script.save' || value.document.id === params.id)
+      && (method !== 'script.duplicate' || (value.document.id !== params.id && value.document.name === params.name && value.document.folderId === params.folderId && value.document.hash === params.expectedHash)) : false;
   if (!valid) throw new Error('Invalid host result');
 }
