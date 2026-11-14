@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/astelvo-readme-panoramic-v1.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
+  <img src="branding/assets/readme-banner-v1.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
 </p>
 
 # ASTELVO by Sun
@@ -14,7 +14,7 @@ M0 foundation is in progress. This repository currently contains governance and 
 
 ## Brand
 
-[Brand guide](docs/brand/BRAND-GUIDE.md) · [Assets](assets/brand/)
+[Brand guide](branding/BRAND-GUIDE.md) · [Assets](branding/assets/) · [Archive](branding/archive/README.md)
 
 ## Planning
 

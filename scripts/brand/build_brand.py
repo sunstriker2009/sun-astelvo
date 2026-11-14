@@ -1,16 +1,18 @@
 """Build ASTELVO vector masters and raster exports. Requires fonttools, Pillow, Inkscape.
-Fonts: Liberation Sans Regular/Bold (SIL OFL); see assets/brand/FONT-LICENSE.txt.
+Fonts: Liberation Sans Regular/Bold (SIL OFL); see branding/assets/FONT-LICENSE.txt.
 Run from repository root: python3 scripts/brand/build_brand.py
 Optional ASTELVO_FONT_DIR overrides /usr/share/fonts/truetype/liberation.
 """
 from pathlib import Path
-import os, json, subprocess, shutil
+import os, json, subprocess
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2] if Path(__file__).parent.name == 'brand' else Path(__file__).parent / 'package'
-OUT = ROOT / 'assets/brand'
+OUT = ROOT / 'branding/assets'
+ICONS = OUT / 'icons'
+ICONS.mkdir(parents=True, exist_ok=True)
 OUT.mkdir(parents=True, exist_ok=True)
 FONT = Path(os.environ.get('ASTELVO_FONT_DIR', '/usr/share/fonts/truetype/liberation'))
 COLORS = dict(background='#0B1020', surface='#151D30', accent='#879BFF', accentDeep='#5865D8', text='#F5F7FA', muted='#9CA8BC', sun='#F6C453')
@@ -48,10 +50,10 @@ def outline(text,x,y,size,bold=False,spacing=0,color='#F5F7FA'):
 
 def write(name,text): (OUT / name).write_text(text)
 
-write('astelvo-mark-color.svg',svg(256,256,mark([COLORS['accentDeep'],'#7184F2',COLORS['accent']]),'ASTELVO layered script files over a sun arc'))
-write('astelvo-mark-light.svg',svg(256,256,mark([COLORS['text']]*3),'ASTELVO monochrome light mark'))
-write('astelvo-mark-dark.svg',svg(256,256,mark([COLORS['background']]*3),'ASTELVO monochrome dark mark'))
-write('astelvo-mark-small.svg',svg(256,256,mark([COLORS['accent']]*3,False),'ASTELVO compact files and sun arc mark'))
+write('symbol-color.svg',svg(256,256,mark([COLORS['accentDeep'],'#7184F2',COLORS['accent']]),'ASTELVO layered script files over a sun arc'))
+write('symbol-light.svg',svg(256,256,mark([COLORS['text']]*3),'ASTELVO monochrome light mark'))
+write('symbol-dark.svg',svg(256,256,mark([COLORS['background']]*3),'ASTELVO monochrome dark mark'))
+write('symbol-small.svg',svg(256,256,mark([COLORS['accent']]*3,False),'ASTELVO compact files and sun arc mark'))
 
 for mode in ['dark','light']:
     bg=COLORS['background'] if mode=='dark' else '#FFFFFF'
@@ -62,34 +64,34 @@ for mode in ['dark','light']:
     body+=outline('ASTELVO',320,158,91,True,7,ink)
     body+=outline('by Sun',324,221,38,False,0,COLORS['sun'] if mode=='dark' else '#76530B')
     body+=outline('Organize. Script. Explore.',48,324,36,False,1,ink)
-    write(f'astelvo-lockup-{mode}.svg',svg(1060,370,body,'ASTELVO by Sun — Organize. Script. Explore.'))
+    write(f'lockup-{mode}.svg',svg(1060,370,body,'ASTELVO by Sun — Organize. Script. Explore.'))
 
 icon=f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/>'
 icon+=f'<g transform="translate(28 21) scale(.78)">{mark([COLORS["accentDeep"],"#7184F2",COLORS["accent"]])}</g>'
-write('astelvo-app-icon.svg',svg(256,256,icon,'ASTELVO application icon'))
-write('astelvo-app-icon-small.svg',svg(256,256,f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/><g transform="translate(17 15) scale(.86)">{mark([COLORS["accent"]]*3,False)}</g>','ASTELVO small app icon'))
+(ICONS/'app-icon.svg').write_text(svg(256,256,icon,'ASTELVO application icon'))
+(ICONS/'app-icon-small.svg').write_text(svg(256,256,f'<rect x="8" y="8" width="240" height="240" rx="52" fill="{COLORS["background"]}"/><g transform="translate(17 15) scale(.86)">{mark([COLORS["accent"]]*3,False)}</g>','ASTELVO small app icon'))
 
 (OUT/'tokens.json').write_text(json.dumps({'brand':'ASTELVO by Sun','tagline':'Organize. Script. Explore.','version':'0.2.0','colors':COLORS},indent=2)+'\n')
 (OUT/'tokens.css').write_text(':root {\n'+''.join(f'  --astelvo-{k}: {v};\n' for k,v in COLORS.items())+'}\n')
 
 for n in [16,24,32,48,64,128,256,512,1024]:
     # Optical small-size variant: one flat fill, larger silhouette, no code strokes.
-    source=OUT/'astelvo-app-icon.svg'
+    source=ICONS/'app-icon.svg'
     if n<=24:
-        source=OUT/'astelvo-app-icon-small.svg'
-    subprocess.run(['inkscape',str(source),'--export-type=png',f'--export-filename={OUT / f"astelvo-icon-{n}.png"}',f'--export-width={n}',f'--export-height={n}'],check=True,capture_output=True)
-Image.open(OUT/'astelvo-icon-256.png').save(OUT/'astelvo.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)],append_images=[Image.open(OUT/f'astelvo-icon-{n}.png') for n in [16,24,32,48,64,128]])
+        source=ICONS/'app-icon-small.svg'
+    subprocess.run(['inkscape',str(source),'--export-type=png',f'--export-filename={ICONS / f"icon-{n}.png"}',f'--export-width={n}',f'--export-height={n}'],check=True,capture_output=True)
+Image.open(ICONS/'icon-256.png').save(ICONS/'app.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)],append_images=[Image.open(ICONS/f'icon-{n}.png') for n in [16,24,32,48,64,128]])
 for mode in ['dark','light']:
-    subprocess.run(['inkscape',str(OUT/f'astelvo-lockup-{mode}.svg'),'--export-type=png',f'--export-filename={OUT/f"astelvo-lockup-{mode}.png"}','--export-width=1590'],check=True,capture_output=True)
-    # Identity-specific URLs prevent stale README images when generic assets change.
-    shutil.copyfile(OUT/f'astelvo-lockup-{mode}.png', OUT/f'astelvo-files-sun-arc-v02-{mode}.png')
+    subprocess.run(['inkscape',str(OUT/f'lockup-{mode}.svg'),'--export-type=png',f'--export-filename={OUT/f"lockup-{mode}.png"}','--export-width=1590'],check=True,capture_output=True)
 
 # Preview is a QA artefact, outside the reusable asset directory.
 preview=Image.new('RGB',(1590,900),COLORS['surface'])
-preview.paste(Image.open(OUT/'astelvo-lockup-dark.png').convert('RGB'),(0,0))
+preview.paste(Image.open(OUT/'lockup-dark.png').convert('RGB'),(0,0))
 d=ImageDraw.Draw(preview); d.text((50,585),'APP ICONS  /  PIXEL-SIZE REVIEW',fill=COLORS['text'])
 x=50
 for n in [16,24,32,48,64,128]:
-    im=Image.open(OUT/f'astelvo-icon-{n}.png'); preview.paste(im,(x,640),im); d.text((x,790),str(n),fill=COLORS['text']); x+=n+55
-preview.save(ROOT/'ASTELVO-Brand-Preview.png')
+    im=Image.open(ICONS/f'icon-{n}.png'); preview.paste(im,(x,640),im); d.text((x,790),str(n),fill=COLORS['text']); x+=n+55
+review_dir = ROOT/'branding/archive/intermediate'
+review_dir.mkdir(parents=True, exist_ok=True)
+preview.save(review_dir/'brand-preview.png')
 print(OUT)
