@@ -24,7 +24,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run package:portable
+        id: package
       - name: Test bundled host
+        id: host
         shell: pwsh
         run: |
           $env:ASTELVO_HOST_EXECUTABLE = Join-Path $PWD 'artifacts/portable/ASTELVO-win-x64/resources/host/Sun.Workspace.Host.exe'
@@ -32,12 +34,21 @@ jobs:
           npm run test:host
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Smoke packaged Monaco and bundled host with empty PATH
+        id: desktop
         run: npm run smoke:portable
-      - name: Upload unsigned portable preview
-        if: success()
+      - name: Upload built preview (desktop acceptance may have failed)
+        if: ${{ !cancelled() && steps.package.outcome == 'success' && steps.host.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ASTELVO-win-x64-${{ github.sha }}
           path: artifacts/portable/ASTELVO-win-x64/
           retention-days: 7
           if-no-files-found: error
+      - name: Upload desktop failure diagnostics
+        if: ${{ !cancelled() && steps.desktop.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTELVO-desktop-diagnostics-${{ github.sha }}
+          path: artifacts/diagnostics/
+          retention-days: 7
+          if-no-files-found: warn
