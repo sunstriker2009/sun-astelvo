@@ -29,3 +29,8 @@ The first implementation provides the Electron/React/Monaco shell, bounded infor
 ## Script write preflight follow-up — 2026-11-14
 
 Folder duplication merged in PR #18. Script create/save/duplicate now validate the next revision and serialized manifest size before writing source revisions, matching the bulk-copy preflight. This prevents unnecessary orphan files when revision or metadata limits already prohibit committing. Release build passed with zero warnings/errors; all 25 development-host integration tests passed, including exhausted-revision rejection with byte-identical manifest and unchanged source directories/revisions. No new Windows, packaged desktop or power-loss acceptance was run. Delete/restore remains the next organizer feature.
+
+
+## Editor commands slice — 2026-11-14
+
+Find/replace and command palette contributions are now registered explicitly in the modular Monaco build, with Find, Replace and Commands toolbar buttons disabled when no script is open or work is pending. Monaco supplies its normal editor keybindings. TypeScript and renderer builds passed; the real headless Electron workspace acceptance opened all three widgets and dismissed them with Escape while retaining existing workspace/save/copy checks. This validates activation, not exhaustive search-option or replacement/undo acceptance. No new Windows or packaged-desktop run occurred. Tabs, formatting, recovery, full editor acceptance and organizer delete/restore remain open.
