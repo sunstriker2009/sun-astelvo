@@ -19,6 +19,7 @@ const source = `
   });
   export const session = { defaultSession: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } };
   export const ipcMain = { handle() {} };
+  export const dialog = { showMessageBoxSync() { return 1; }, async showOpenDialog() { return { canceled: true, filePaths: [] }; } };
   export class BrowserWindow {
     constructor() {
       if (!ready) throw new Error('Window created before app readiness');

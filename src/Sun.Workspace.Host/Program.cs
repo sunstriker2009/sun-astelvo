@@ -1,8 +1,11 @@
 using System.Buffers.Binary;
 using System.Text.Json;
+using Sun.Workspace.Host;
 
-// M0 exposes only host information. Never execute script content in this process.
-const int maxFrameBytes = 4096;
+// Local workspace operations only. Never execute script content in this process.
+const int maxFrameBytes = 4 * 1024 * 1024;
+using var workspace = new WorkspaceSession();
+var responseJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 var input = Console.OpenStandardInput();
 var output = Console.OpenStandardOutput();
 var header = new byte[4];
@@ -26,10 +29,16 @@ try
             !root.TryGetProperty("method", out var method) || method.ValueKind != JsonValueKind.String)
             return 2;
 
-        object response = method.GetString() == "host.info"
-            ? new { version = 1, id = id.GetString(), result = new { product = "ASTELVO", protocol = 1, runtime = Environment.Version.ToString() }, error = (string?)null }
-            : (object)new { version = 1, id = id.GetString(), result = (object?)null, error = "Unsupported method" };
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(response);
+        object? result = null;
+        object? error = null;
+        try { result = workspace.Execute(method.GetString()!, root); }
+        catch (WorkspaceException exception) { error = new { code = exception.Code, message = exception.Message }; }
+        catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException)
+        { error = new { code = "invalid_request", message = "Invalid request or workspace manifest. No existing source was overwritten." }; }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        { error = new { code = "io_error", message = "Workspace file access failed. Check folder permissions and available disk space; your editor buffer was not discarded." }; }
+        object response = new { version = 1, id = id.GetString(), result, error };
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(response, responseJson);
         BinaryPrimitives.WriteInt32BigEndian(header, bytes.Length);
         await output.WriteAsync(header);
         await output.WriteAsync(bytes);

@@ -1,9 +1,11 @@
 # ADR-002: portable workspace and recoverable storage
 
-Status: proposed; implementation starts in M1.
+Status: selected for the first M1 implementation; indexing, backup/restore and full organizer acceptance remain open.
 
-Plain source files are authoritative for script content. A versioned manifest owns stable IDs, folders, tags, recipes and smart collections. SQLite is a rebuildable catalog/search index with local history, not a competing authority for portable metadata.
+Plain UTF-8 source revisions are authoritative for script content. A versioned manifest owns stable identities and logical folders. SQLite remains a proposed rebuildable catalog/search index; it is not introduced by the first slice.
 
-Use a writer lease, journalled source/manifest operations, hashes and atomic file replacement where supported. On restart reconcile incomplete changes, then rebuild indexes. External edits must not overwrite dirty buffers. Imports must validate path boundaries and symlinks and must never execute code. Backup acceptance requires restore into a fresh workspace.
+Application saves use copy-on-write source revisions followed by same-directory manifest replacement as the commit point. This avoids a two-file mutable-source/manifest journal: interrupted pre-commit writes leave the prior manifest intact and unreferenced source/temp files are preserved. Flushes and local atomic rename assumptions are explicit; power-loss backup/restore acceptance is not claimed.
 
-No storage is implemented by the M0 shell: its buffer is deliberately temporary. Adding persistence requires conflict/recovery tests and a reviewed manifest schema.
+A persistent exclusive writer lease coordinates ASTELVO instances. Optimistic manifest/source hashes reject stale saves; externally edited source can be reviewed through Reload before a new revision is saved. Normal dirty-buffer navigation and quit are guarded. Existing symlinks/junctions and Windows UNC roots are rejected. Filesystem checks do not sandbox hostile local processes.
+
+See [Workspace format v1](../architecture/WORKSPACE-FORMAT.md) for schema, paths, limits, recovery behavior and tests. Tags, recipes, collections and index/backup migrations require explicit future schema decisions. Import must validate containment and links and must never execute code.

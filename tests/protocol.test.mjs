@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FrameDecoder, encodeFrame } from '../desktop/protocol.mjs';
+import { FrameDecoder, encodeFrame, MAX_FRAME } from '../desktop/protocol.mjs';
 test('fragmented Unicode and coalesced frames retain exact message boundaries', () => {
   const messages = [{ text: 'Hello 🌞 বাংলা' }, { text: 'second' }];
   const bytes = Buffer.concat(messages.map(encodeFrame));
@@ -11,6 +11,6 @@ test('fragmented Unicode and coalesced frames retain exact message boundaries', 
   assert.deepEqual(new FrameDecoder().push(bytes), messages);
 });
 test('rejects oversized, empty and malformed frames before accepting messages', () => {
-  for (const size of [0, 4097, 0xffffffff]) { const head = Buffer.alloc(4); head.writeUInt32BE(size); assert.throws(() => new FrameDecoder().push(head)); }
+  for (const size of [0, MAX_FRAME + 1, 0xffffffff]) { const head = Buffer.alloc(4); head.writeUInt32BE(size); assert.throws(() => new FrameDecoder().push(head)); }
   assert.throws(() => new FrameDecoder().push(Buffer.from([0, 0, 0, 1, 123])));
 });

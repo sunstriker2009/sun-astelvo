@@ -10,7 +10,9 @@ A local code organizer and interactive scripting workspace. Organize scripts usi
 
 ## Project status
 
-M0 foundation is in progress. The development scaffold includes an Electron/React/Monaco editor, an information-only .NET 10 host over framed stdio, and a portable build with a self-contained host. The buffer is temporary; saving and script execution are not implemented. Linux package/host checks pass; full desktop launch, Windows portable acceptance and governance enforcement remain open.
+The first M1 organizer slice supports creating/opening a local workspace, nested folders, and manually saving/reopening JavaScript, Python and C# scripts. Scripts can be renamed, moved between folders and assigned a language. Exclusive workspace ownership and hash checks protect against competing instances and stale saves. The editor currently opens one script at a time; runners, formatting, tags, search and import/export remain planned.
+
+Automated Windows portable acceptance passed for the merged foundation. The new organizer has local real-host and headless editor-flow validation; its Windows acceptance still needs a run after merge. Interactive clean-machine and governance follow-ups remain open.
 
 ## Development
 

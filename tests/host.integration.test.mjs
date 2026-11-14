@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import path from 'node:path';
 import os from 'node:os';
+import { MAX_FRAME } from '../desktop/protocol.mjs';
 import { HostClient } from '../desktop/host-client.mjs';
 const dll = 'src/Sun.Workspace.Host/bin/Release/net10.0/Sun.Workspace.Host.dll';
 const executable = process.env.ASTELVO_HOST_EXECUTABLE ?? process.env.ASTELVO_DOTNET ?? 'dotnet';
@@ -23,6 +24,6 @@ test('real host correlates concurrent requests and exits when input closes', asy
 test('real host rejects oversized input without writing a response', async () => {
   const child = spawn(executable, args, { env, stdio: ['pipe','pipe','pipe'] });
   let count = 0; child.stdout.on('data', chunk => count += chunk.length); child.stderr.resume();
-  const exit = once(child, 'close'); child.stdin.end(Buffer.from([0,0,16,1]));
+  const exit = once(child, 'close'); const header = Buffer.alloc(4); header.writeUInt32BE(MAX_FRAME + 1); child.stdin.end(header);
   const [code] = await exit; assert.equal(code, 2); assert.equal(count, 0);
 });
