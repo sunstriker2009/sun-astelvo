@@ -31,7 +31,7 @@ Approved production assets live in `branding/assets/`; archival material lives i
 
 The README uses the owner-approved panoramic artwork, `branding/assets/readme-banner-v1.png`, at full available width on both GitHub themes. It is a separate raster presentation asset, not an output of the vector generator. Preserve its aspect ratio; do not crop or stretch it.
 
-The compact `lockup-dark.svg` and `lockup-light.svg` remain available for internal screens, documentation and other compact placements. Their PNG aliases the old duplicate PNG aliases are retired and preserved in Git history; the generator no longer emits them. This banner changes the README presentation, not the icon identity.
+The compact `lockup-dark.svg` and `lockup-light.svg` remain available for internal screens, documentation and other compact placements. The former duplicate PNG aliases are retired and preserved in Git history; the generator no longer emits them. This banner changes the README presentation, not the icon identity.
 
 ## Colour
 
