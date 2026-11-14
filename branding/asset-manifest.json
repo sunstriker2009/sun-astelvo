@@ -1,0 +1,134 @@
+{
+  "version": "0.3.0",
+  "approvalDate": "2026-11-14",
+  "direction": "concept-02-files-over-sun-arc",
+  "approval": "Owner approved the transparent raster symbol in conversation; panoramic banner approval retained.",
+  "symbolProvenance": "Separately approved image-assisted derivative of banner; not an exact pixel extraction.",
+  "exportTool": "ImageMagick 7; see scripts/brand/build_brand.sh",
+  "assets": [
+    {
+      "path": "branding/assets/icons/app.ico",
+      "sha256": "74afc8246fdd85c24fd23bb25d1d18447cf27165cef4040c5237612b486a2b68",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA",
+      "frames": [
+        [
+          16,
+          16
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          48,
+          48
+        ],
+        [
+          64,
+          64
+        ],
+        [
+          128,
+          128
+        ],
+        [
+          256,
+          256
+        ]
+      ],
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-1024.png",
+      "sha256": "b00b6c62829f7f7dc87ef762db6f92ef2a4b2dc7ff25342c87dac5ac0f894d52",
+      "width": 1024,
+      "height": 1024,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-128.png",
+      "sha256": "435bc606f22286118d58acec42ad8b94a9264ed8ce05866e24f779d051050217",
+      "width": 128,
+      "height": 128,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-16.png",
+      "sha256": "0196f015b5905680e88f2492497c1baf06907e135b2372329e762c4335f02df2",
+      "width": 16,
+      "height": 16,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-24.png",
+      "sha256": "bbaa0d6656dea44f879dfa8ead6e72632f551e84687c20fddd561cf7669d2977",
+      "width": 24,
+      "height": 24,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-256.png",
+      "sha256": "83ad7dcaec426e7fd811bb12f06a7ce473ffaa2b392a97efaa478d9807807348",
+      "width": 256,
+      "height": 256,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-32.png",
+      "sha256": "4caed7cc80e0e47781725cf5542f24c6374f20c8a3172e0553216448aa25d4fe",
+      "width": 32,
+      "height": 32,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-48.png",
+      "sha256": "1fea7577da30b1e57e11b13a3eed729a71238c150dc0e8fbabd6ed2adb66a6af",
+      "width": 48,
+      "height": 48,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-512.png",
+      "sha256": "7ac3f51486c1762144075f351227e23c2d416d697588964cfd8ed2f38bfb675d",
+      "width": 512,
+      "height": 512,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/icons/icon-64.png",
+      "sha256": "e7cce953d790e5fa32b02585de28de86fb09fc82ca0087c86af98a8629879c75",
+      "width": 64,
+      "height": 64,
+      "mode": "RGBA",
+      "source": "branding/assets/symbol-canonical-v1.png"
+    },
+    {
+      "path": "branding/assets/readme-banner-v1.png",
+      "sha256": "d833b05d0598e692652be1facd85a15c74d90fa8626d87bd27bcf87f9019066d",
+      "width": 2172,
+      "height": 724,
+      "mode": "RGB"
+    },
+    {
+      "path": "branding/assets/symbol-canonical-v1.png",
+      "sha256": "3dc2ddfccaafccf13175bd4f206ae48f578aa1d3b8e55a5c5260b1963f2f19ae",
+      "width": 1254,
+      "height": 1254,
+      "mode": "RGBA"
+    }
+  ]
+}

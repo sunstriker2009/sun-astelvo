@@ -1,79 +1,66 @@
 # ASTELVO by Sun — Brand Guide
 
-**Organize. Script. Explore.**
+**Organize. Script. Explore.** · SUN-002 · `Sun.Workspace`
 
-The owner approved concept 02: three layered script files over a sun arc, a play cutout and periwinkle blue. This supersedes concept 01's layered A and detached star. These SVG masters are a deliberate geometric reconstruction of that raster concept, with outlined typography and simplified small-size variants. They are usable implementation assets, not a pixel-perfect vector trace of the generated board. The product interface on that board remains illustrative.
+## Approved identity
 
-## Identity
+Concept 02 is the approved direction: three overlapping script files over a luminous sun arc, with a play triangle on the front file. Files express organization, the play triangle expresses Try It, and the arc connects ASTELVO to SUN. A letter A is optional and is not part of this identity.
 
-- Public name: **ASTELVO by Sun**. Wordmark: **ASTELVO**; endorsement: **by Sun**.
-- Tagline: **Organize. Script. Explore.** Preserve spelling, capitalization and punctuation.
-- Product ID: SUN-009. Technical identity: `Sun.Workspace`.
-- Layered script files express organization; the negative-space triangle expresses Try It; the sun arc connects the workspace to the SUN family.
+On 2026-11-14 the owner returned to this direction after the A-shaped experiments and explicitly approved the transparent raster symbol shown in the conversation. The existing panoramic banner remains approved. The transparent symbol is a separately approved image-assisted derivative of that banner, **not a pixel-exact extraction or the original layered source**.
 
-## Assets
+## Active assets
 
-Approved production assets live in `branding/assets/`; archival material lives in `branding/archive/`. All migrated files retain their original Git blob hashes.
+| Path relative to `branding/assets/` | Purpose |
+| --- | --- |
+| `readme-banner-v1.png` | Original approved 2172 × 724 panoramic banner, unchanged |
+| `symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol |
+| `icons/icon-{size}.png` | Transparent PNG exports: 16, 24, 32, 48, 64, 128, 256, 512, 1024 px |
+| `icons/app.ico` | Windows ICO with 16, 24, 32, 48, 64, 128, 256 px frames |
+| `tokens.json` / `tokens.css` | Working brand palette; not a complete UI theme |
+| `FONT-LICENSE.txt` | Retained license notice for historical typography work |
 
-| Asset | Use |
-|---|---|
-| `symbol-color.svg` | Primary standalone mark; transparent background |
-| `symbol-light.svg` | Single-colour light mark on dark surfaces |
-| `symbol-dark.svg` | Single-colour dark mark on light surfaces |
-| `symbol-small.svg` | Flat compact files-and-arc mark without script strokes |
-| `lockup-dark.svg` / `.png` | Logo, endorsement and tagline on navy |
-| `lockup-light.svg` / `.png` | Logo, endorsement and tagline on white |
-| `icons/app-icon.svg` | App tile master; transparent outer corners |
-| `icons/app-icon-small.svg` | Optical app tile for 16–24 px |
-| `icons/icon-{size}.png` | 16, 24, 32, 48, 64, 128, 256, 512 and 1024 px exports |
-| `icons/app.ico` | Windows multi-resolution icon: 16–256 px |
-| `tokens.json` / `tokens.css` | Brand colour values; not a complete application theme |
+The owner selected **raster variants** to preserve gradients, material and glow. This product-specific decision overrides the ecosystem standard's default complementary SVG recommendation. SVG adaptations and their PNG exports are retired; do not use them as production masters or regenerate the active icons from vectors. No raster-in-SVG wrappers are provided.
 
-The README uses the owner-approved panoramic artwork, `branding/assets/readme-banner-v1.png`, at full available width on both GitHub themes. It is a separate raster presentation asset, not an output of the vector generator. Preserve its aspect ratio; do not crop or stretch it.
+Use the transparent color symbol on both light and dark surfaces. It is the same approved artwork, rather than a recolored theme variant. Flat monochrome and alternate light lockups are not approved production variants. Use the panoramic banner when the full name, endorsement and tagline are needed.
 
-The compact `lockup-dark.svg` and `lockup-light.svg` remain available for internal screens, documentation and other compact placements. The former duplicate PNG aliases are retired and preserved in Git history; the generator no longer emits them. This banner changes the README presentation, not the icon identity.
+## Source provenance
 
-## Colour
+- The original banner and its exact archive copy share Git blob SHA `6abd707eefaf79659047346311083937bdec5ad1`.
+- The approved transparent symbol is preserved byte-for-byte in both `assets/symbol-canonical-v1.png` and `archive/originals/symbol-canonical-v1.png`.
+- The symbol was produced by image-assisted background extraction from the approved banner and then explicitly approved. It preserves the three files, blue gradients, play triangle and blue-white arc; it is not claimed to preserve every source pixel.
+- PNG icons and the ICO are deterministic exports of that approved symbol, without geometry changes, recoloring or fresh image generation.
+- No editable layered source or original font file for the raster wordmark is available. Do not infer one from the archived geometric reconstruction.
+- SHA-256 checksums and export sizes are recorded in `asset-manifest.json`.
 
-| Role | Hex |
-|---|---|
-| Deep Space background | `#0B1020` |
-| Midnight Slate surface | `#151D30` |
-| ASTELVO Periwinkle | `#879BFF` |
+## Palette and typography
+
+| Role | Working hex |
+| --- | --- |
+| Deep Space | `#0B1020` |
+| Midnight Slate | `#151D30` |
+| Periwinkle | `#879BFF` |
 | Deep accent | `#5865D8` |
+| Intermediate layer | `#7184F2` |
 | Soft White | `#F5F7FA` |
 | Stellar Gray | `#9CA8BC` |
 | SUN Solar Gold | `#F6C453` |
 
-The intermediate mark layer uses `#7184F2`. Light lockups use a darker gold `#76530B` for the endorsement. Brand colours do not automatically establish contrast compliance for every UI text/background pairing; validate application states when implementing the theme.
+These values guide surrounding UI; the approved raster gradients remain authoritative. The banner uses white ASTELVO typography, a gold “by Sun” endorsement and the exact tagline **Organize. Script. Explore.** Preserve the original raster typography. Liberation Sans was an approximation used by the retired vector generator, not an identified source font for the raster banner.
 
-## Usage
+## Usage and size review
 
-- Keep the aspect ratio and negative spaces intact. Never stretch, skew or rotate the mark.
-- Minimum recommended full mark size: 32 px; use the simplified compact variant at 16–24 px.
-- Leave clear space of at least one eighth of the mark width around a standalone mark.
-- Show the complete lockup at 420 CSS px or wider; use the mark alone where the tagline is too small to read.
-- Use flat or monochrome marks for small UI placements. Glows and decorative backgrounds are optional presentation effects, not part of recognition.
-- Keep the sun arc and three file layers together. Do not substitute the superseded layered A or detached star, or add a security shield, database cylinder, planet or unrelated language logo.
-- SVG text is outlined: rendering has no installed-font dependency. Set an accessible label at the consuming UI; decorative duplicates should be hidden from assistive technology.
+Preserve aspect ratio, the three files, play triangle and arc together. Never stretch, rotate, recolor or add a forced A, detached star, security shield or database cylinder. Allow at least one eighth of the symbol width as surrounding clear space; the transparent source already includes padding.
 
-## Typography and provenance
+Prefer 32 px or larger for the complete mark. At 16–24 px only the silhouette and arc remain useful; script strokes and the play triangle lose detail. These are direct downscaled raster exports, not separately approved simplified drawings. Avoid using the icon alone for actions that need a clear label.
 
-Concept 02's typography is approximated with Liberation Sans Bold and Regular converted to paths, with deliberate wordmark tracking. No font binary is distributed. The accompanying `FONT-LICENSE.txt` preserves the upstream Liberation Fonts OFL notice. A future typography revision should update the assets together rather than substituting fonts inside one logo.
+The full banner should have sufficient rendered width for its tagline; provide ordinary text and accessible labels in the surrounding document or UI. Alt text should identify ASTELVO by Sun. Check contrast for the actual UI placement rather than assuming the palette establishes accessibility compliance.
 
-## Rebuilding and validation
+The transparent symbol has been reviewed on white and navy, and all PNG sizes at native scale. ICO frame dimensions and alpha have been checked. Windows taskbar, installer and packaging validation remain part of the desktop milestones.
 
-Run `python3 scripts/brand/build_brand.py` from the repository root. Requirements: Python 3, fonttools, Pillow, Inkscape and Liberation Sans Regular/Bold. Override the font directory with `ASTELVO_FONT_DIR`. Existing assets are committed; these tooling dependencies are not needed to use them. The generator writes a QA preview to `branding/archive/intermediate/brand-preview.png`; it is not a runtime dependency.
+## Rebuild
 
-Validation performed: SVG XML parsing, no embedded scripts/external font references, PNG dimensions/alpha, ICO frame sizes, and visual review of both lockups and actual-size icon exports. OS installer/taskbar validation remains part of M0/M5 packaging work. Brand generation does not complete the desktop milestone.
+Run `bash scripts/brand/build_brand.sh`, or the compatible `python3 scripts/brand/build_brand.py` entry point. Requires ImageMagick 7 and Bash. The script reads the approved transparent PNG, resizes with Lanczos, and exports RGBA PNGs and a multi-frame ICO. It does not overwrite either approved master or generate vectors. Different ImageMagick versions may encode different bytes; record tool version when replacing exports.
 
-Commercial naming/logo similarity clearance remains pending; visual approval is not a clearance claim. These files do not grant third-party rights to the brand.
+Review sheets belong in `archive/intermediate/`, never in application asset paths. New symbol revisions require approval and a versioned source filename. New README artwork requires a new versioned banner filename and an updated README reference.
 
-
-## SUN reference-layout migration
-
-- The README banner is preserved byte-for-byte under `branding/assets/readme-banner-v1.png` and `branding/archive/originals/readme-banner-v1.png` (blob SHA `6abd707eefaf79659047346311083937bdec5ad1`). The original layered concept file has not been established as identical to this banner; no such claim is made.
-- All existing approved SVGs, PNGs, tokens, font-license notice and ICO were moved to generic names without regenerating artwork. The generator was updated to write those canonical paths and the QA preview to the archive.
-- The current symbol SVGs are approved geometric reconstructions of concept 02, **not** pixel-exact traces or a separately approved transparent raster canonical source. Do not invent a raster master.
-- Superseded duplicate lockup PNG aliases were removed, with their bytes retained in Git history.
-- Follow the [SUN standard](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/PRODUCT-BRANDING.md) and the [FOUNDRY adoption checklist](https://github.com/sunstriker2009/sun-foundry/blob/main/branding/ADOPTION-CHECKLIST.md) for future product migrations.
+See [archive history](archive/README.md), [migration mapping](archive/MIGRATION-NOTES.md), and the [SUN standard](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/PRODUCT-BRANDING.md). This branding update does not complete any application milestone or establish commercial naming clearance.

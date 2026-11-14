@@ -1,7 +1,7 @@
 # ASTELVO by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
-SUN-009 · `Sun.Workspace` · Updated 2026-11-12 · Architecture v0.1 (proposed)
+SUN-002 · `Sun.Workspace` · Updated 2026-11-12 · Architecture v0.1 (proposed)
 
 This revision supersedes the database-first kickoff. Name, tagline and product direction are approved. Architecture choices are recommendations to validate in M0; no application implementation exists yet. SQL Server/PostgreSQL connections and Kubernetes forwarding move to future extensions.
 
