@@ -16,7 +16,7 @@ The app opens a temporary Monaco buffer with JavaScript/Python/C# highlighting a
 
 `npm run smoke` is an optional desktop acceptance check after both builds. It requires a functioning graphical session and a supported Electron runtime environment. It mounts Monaco and checks real host IPC with renderer Node access disabled, sandbox/context isolation enabled, and a 20-second deadline. It does not replace Windows installer, packaged-worker or accessibility validation.
 
-CI skips Electron binary download for short frontend checks. Developer `npm ci` downloads it normally. If you previously installed with `ELECTRON_SKIP_BINARY_DOWNLOAD=1`, unset that variable and run `node node_modules/electron/install.js` before launching.
+Electron 45 downloads its runtime lazily when its CLI is first launched. `npm ci` alone does not guarantee `node_modules/electron/dist` exists. Frontend CI does not need that runtime for its short build/tests. To prepare the pinned runtime explicitly, run `node node_modules/electron/install.js`.
 
 Development uses the Release DLL under `src/Sun.Workspace.Host/bin/Release/net10.0/`. Set `ASTELVO_DOTNET` if the development SDK executable is not on PATH. Packaged launch ignores this override and selects its bundled host directly. No secrets, database or Kubernetes setup is needed.
 
@@ -30,7 +30,7 @@ npm run package:portable
 npm run smoke:portable
 ```
 
-The build machine needs Node.js 24, the .NET 10 SDK, and dependency restore access. The command publishes a self-contained .NET host, rebuilds the renderer, and stages an explicit app allowlist with the installed Electron distribution. It preserves Electron and runtime-pack license notices. No additional packaging dependency is installed.
+The build machine needs Node.js 24, the .NET 10 SDK, and dependency restore access. Before publishing, the package command explicitly runs the pinned local Electron installer and checks the native executable. It then publishes a self-contained .NET host, rebuilds the renderer, and stages an explicit app allowlist with that Electron distribution. It preserves Electron and runtime-pack license notices. No additional packaging dependency is installed, and no broad npm lifecycle-script approval is enabled.
 
 The output is `artifacts/portable/ASTELVO-win-x64/` or the matching platform/RID. Extract/copy the **whole folder**, then start `ASTELVO.exe` on Windows or `./astelvo` on Linux. Both runtimes are included. Packaged host startup never falls back to a globally installed runtime. macOS and Linux musl are outside this spike.
 

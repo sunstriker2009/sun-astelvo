@@ -6,17 +6,25 @@ Updated 2026-11-14. This records foundation checks and a portable spike, not com
 | --- | --- |
 | .NET host Release build | SDK 10.0.404; zero warnings/errors |
 | TypeScript and renderer/Monaco bundle | Passed locally |
-| Node protocol/client/package tests | 9 passed: framing/client failure cases plus packaged host selection and Windows/Linux layout allowlist, relocation, licenses and stale-copy checks |
+| Node protocol/client/package tests | 10 passed: prior protocol/package cases plus fresh Electron runtime preparation, installer-failure propagation and missing-executable rejection |
 | Real host integration | 2 passed against development DLL and 2 against the bundled Linux executable: correlation/EOF shutdown and oversized-frame rejection |
 | Runtime-independent host | Bundled-host tests clear the child PATH and set invalid DOTNET_ROOT; no installed runtime command is available |
 | Production dependency audit | Zero vulnerabilities after patched DOMPurify 3.4.17 override; no dependencies added in this packaging change |
 | Linux x64 portable directory | Built; self-contained .NET runtime 10.0.15 and Electron included; runtime notices retained |
 | Full desktop smoke | Development and packaged attempts timed out here: no graphical display, system bus/socket access unavailable. Not a passing desktop result |
-| Windows portable | On-demand workflow added; not yet dispatched or run locally |
+| Windows portable | First on-demand run failed during staging: fresh npm install had no Electron dist. Windows .NET publish, typecheck and prior nine tests passed; host/desktop acceptance was skipped. Runtime preparation fix added; Windows rerun pending |
 | Installer, signing and native executable resource branding | Outside this spike; remain M5 work |
 | Branch enforcement | Live rules inspected; this PR makes required repository-validation aggregate backend/frontend results; exact named check/review configuration and failed-check acceptance remain open |
 
 ## Packaging and smoke
+
+### Fresh-install failure and fix
+
+[Windows acceptance run 1](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43584284121) failed with ENOENT while copying `node_modules/electron/dist`. Electron 45's npm package installs its binary lazily through its CLI; packaging copied the directory directly and never triggered the download. This was a packaging bootstrap defect, not a failed .NET publish or desktop-smoke result.
+
+The builder now invokes `node node_modules/electron/install.js` from the pinned installed package before publishing/staging, checks that the native executable exists, and propagates installer failures immediately. Existing matching installs reuse Electron's own installed/cache checks. Unit regression uses a fresh package fixture without dist and exercises installer failure and missing-output cases. A separate clean Linux dependency install without lifecycle scripts confirms that packaging prepares the real pinned runtime and completes; this does not establish Windows desktop acceptance.
+
+After merging the fix, start a **new** manual workflow run on main. Re-running the original failed run would reuse its old commit and the old packaging code.
 
 The package builder copies an explicit application allowlist, built renderer and complete Electron/.NET runtimes. It does not ship the checkout, source projects, developer dependencies or user settings. Packaged launch selects `process.resourcesPath/host/Sun.Workspace.Host[.exe]`, never an SDK or PATH fallback. Approved raster window artwork is included. An incomplete package reports a repair message.
 
