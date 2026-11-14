@@ -114,6 +114,18 @@ internal sealed class WorkspaceStore : IDisposable
         return Snapshot();
     }
 
+    public object MoveFolder(Guid id, Guid? parentId)
+    {
+        var folder = manifest.Folders.FirstOrDefault(f => f.Id == id) ?? throw Error("not_found", "Folder not found.");
+        // Validate the entire proposed hierarchy before committing. This rejects
+        // self/descendant moves, missing parents and sibling-name collisions.
+        var next = manifest with { Folders = manifest.Folders.Select(f => f.Id == id ? folder with { ParentId = parentId } : f).ToList() };
+        Validate(next);
+        CheckManifest();
+        if (folder.ParentId != parentId) Commit(next);
+        return Snapshot();
+    }
+
     public object CreateScript(string name, string language, Guid? folderId)
     {
         var script = new Script(Guid.NewGuid(), Name(name), Language(language), folderId, Hash([]));

@@ -19,6 +19,12 @@ Manifest fields are `format="astelvo-workspace"`, `schemaVersion=1`, nonempty GU
 
 Names contain 1–120 UTF-16 code units, without controls, slashes, surrounding whitespace, or the special labels dot/dot-dot. Names must be unique ignoring case among scripts in the same folder or folders under the same parent. Folder and script names use separate namespaces.
 
+## Folder moves
+
+`folder.move` takes only the folder ID and nullable destination parent ID. It updates that folder's `parentId` in the existing v1 manifest. Descendant folder/script IDs, source references and source bytes are unchanged; no schema change or metadata migration is needed. Cycles (including moving into a descendant), missing destinations and case-insensitive sibling-name collisions fail before the commit. Invalid requests do not rewrite metadata. Moving to the current parent checks for external metadata conflicts but performs no write or revision increment.
+
+The selected-folder destination list excludes itself and its descendants; the host independently validates the complete candidate hierarchy. A move preserves the current editor text, dirty state and undo model. Existing source hash checks still apply when the user subsequently saves. The next snapshot is installed only after a successful manifest commit; failures keep the current view and buffer.
+
 ## Save and restart
 
 1. Compare the loaded manifest bytes with the current manifest hash; compare a saved script's actual source hash with the editor's expected hash.
@@ -43,7 +49,7 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
 - 200 folders and 1,000 scripts in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename, script create/read/save. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move, script create/read/save. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
 SQLite/search indexing, tags, favourites, collections, duplicate/delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.

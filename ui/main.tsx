@@ -26,6 +26,7 @@ declare global {
         close: () => Promise<Result<null>>;
         createFolder: (input: { name: string; parentId: string | null }) => Promise<Result<Workspace>>;
         renameFolder: (input: { id: string; name: string }) => Promise<Result<Workspace>>;
+        moveFolder: (input: { id: string; parentId: string | null }) => Promise<Result<Workspace>>;
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
         saveScript: (input: Draft & { id: string; content: string; expectedHash: string }) => Promise<Result<WriteResult>>;
@@ -61,6 +62,7 @@ function App() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [folderName, setFolderName] = useState('');
   const [renameName, setRenameName] = useState('');
+  const [moveParent, setMoveParent] = useState<string | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
 
@@ -158,6 +160,19 @@ function App() {
   }, [workspace]);
   function folderLabel(id: string | null) { return id ? folderLabels.get(id) ?? '' : ''; }
   const folders = [...workspace?.folders ?? []].sort((a, b) => folderLabel(a.id).localeCompare(folderLabel(b.id)));
+  function selectFolder(id: string | null) {
+    const folder = workspace?.folders.find(f => f.id === id);
+    setSelectedFolder(id); setRenameName(folder?.name ?? ''); setMoveParent(folder?.parentId ?? null);
+  }
+  const selected = folders.find(f => f.id === selectedFolder);
+  const moveTargets = folders.filter(folder => {
+    let current: Folder | undefined = folder;
+    for (let i = 0; current && i < 200; i++) {
+      if (current.id === selectedFolder) return false;
+      current = folders.find(f => f.id === current?.parentId);
+    }
+    return true;
+  });
   const scripts = [...workspace?.scripts ?? []].filter(s => selectedFolder === null || s.folderId === selectedFolder).sort((a, b) => a.name.localeCompare(b.name));
 
   return <main>
@@ -176,8 +191,8 @@ function App() {
         {!workspace ? <p>Create a workspace in an empty local folder, or open one you already use.</p> : <>
           <h2>Folders</h2>
           <nav aria-label="Workspace folders">
-            <button className="folder" aria-pressed={selectedFolder === null} onClick={() => { setSelectedFolder(null); setRenameName(''); }}>All scripts</button>
-            {folders.map(folder => <button className="folder" key={folder.id} aria-pressed={selectedFolder === folder.id} onClick={() => { setSelectedFolder(folder.id); setRenameName(folder.name); }}>{folderLabel(folder.id)}</button>)}
+            <button className="folder" disabled={busy} aria-pressed={selectedFolder === null} onClick={() => selectFolder(null)}>All scripts</button>
+            {folders.map(folder => <button className="folder" key={folder.id} disabled={busy} aria-pressed={selectedFolder === folder.id} onClick={() => selectFolder(folder.id)}>{folderLabel(folder.id)}</button>)}
           </nav>
           <details><summary>New folder</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {
@@ -191,6 +206,18 @@ function App() {
           }); }}>
             <label>Rename selected folder<input required maxLength={120} value={renameName} disabled={busy} onChange={e => setRenameName(e.target.value)} /></label><button disabled={busy}>Rename</button>
           </form>}
+          {selected && <details><summary>Move selected folder</summary>
+            <form onSubmit={event => { event.preventDefault(); void run(async () => {
+              setWorkspace(unwrap(await window.astelvo.workspace.moveFolder({ id: selected.id, parentId: moveParent })));
+              setStatus('Folder moved. Script contents and unsaved edits are unchanged.');
+            }); }}>
+              <label>Destination folder<select value={moveParent ?? ''} disabled={busy} onChange={event => setMoveParent(event.target.value || null)}>
+                <option value="">Workspace root</option>
+                {moveTargets.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
+              </select></label>
+              <button disabled={busy || moveParent === selected.parentId}>Move folder</button>
+            </form>
+          </details>}
           <h2>Scripts</h2>
           <details><summary>New script</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {

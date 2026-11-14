@@ -8,7 +8,7 @@ const object = value => value !== null && typeof value === 'object' && !Array.is
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
   'host.info': [], 'workspace.open': ['path', 'create'], 'workspace.close': [],
-  'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'],
+  'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'], 'folder.move': ['id', 'parentId'],
   'script.create': ['name', 'language', 'folderId'], 'script.read': ['id'],
   'script.save': ['id', 'name', 'language', 'folderId', 'content', 'expectedHash']
 };
@@ -39,7 +39,7 @@ function document(value) {
 export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
-    : ['workspace.open', 'folder.create', 'folder.rename'].includes(method) ? snapshot(value)
+    : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
     : method === 'script.read' ? document(value) && value.id === params.id
     : ['script.create', 'script.save'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document) && (method !== 'script.save' || value.document.id === params.id) : false;
   if (!valid) throw new Error('Invalid host result');
