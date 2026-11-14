@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
     createFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.create', input),
     renameFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.rename', input),
     moveFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.move', input),
+    duplicateFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.duplicate', input),
     createScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.create', input),
     readScript: id => ipcRenderer.invoke('astelvo:workspace-command', 'script.read', { id }),
     duplicateScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.duplicate', input),

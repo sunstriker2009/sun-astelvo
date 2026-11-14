@@ -27,6 +27,7 @@ declare global {
         createFolder: (input: { name: string; parentId: string | null }) => Promise<Result<Workspace>>;
         renameFolder: (input: { id: string; name: string }) => Promise<Result<Workspace>>;
         moveFolder: (input: { id: string; parentId: string | null }) => Promise<Result<Workspace>>;
+        duplicateFolder: (input: { id: string; name: string; parentId: string | null; expectedRevision: number }) => Promise<Result<{ workspace: Workspace; folderId: string }>>;
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
         duplicateScript: (input: { id: string; name: string; folderId: string | null; expectedHash: string }) => Promise<Result<WriteResult>>;
@@ -64,6 +65,8 @@ function App() {
   const [folderName, setFolderName] = useState('');
   const [renameName, setRenameName] = useState('');
   const [moveParent, setMoveParent] = useState<string | null>(null);
+  const [folderCopyName, setFolderCopyName] = useState('');
+  const [folderCopyParent, setFolderCopyParent] = useState<string | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
   const [duplicateName, setDuplicateName] = useState('');
@@ -167,6 +170,7 @@ function App() {
   function selectFolder(id: string | null) {
     const folder = workspace?.folders.find(f => f.id === id);
     setSelectedFolder(id); setRenameName(folder?.name ?? ''); setMoveParent(folder?.parentId ?? null);
+    setFolderCopyName(''); setFolderCopyParent(folder?.parentId ?? null);
   }
   const selected = folders.find(f => f.id === selectedFolder);
   const moveTargets = folders.filter(folder => {
@@ -220,6 +224,21 @@ function App() {
                 {moveTargets.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
               </select></label>
               <button disabled={busy || moveParent === selected.parentId}>Move folder</button>
+            </form>
+          </details>}
+          {selected && <details><summary>Duplicate selected folder</summary>
+            <p className="muted">Copy saved scripts and nested folders. Save open edits first. Originals remain unchanged.</p>
+            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+              const next = unwrap(await window.astelvo.workspace.duplicateFolder({ id: selected.id, name: folderCopyName.trim(), parentId: folderCopyParent, expectedRevision: workspace!.revision }));
+              const copied = next.workspace.folders.find(f => f.id === next.folderId)!;
+              setWorkspace(next.workspace); setSelectedFolder(copied.id); setRenameName(copied.name); setMoveParent(copied.parentId);
+              setFolderCopyName(''); setFolderCopyParent(copied.parentId); setStatus('Folder copied. Originals and the open editor are unchanged.');
+            }); }}>
+              <label>Folder copy name<input required maxLength={120} disabled={busy || dirty || document?.externalChanged} value={folderCopyName} onChange={event => setFolderCopyName(event.target.value)} /></label>
+              <label>Folder copy destination<select disabled={busy || dirty || document?.externalChanged} value={folderCopyParent ?? ''} onChange={event => setFolderCopyParent(event.target.value || null)}>
+                <option value="">Workspace root</option>{moveTargets.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
+              </select></label>
+              <button disabled={busy || dirty || document?.externalChanged}>Duplicate folder</button>
             </form>
           </details>}
           <h2>Scripts</h2>

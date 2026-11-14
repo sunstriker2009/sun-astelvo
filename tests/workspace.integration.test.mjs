@@ -354,3 +354,194 @@ test('duplicate enforces catalog limits before staging and rejects invalid UTF-8
   assert.equal(await readFile(file, 'utf8'), invalidManifest);
   assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
 }));
+
+const duplicateFolder = (host, state, id, name, parentId = null) => host.request('folder.duplicate', { id, name, parentId, expectedRevision: state.revision }, 30000);
+
+test('folder duplicate commits a complete independent subtree and preserves original identities across restart', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Utilities', parentId: null });
+  const original = state.folders[0];
+  state = await host.request('folder.create', { name: 'Nested', parentId: original.id });
+  const nested = state.folders[1];
+  state = await host.request('folder.create', { name: 'Empty', parentId: nested.id });
+  const empty = state.folders[2];
+  state = await host.request('folder.create', { name: 'Archive', parentId: null });
+  const archive = state.folders[3];
+  for (const [language, folderId] of [['javascript', original.id], ['python', nested.id], ['csharp', nested.id]]) {
+    const created = await host.request('script.create', { name: language, language, folderId });
+    state = (await save(host, created.document, '// বাংলা 🌞\r\n' + language)).workspace;
+  }
+  const before = structuredClone(state);
+  const result = await duplicateFolder(host, state, original.id, 'Utilities', archive.id);
+  assert.notEqual(result.folderId, original.id);
+  assert.equal(result.workspace.schemaVersion, 1);
+  assert.equal(result.workspace.revision, before.revision + 1, 'Bulk copy has one commit point');
+  assert.deepEqual(result.workspace.folders.slice(0, before.folders.length), before.folders);
+  assert.deepEqual(result.workspace.scripts.slice(0, before.scripts.length), before.scripts);
+  const copiedFolders = result.workspace.folders.slice(before.folders.length);
+  assert.equal(copiedFolders.length, 3);
+  assert.deepEqual(copiedFolders.find(f => f.id === result.folderId), { id: result.folderId, name: 'Utilities', parentId: archive.id });
+  const copiedNested = copiedFolders.find(f => f.name === 'Nested');
+  assert.equal(copiedNested.parentId, result.folderId);
+  assert.equal(copiedFolders.find(f => f.name === 'Empty').parentId, copiedNested.id);
+  const allIds = [...result.workspace.folders, ...result.workspace.scripts].map(x => x.id);
+  assert.equal(new Set(allIds).size, allIds.length);
+  const copies = result.workspace.scripts.slice(before.scripts.length);
+  assert.equal(copies.length, 3);
+  for (const copy of copies) {
+    const sourceScript = before.scripts.find(s => s.language === copy.language);
+    assert.equal(copy.folderId, copy.language === 'javascript' ? result.folderId : copiedNested.id);
+    assert.equal(copy.name, sourceScript.name); assert.equal(copy.sourceHash, sourceScript.sourceHash);
+    assert.deepEqual(await readFile(source(root, copy)), await readFile(source(root, sourceScript)));
+    const document = await host.request('script.read', { id: copy.id });
+    await save(host, document, 'independent copy edit');
+    assert.notEqual((await host.request('script.read', { id: sourceScript.id })).content, 'independent copy edit');
+  }
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal(state.scripts.length, 6);
+  for (const copy of copies) assert.equal((await host.request('script.read', { id: copy.id })).content, 'independent copy edit');
+  const emptyCopy = await duplicateFolder(host, state, empty.id, 'Empty copy');
+  assert.equal(emptyCopy.workspace.scripts.length, 6);
+  assert.equal(emptyCopy.workspace.folders.length, 8);
+}));
+
+test('folder duplicate rejects stale revisions, invalid destinations and external sources before staging', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const original = state.folders[0];
+  state = await host.request('folder.create', { name: 'Child', parentId: original.id });
+  const child = state.folders[1];
+  for (const name of ['First', 'Second']) state = (await host.request('script.create', { name, language: 'javascript', folderId: original.id })).workspace;
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file, 'utf8');
+  const dirs = (await readdir(path.join(root, 'scripts'))).sort();
+  for (const [id, name, parentId, revision, code] of [
+    [original.id, 'ORIGINAL', null, state.revision, 'invalid_request'],
+    [original.id, 'Copy', original.id, state.revision, 'invalid_request'],
+    [original.id, 'Copy', child.id, state.revision, 'invalid_request'],
+    [original.id, 'Copy', randomUUID(), state.revision, 'invalid_workspace'],
+    [original.id, 'Copy', null, state.revision - 1, 'conflict'],
+    [randomUUID(), 'Copy', null, state.revision, 'not_found']
+  ]) {
+    await assert.rejects(host.request('folder.duplicate', { id, name, parentId, expectedRevision: revision }), { code });
+    assert.equal(await readFile(file, 'utf8'), before);
+    assert.deepEqual((await readdir(path.join(root, 'scripts'))).sort(), dirs);
+  }
+  const changed = source(root, state.scripts[1]);
+  await writeFile(changed, 'external');
+  await assert.rejects(duplicateFolder(host, state, original.id, 'Copy'), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), before);
+  assert.deepEqual((await readdir(path.join(root, 'scripts'))).sort(), dirs, 'All sources must preflight before any copy is staged');
+  const external = await host.request('script.read', { id: state.scripts[1].id });
+  state = (await save(host, external, external.content)).workspace;
+  const metadata = JSON.parse(await readFile(file, 'utf8')); metadata.name = 'External metadata';
+  const externalBytes = JSON.stringify(metadata); await writeFile(file, externalBytes);
+  await assert.rejects(duplicateFolder(host, state, original.id, 'Copy'), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), externalBytes);
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal((await duplicateFolder(host, state, original.id, 'Reviewed copy')).workspace.scripts.length, 4);
+}));
+
+test('folder duplicate rejects missing, invalid UTF-8 and linked sources without exposing a partial subtree', async () => fixture(async (host, root) => {
+  const folders = await host.request('folder.create', { name: 'Original', parentId: null });
+  const created = await host.request('script.create', { name: 'Source', language: 'python', folderId: folders.folders[0].id });
+  let state = created.workspace;
+  const file = path.join(root, 'workspace.json');
+  const initialBytes = await readFile(file, 'utf8');
+  const sourceFile = source(root, state.scripts[0]);
+  await rm(sourceFile);
+  await assert.rejects(duplicateFolder(host, state, folders.folders[0].id, 'Copy'), { code: 'io_error' });
+  assert.equal(await readFile(file, 'utf8'), initialBytes);
+  const invalid = Buffer.from([0xff]);
+  const manifest = JSON.parse(initialBytes); manifest.scripts[0].sourceHash = hash(invalid);
+  await writeFile(source(root, manifest.scripts[0]), invalid);
+  const invalidBytes = JSON.stringify(manifest); await writeFile(file, invalidBytes);
+  state = await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(duplicateFolder(host, state, folders.folders[0].id, 'Copy'), { code: 'invalid_request' });
+  assert.equal(await readFile(file, 'utf8'), invalidBytes);
+  assert.equal((await readdir(path.join(root, 'scripts'))).length, 1);
+  const moved = path.join(root, 'original-scripts');
+  await rename(path.join(root, 'scripts'), moved);
+  await symlink(moved, path.join(root, 'scripts'), process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(duplicateFolder(host, state, folders.folders[0].id, 'Copy'), { code: 'invalid_workspace' });
+  assert.deepEqual(await readdir(moved), [created.document.id]);
+}));
+
+test('folder duplicate preflights folder/script catalog caps and an 8 MiB aggregate source bound', async () => fixture(async (host, root) => {
+  const folderState = await host.request('folder.create', { name: 'Original', parentId: null });
+  const originalId = folderState.folders[0].id;
+  const initial = await host.request('script.create', { name: 'Source', language: 'javascript', folderId: originalId });
+  const file = path.join(root, 'workspace.json');
+  const original = JSON.parse(await readFile(file, 'utf8'));
+  const crowded = { ...original, folders: [...original.folders, ...Array.from({ length: 199 }, (_, i) => ({ id: randomUUID(), name: `Folder ${i}`, parentId: null }))] };
+  const fullScripts = { ...original, scripts: [...original.scripts, ...Array.from({ length: 999 }, (_, i) => ({ ...original.scripts[0], id: randomUUID(), name: `Script ${i}`, folderId: null }))] };
+  const exhausted = JSON.stringify({ ...original, revision: Number.MAX_SAFE_INTEGER });
+  await writeFile(file, exhausted);
+  const exhaustedState = await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(duplicateFolder(host, exhaustedState, originalId, 'Copy'), { code: 'invalid_workspace' });
+  assert.equal(await readFile(file, 'utf8'), exhausted);
+  assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
+  for (const manifest of [crowded, fullScripts]) {
+    const bytes = JSON.stringify(manifest); await writeFile(file, bytes);
+    const state = await host.request('workspace.open', { path: root, create: false });
+    await assert.rejects(duplicateFolder(host, state, originalId, 'Copy'), { code: 'limit_exceeded' });
+    assert.equal(await readFile(file, 'utf8'), bytes);
+    assert.deepEqual(await readdir(path.join(root, 'scripts')), [initial.document.id]);
+  }
+  const bytes = Buffer.alloc(MAX_SOURCE, 'x');
+  const scripts = Array.from({ length: 33 }, (_, i) => ({ ...original.scripts[0], id: randomUUID(), name: `Large ${i}`, sourceHash: hash(bytes) }));
+  for (const script of scripts) { const target = source(root, script); await mkdir(path.dirname(target)); await writeFile(target, bytes); }
+  const large = JSON.stringify({ ...original, scripts }); await writeFile(file, large);
+  const dirs = (await readdir(path.join(root, 'scripts'))).sort();
+  let state = await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(duplicateFolder(host, state, originalId, 'Copy'), { code: 'limit_exceeded' });
+  assert.equal(await readFile(file, 'utf8'), large);
+  assert.deepEqual((await readdir(path.join(root, 'scripts'))).sort(), dirs);
+  await writeFile(file, JSON.stringify({ ...original, scripts: scripts.slice(0, 32) }));
+  state = await host.request('workspace.open', { path: root, create: false });
+  const result = await duplicateFolder(host, state, originalId, 'At limit');
+  assert.equal(result.workspace.scripts.length, 64);
+}));
+
+test('abrupt host death during a folder copy exposes either the whole subtree or none', async () => fixture(async (host, root) => {
+  const state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const created = await host.request('script.create', { name: 'Seed', language: 'javascript', folderId: state.folders[0].id });
+  const manifestFile = path.join(root, 'workspace.json');
+  const original = JSON.parse(await readFile(manifestFile, 'utf8'));
+  const bytes = Buffer.alloc(64 * 1024, 'x');
+  const scripts = Array.from({ length: 64 }, (_, i) => ({ ...original.scripts[0], id: randomUUID(), name: `Script ${i}`, sourceHash: hash(bytes) }));
+  for (const script of scripts) { const file = source(root, script); await mkdir(path.dirname(file)); await writeFile(file, bytes); }
+  const fixtureManifest = { ...original, scripts };
+  await writeFile(manifestFile, JSON.stringify(fixtureManifest));
+  await host.request('workspace.close');
+  const { executable, args, env } = launch();
+  const writer = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const closed = once(writer, 'close'); writer.stderr.resume();
+  let watcher, deadline, interrupted = false;
+  try {
+    const openId = randomUUID();
+    const opened = new Promise((resolve, reject) => {
+      const decoder = new FrameDecoder(); writer.once('error', reject);
+      writer.stdout.on('data', chunk => {
+        try { for (const reply of decoder.push(chunk)) if (reply.id === openId) reply.error ? reject(new Error(reply.error.message)) : resolve(reply.result); }
+        catch (error) { reject(error); }
+      });
+    });
+    writer.stdin.write(encodeFrame({ version: 1, id: openId, method: 'workspace.open', params: { path: root, create: false } }));
+    await opened;
+    const known = new Set((await readdir(path.join(root, 'scripts'))));
+    const { watch } = await import('node:fs');
+    watcher = watch(path.join(root, 'scripts'), (_event, filename) => {
+      if (filename && !known.has(filename.toString())) { interrupted = true; writer.kill('SIGKILL'); }
+    });
+    deadline = setTimeout(() => writer.kill('SIGKILL'), 5000);
+    writer.stdin.write(encodeFrame({ version: 1, id: randomUUID(), method: 'folder.duplicate', params: { id: state.folders[0].id, name: 'Interrupted copy', parentId: null, expectedRevision: fixtureManifest.revision } }));
+    await closed;
+    watcher.close(); clearTimeout(deadline);
+    assert.equal(interrupted, true, 'Test must observe copy staging before terminating the host');
+    const recovered = await host.request('workspace.open', { path: root, create: false });
+    assert.ok(recovered.scripts.length === 64 || recovered.scripts.length === 128, 'No partial copied manifest may be visible');
+    assert.equal(recovered.folders.length, recovered.scripts.length === 64 ? 1 : 2);
+    assert.deepEqual(recovered.scripts.slice(0, 64), scripts);
+    for (const script of recovered.scripts) assert.deepEqual(await readFile(source(root, script)), bytes);
+  } finally { watcher?.close(); clearTimeout(deadline); writer.kill(); await closed; }
+}));

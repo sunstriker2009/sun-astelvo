@@ -137,6 +137,56 @@ internal sealed class WorkspaceStore : IDisposable
         return new { workspace = Snapshot(), document = ReadScript(script.Id) };
     }
 
+    public object DuplicateFolder(Guid id, string name, Guid? parentId, long expectedRevision)
+    {
+        CheckManifest();
+        if (manifest.Revision != expectedRevision) throw Error("conflict", "Workspace organization changed. Refresh it before duplicating a folder.");
+        var original = manifest.Folders.FirstOrDefault(f => f.Id == id) ?? throw Error("not_found", "Folder not found.");
+        var subtree = new HashSet<Guid> { id };
+        var pending = new Queue<Guid>(); pending.Enqueue(id);
+        while (pending.TryDequeue(out var parent))
+            foreach (var child in manifest.Folders.Where(f => f.ParentId == parent))
+                if (subtree.Add(child.Id)) pending.Enqueue(child.Id);
+        if (parentId != null && subtree.Contains(parentId.Value))
+            throw Error("invalid_request", "Choose a destination outside the folder being copied.");
+        var folderIds = subtree.ToDictionary(oldId => oldId, _ => Guid.NewGuid());
+        var copyName = Name(name);
+        var folders = manifest.Folders.Where(f => subtree.Contains(f.Id)).Select(f => f with
+        {
+            Id = folderIds[f.Id], Name = f.Id == id ? copyName : f.Name,
+            ParentId = f.Id == id ? parentId : folderIds[f.ParentId!.Value]
+        }).ToList();
+        var originals = manifest.Scripts.Where(s => s.FolderId != null && subtree.Contains(s.FolderId.Value)).ToList();
+        var copies = originals.Select(s => s with { Id = Guid.NewGuid(), FolderId = folderIds[s.FolderId!.Value] }).ToList();
+        var next = manifest with { Folders = [.. manifest.Folders, .. folders], Scripts = [.. manifest.Scripts, .. copies] };
+        Validate(next);
+        var committed = next with { Revision = checked(manifest.Revision + 1) };
+        Validate(committed);
+        if (JsonSerializer.SerializeToUtf8Bytes(committed, Json).Length > MaxManifestBytes)
+            throw Error("limit_exceeded", "Workspace metadata exceeds the preview limit.");
+        // Bound memory and preflight every source before staging any copy.
+        const int maxCopyBytes = 8 * 1024 * 1024;
+        var contents = new List<byte[]>();
+        var totalBytes = 0;
+        foreach (var script in originals)
+        {
+            var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
+            if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A folder source changed outside ASTELVO. Reload and save the reviewed script before copying.");
+            _ = Utf8.GetString(bytes);
+            totalBytes += bytes.Length;
+            if (totalBytes > maxCopyBytes) throw Error("limit_exceeded", "Folder copies are limited to 8 MiB of source per operation in this preview.");
+            contents.Add(bytes);
+        }
+        CheckManifest();
+        for (var i = 0; i < copies.Count; i++) WriteRevision(copies[i], contents[i]);
+        foreach (var script in originals)
+            if (Hash(ReadBytes(SourcePath(script), MaxSourceBytes)) != script.SourceHash)
+                throw Error("conflict", "A source changed during the folder copy. Review it before retrying; originals were not overwritten.");
+        // One manifest commit exposes the whole new subtree, never a prefix.
+        Commit(next);
+        return new { workspace = Snapshot(), folderId = folderIds[original.Id] };
+    }
+
     public object ReadScript(Guid id)
     {
         CheckManifest();

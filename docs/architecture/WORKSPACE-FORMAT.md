@@ -44,6 +44,14 @@ The copy gets a new GUID and its own source revision directory. Language and sou
 
 Validate size, UTF-8, destination, sibling-name uniqueness and script-count limits before staging. Recheck the original bytes after staging and manifest freshness at commit. The same manifest replacement commit point and uncertain-outcome rules as Save apply: a late conflict/interruption may retain an unreferenced copy directory, which is ignored and preserved after reopening. There is no automatic cleanup/retry. Preflight rejection leaves the manifest and managed script directories unchanged. The UI preserves the current document and error context on failure; successful duplication opens the copy.
 
+## Folder subtree duplication
+
+`folder.duplicate` accepts an existing folder ID, explicit copy name, nullable destination parent and the loaded workspace revision. Stale revisions and external manifest changes are rejected. The host snapshots the finite subtree and assigns fresh IDs to every copied folder/script, remapping all internal folder references. Empty nested folders are retained. A destination inside the original subtree is rejected; the UI excludes those destinations. Existing names, languages and source hashes are retained except the explicit new root name. Schema remains v1 with no migration or metadata loss.
+
+Preflight the entire candidate manifest (including the next revision), 200-folder/1,000-script caps, 1 MiB manifest cap, UTF-8 and all committed source hashes before staging anything. Aggregate source content is limited to 8 MiB per folder-copy operation; individual files retain the 256 KiB limit. Sources are cached within this bound, staged under new IDs, then rechecked before one manifest replacement exposes the complete copy. A late failure or termination may leave unreferenced revisions/directories, which are ignored and preserved. A recovered manifest exposes either the whole copied subtree or none; this is not a full power-loss guarantee.
+
+Folder duplication has a bounded 30-second desktop request deadline to accommodate multiple flushed source files; other requests keep five seconds. A timed-out/lost response may have committed: reopen and inspect before manually retrying. There are no automatic retries. The UI requires saved open edits and adopted external changes, retains the current editor, and selects the copied root after success. Normal script execution remains unavailable.
+
 ## External changes and locking
 
 An external source edit is loaded explicitly through Reload/read, returned with its actual hash, and marked as external. A stale editor save fails without replacing that external source. Once reviewed, saving creates a new revision and updates the manifest reference. Manual edits can modify historical revision bytes, so immutability describes application writes, not protection from other local programs.
@@ -57,10 +65,10 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
 - 200 folders and 1,000 scripts in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename/move, script create/read/save/duplicate. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move/duplicate, script create/read/save/duplicate. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, tags, favourites, collections, folder duplication, delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, tags, favourites, collections, delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 
