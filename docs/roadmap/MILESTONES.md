@@ -1,10 +1,10 @@
 # ASTELVO milestones
 
-Updated 2026-11-12. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merged work, CI evidence and manual validation distinct.
+Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merged work, CI evidence and manual validation distinct.
 
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
-| M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | In progress — desktop/host scaffold prepared; build and IPC tests pass; desktop/Windows acceptance pending |
+| M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | In progress — scaffold merged; portable build and self-contained Linux host pass; Windows/full desktop and governance gates remain open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | Planned |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
@@ -15,7 +15,7 @@ Updated 2026-11-12. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Complete M0 with reviewed shell/IPC/storage ADRs and a minimal desktop/host scaffold. M0 requires packaged spike, CI and governance evidence; M1–M5 remain planned.
+Validate the Windows portable build and desktop smoke through the manual-only workflow, then record interactive Windows and governance enforcement evidence. The scaffold and portable implementation are available; these pending gates still prevent closing M0. M1–M5 remain planned.
 
 ## M0 foundation evidence
 

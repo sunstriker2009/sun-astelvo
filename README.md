@@ -10,7 +10,7 @@ A local code organizer and interactive scripting workspace. Organize scripts usi
 
 ## Project status
 
-M0 foundation is in progress. The first development scaffold includes an Electron/React/Monaco editor and a local .NET 10 information-only host over framed stdio. The buffer is temporary; saving and script execution are not implemented. Builds and IPC tests pass locally; desktop launch and Windows packaging acceptance remain pending.
+M0 foundation is in progress. The development scaffold includes an Electron/React/Monaco editor, an information-only .NET 10 host over framed stdio, and a portable build with a self-contained host. The buffer is temporary; saving and script execution are not implemented. Linux package/host checks pass; full desktop launch, Windows portable acceptance and governance enforcement remain open.
 
 ## Development
 

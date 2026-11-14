@@ -1,0 +1,43 @@
+name: Windows portable acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: portable-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-portable:
+    name: windows-portable
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run package:portable
+      - name: Test bundled host
+        shell: pwsh
+        run: |
+          $env:ASTELVO_HOST_EXECUTABLE = Join-Path $PWD 'artifacts/portable/ASTELVO-win-x64/resources/host/Sun.Workspace.Host.exe'
+          $env:DOTNET_ROOT = Join-Path $env:RUNNER_TEMP 'astelvo-no-installed-runtime'
+          npm run test:host
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Smoke packaged Monaco and bundled host with empty PATH
+        run: npm run smoke:portable
+      - name: Upload unsigned portable preview
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTELVO-win-x64-${{ github.sha }}
+          path: artifacts/portable/ASTELVO-win-x64/
+          retention-days: 7
+          if-no-files-found: error

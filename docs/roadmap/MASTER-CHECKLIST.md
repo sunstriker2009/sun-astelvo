@@ -12,6 +12,9 @@
 - [x] Draft ADR-001 shell/IPC, ADR-002 storage/recovery and ADR-003 execution boundary. Shell is selected for the spike; packaged desktop acceptance remains pending.
 - [x] .NET 10 solution, UI skeleton, npm lockfile and worker protocol/lifecycle tests.
 - [ ] Validate Monaco/host launch on desktop and self-contained worker packaging.
+- [x] Add native Windows/Linux portable staging and bundled-host selection; Linux x64 package and runtime-independent host tests pass. Windows/full desktop acceptance remains open.
+- [x] Add manual-only Windows package/host/desktop acceptance and short-lived artifact; no automatic Windows CI runs.
+- [x] Replace CODEOWNERS placeholder and inspect live rules read-only; document remaining enforcement gaps in M0 validation.
 - [x] Add backend/frontend PR CI definitions and concurrency cancellation.
 - [ ] Verify new CI runs and add exact emitted checks to protection through the reviewed adoption process.
 

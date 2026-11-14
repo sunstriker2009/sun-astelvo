@@ -3,4 +3,5 @@ dist/
 **/bin/
 **/obj/
 .local/
+artifacts/
 *.user

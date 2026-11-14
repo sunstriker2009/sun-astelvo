@@ -11,6 +11,8 @@ concurrency:
 jobs:
   repository-validation:
     name: repository-validation
+    needs: [backend, frontend]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +24,16 @@ jobs:
           test -f .github/PULL_REQUEST_TEMPLATE.md
           test -f .github/CODEOWNERS
           test -f docs/REPOSITORY-SETUP.md
+      - name: Require successful application checks on PRs
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+        run: |
+          set -euo pipefail
+          test "$BACKEND_RESULT" = success
+          test "$FRONTEND_RESULT" = success
   backend:
     name: backend
     if: github.event_name == 'pull_request'
@@ -37,6 +49,11 @@ jobs:
           node-version: '24'
       - run: dotnet build Sun.Workspace.slnx -c Release
       - run: node --test --test-timeout=15000 tests/host.integration.test.mjs
+      - name: Publish and test self-contained host
+        shell: bash
+        run: |
+          dotnet publish src/Sun.Workspace.Host -c Release -r linux-x64 --self-contained true -p:DebugType=None -o artifacts/host/linux-x64
+          ASTELVO_HOST_EXECUTABLE="$PWD/artifacts/host/linux-x64/Sun.Workspace.Host" node --test --test-timeout=15000 tests/host.integration.test.mjs
   frontend:
     name: frontend
     if: github.event_name == 'pull_request'
