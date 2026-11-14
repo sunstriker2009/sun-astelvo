@@ -37,6 +37,11 @@ internal sealed class WorkspaceSession : IDisposable
                 Keys(p, "name", "language", "folderId"); return active.CreateScript(Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"));
             case "script.read":
                 Keys(p, "id"); return active.ReadScript(Id(p, "id"));
+            case "script.duplicate":
+                Keys(p, "id", "name", "folderId", "expectedHash");
+                var duplicateHash = Text(p, "expectedHash");
+                if (!WorkspaceStore.ValidHash(duplicateHash)) throw Invalid();
+                return active.DuplicateScript(Id(p, "id"), Text(p, "name"), OptionalId(p, "folderId"), duplicateHash);
             case "script.save":
                 Keys(p, "id", "name", "language", "folderId", "content", "expectedHash");
                 var hash = Text(p, "expectedHash");

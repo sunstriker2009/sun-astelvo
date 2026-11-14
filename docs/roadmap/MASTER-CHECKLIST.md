@@ -25,7 +25,8 @@
 - [x] Script create/read/save/rename/language/move and folder create/rename with stable IDs; manual Ctrl/Cmd+S, dirty-buffer navigation/quit guard.
 - [ ] Validate the new organizer on Windows through the extended manual acceptance workflow.
 - [x] Folder move to another parent/root with stable subtree/script identities; rejects cycles, missing destinations and case-insensitive sibling collisions. Implemented in stacked draft `feature/m1-folder-moves`; [local evidence](../operations/M1-FOLDER-MOVES-VALIDATION.md). Human review and Windows organizer acceptance remain open.
-- [ ] Remaining script/folder CRUD: duplicate and delete/restore.
+- [x] Script duplication with explicit name/destination, new identity, reviewed committed content and independent source storage; implemented in stacked draft `feature/m1-script-duplicate` ([evidence](../operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Human review and Windows acceptance remain open.
+- [ ] Remaining script/folder CRUD: folder duplication and delete/restore.
 - [ ] Tags, favourites, smart collection filters and indexed search.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.
