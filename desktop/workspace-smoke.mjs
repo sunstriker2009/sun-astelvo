@@ -2,7 +2,7 @@
 // Native dialogs are replaced here solely to select an isolated temporary folder.
 import assert from 'node:assert/strict';
 import { app, BrowserWindow, dialog } from 'electron';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -81,6 +81,15 @@ void app.whenReady().then(async () => {
     await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Greeting')).click()");
     await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('workspace smoke')", 'saved content reopen');
     assert.equal(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('unsaved edit')"), false);
+    const metadata = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    const source = metadata.scripts[0];
+    await writeFile(path.join(root, 'scripts', source.id, source.sourceHash + '.js'), 'console.log("external accepted");');
+    await click('Reload');
+    await wait("document.querySelector('[role=status]').textContent.includes('External edits loaded')", 'external reload');
+    // Reloaded external bytes are already on disk; adopting them into a new
+    // revision must be possible without first modifying the editor again.
+    await click('Save');
+    await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'external revision adoption');
     await input('Script name', 'Renamed greeting'); await click('Save');
     await wait("!!Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Renamed greeting'))", 'script rename');
     await mkdir('artifacts/diagnostics', { recursive: true });
@@ -89,7 +98,7 @@ void app.whenReady().then(async () => {
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: create, folder, save/reopen, rename and cancelled-quit buffer/host preservation.');
+    console.log('Workspace editor smoke passed: create, folder, keyboard save/reopen, external revision adoption, rename and cancelled-quit preservation.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

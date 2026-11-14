@@ -211,7 +211,7 @@ function App() {
           <label className="script-name">Script name<input aria-label="Script name" value={draft.name} maxLength={120} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, name: e.target.value })} /></label>
           <label>Language<select value={draft.language} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, language: e.target.value as Language })}>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>Folder<select value={draft.folderId ?? ''} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, folderId: e.target.value || null })}><option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}</select></label>
-          <button disabled={busy || !document || !dirty} onClick={save}>Save</button>
+          <button disabled={busy || !document || (!dirty && !document.externalChanged)} onClick={save}>Save</button>
           <button disabled={busy || !document} onClick={() => document && openScript(document.id, true)}>Reload</button>
           <button disabled title="Script runners are planned">Run</button>
         </div>
