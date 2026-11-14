@@ -5,6 +5,32 @@ import os from 'node:os';
 import { mkdtemp, mkdir, writeFile, readFile, access, rm } from 'node:fs/promises';
 import { hostLaunch } from '../desktop/launch-config.mjs';
 import { stagePortable } from '../tools/portable-layout.mjs';
+import { prepareElectronRuntime } from '../tools/prepare-electron.mjs';
+
+test('fresh Electron package without dist is prepared before staging', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'astelvo-fresh-electron-'));
+  const packageDirectory = path.join(root, 'node_modules/electron');
+  try {
+    await mkdir(packageDirectory, { recursive: true });
+    // Exercise the real local-installer process boundary with a fresh package
+    // fixture. No network, registry or existing developer dist is required.
+    await writeFile(path.join(packageDirectory, 'install.js'), `
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const dist = path.join(__dirname, 'dist');
+      fs.mkdirSync(dist, { recursive: true });
+      fs.writeFileSync(path.join(dist, process.platform === 'win32' ? 'electron.exe' : 'electron'), 'prepared-runtime');
+    `);
+    await assert.rejects(access(path.join(packageDirectory, 'dist')), { code: 'ENOENT' });
+    const directory = await prepareElectronRuntime(root);
+    assert.equal(await readFile(path.join(directory, process.platform === 'win32' ? 'electron.exe' : 'electron'), 'utf8'), 'prepared-runtime');
+    await writeFile(path.join(packageDirectory, 'install.js'), 'process.exit(3);');
+    await assert.rejects(prepareElectronRuntime(root), /runtime preparation failed \(3\)/);
+    await rm(directory, { recursive: true });
+    await writeFile(path.join(packageDirectory, 'install.js'), 'process.exit(0);');
+    await assert.rejects(prepareElectronRuntime(root), /did not provide the native runtime/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('packaged launch uses the bundled host even with a developer override', () => {
   const previous = process.env.ASTELVO_DOTNET;

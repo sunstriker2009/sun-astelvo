@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rename, rm, stat } from 'node:fs/promises';
 import { stagePortable } from './portable-layout.mjs';
+import { prepareElectronRuntime } from './prepare-electron.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 if (!['win32', 'linux'].includes(process.platform) || !['x64', 'arm64'].includes(process.arch)) throw new Error('Build on Windows or Linux x64/arm64 for the matching target.');
@@ -16,6 +17,7 @@ function run(executable, args) {
     child.once('exit', code => code === 0 ? resolve() : reject(new Error(`${path.basename(executable)} failed (${code})`)));
   });
 }
+const runtimeDirectory = await prepareElectronRuntime(root);
 await rm(hostDirectory, { recursive: true, force: true });
 await run(process.env.ASTELVO_DOTNET ?? 'dotnet', ['publish', 'src/Sun.Workspace.Host', '-c', 'Release', '-r', rid, '--self-contained', 'true', '-p:PublishSingleFile=false', '-p:DebugType=None', '-o', hostDirectory]);
 await run(process.execPath, ['tools/build.mjs']);
@@ -37,7 +39,6 @@ for (const folder of Object.keys(assets.packageFolders ?? {})) {
   break;
 }
 if (!noticesCopied) throw new Error('Published runtime-pack license notices not found');
-const runtimeDirectory = path.join(root, 'node_modules/electron/dist');
 const portable = path.join(artifacts, 'portable');
 await mkdir(portable, { recursive: true });
 const stage = await mkdtemp(path.join(portable, `.stage-${rid}-`));
