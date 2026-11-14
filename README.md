@@ -10,7 +10,7 @@ A local code organizer and interactive scripting workspace. Organize scripts usi
 
 ## Project status
 
-The first M1 organizer slice supports creating/opening a local workspace, nested folders, and manually saving/reopening JavaScript, Python and C# scripts. Scripts can be renamed, moved between folders and assigned a language. Exclusive workspace ownership and hash checks protect against competing instances and stale saves. The editor currently opens one script at a time; runners, formatting, tags, search and import/export remain planned.
+The first M1 organizer slice supports creating/opening a local workspace, nested folders, and manually saving/reopening JavaScript, Python and C# scripts. Scripts can be renamed, moved between folders and assigned a language. Folders can be moved with their subtree to another parent or the workspace root while retaining identities and current editor changes. Exclusive workspace ownership and hash checks protect against competing instances and stale saves. The editor currently opens one script at a time; runners, formatting, tags, search and import/export remain planned.
 
 Automated Windows portable acceptance passed for the merged foundation. The new organizer has local real-host and headless editor-flow validation; its Windows acceptance still needs a run after merge. Interactive clean-machine and governance follow-ups remain open.
 

@@ -31,6 +31,8 @@ internal sealed class WorkspaceSession : IDisposable
                 Keys(p, "name", "parentId"); return active.CreateFolder(Text(p, "name"), OptionalId(p, "parentId"));
             case "folder.rename":
                 Keys(p, "id", "name"); return active.RenameFolder(Id(p, "id"), Text(p, "name"));
+            case "folder.move":
+                Keys(p, "id", "parentId"); return active.MoveFolder(Id(p, "id"), OptionalId(p, "parentId"));
             case "script.create":
                 Keys(p, "name", "language", "folderId"); return active.CreateScript(Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"));
             case "script.read":

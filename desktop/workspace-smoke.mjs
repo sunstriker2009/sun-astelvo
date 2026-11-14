@@ -38,6 +38,13 @@ void app.whenReady().then(async () => {
       field.dispatchEvent(new Event('input', { bubbles: true }));
     })()`);
   }
+  async function select(label, text) {
+    await js(`(() => {
+      const field = Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith(${JSON.stringify(label)})).querySelector('select');
+      field.value = Array.from(field.options).find(o => o.textContent === ${JSON.stringify(text)}).value;
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+  }
   try {
     await wait("!!document.querySelector('.monaco-editor')", 'Monaco mount');
     await click('New workspace');
@@ -62,6 +69,27 @@ void app.whenReady().then(async () => {
     await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
     await window.webContents.insertText('// unsaved edit');
     await wait("!!document.querySelector('.unsaved')", 'dirty buffer');
+    // Move a parent while its script buffer is dirty. No editor discard or
+    // source write is needed for a logical folder move.
+    const beforeMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    await click('All scripts');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'New folder').click()");
+    await input('New folder', 'Archive'); await click('Add folder');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'New folder').click()");
+    await click('Utilities');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Move selected folder').click()");
+    assert.equal(await js("Array.from(Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Destination folder')).querySelector('select').options).some(o => o.textContent === 'Utilities')"), false, 'Move targets must exclude the selected folder');
+    await select('Destination folder', 'Archive');
+    const movePrompts = prompts;
+    await click('Move folder');
+    await wait("!!Array.from(document.querySelectorAll('.folder')).find(b => b.textContent === 'Archive / Utilities')", 'folder moved');
+    assert.equal(prompts, movePrompts, 'Moving a folder must not prompt to discard the script buffer');
+    assert.equal(await js("!!document.querySelector('.unsaved')"), true, 'Folder move must preserve dirty buffer');
+    assert.equal(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('unsaved edit')"), true);
+    const afterMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    assert.deepEqual(afterMove.scripts, beforeMove.scripts, 'Folder move must not save or relocate script sources');
+    await select('Destination folder', 'Workspace root'); await click('Move folder');
+    await wait("!!Array.from(document.querySelectorAll('.folder')).find(b => b.textContent === 'Utilities')", 'folder returned to root');
     const before = prompts;
     app.quit();
     const until = Date.now() + 3000;
@@ -98,7 +126,7 @@ void app.whenReady().then(async () => {
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: create, folder, keyboard save/reopen, external revision adoption, rename and cancelled-quit preservation.');
+    console.log('Workspace editor smoke passed: create, folder move with dirty buffer, keyboard save/reopen, external revision adoption, rename and cancelled-quit preservation.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

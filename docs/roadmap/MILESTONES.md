@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — first workspace/folder/script persistence slice implemented; organizer Windows, remaining CRUD, tags/search and backup/import/export acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence in open PR #14; folder moves in stacked draft; organizer Windows, duplicate/delete/restore, tags/search and backup/import/export acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,7 +15,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Validate the first organizer slice on Windows, then continue remaining M1 CRUD, tags/collections/search and import/export/backup work. M0 automated foundation acceptance passed; interactive/clean-machine and review enforcement follow-ups remain open. M2–M5 are planned.
+PR #14 remains open with green CI at head `95cd7e1`. Folder moves are implemented in stacked draft `feature/m1-folder-moves`, based on that PR. Review/merge #14 first, then retarget the draft to main and revalidate. See [folder move evidence](../operations/M1-FOLDER-MOVES-VALIDATION.md). Continue duplicate/delete/restore, tags/collections/search and import/export/backup while Windows acceptance is pending. M0 automated foundation acceptance passed; interactive/clean-machine and review enforcement follow-ups remain open. M2–M5 are planned.
 
 ## M0 foundation evidence
 

@@ -175,3 +175,81 @@ test('invalid requests and oversize scripts do not consume the client pending bu
   assert.equal((await host.info()).product, 'ASTELVO');
   assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
 }));
+
+test('moving a folder preserves its subtree, script revisions and open editor save identity across restart', async () => fixture(async (host, root) => {
+  const folder = async (name, parentId = null) => {
+    const state = await host.request('folder.create', { name, parentId });
+    return state.folders.find(f => f.name === name);
+  };
+  const utilities = await folder('Utilities');
+  const nested = await folder('Nested', utilities.id);
+  const destination = await folder('Archive');
+  const initial = await host.request('script.create', { name: 'Unicode', language: 'python', folderId: nested.id });
+  const saved = await save(host, initial.document, '# বাংলা 🌞\nprint("hello")\n');
+  const before = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+  const files = await readdir(path.join(root, 'scripts', saved.document.id));
+  const moved = await host.request('folder.move', { id: utilities.id, parentId: destination.id });
+  assert.equal(moved.schemaVersion, 1);
+  assert.equal(moved.revision, before.revision + 1);
+  assert.equal(moved.id, before.id);
+  assert.deepEqual(moved.scripts, before.scripts);
+  assert.deepEqual(moved.folders.find(f => f.id === nested.id), nested);
+  assert.deepEqual(moved.folders.find(f => f.id === utilities.id), { ...utilities, parentId: destination.id });
+  assert.deepEqual(await readdir(path.join(root, 'scripts', saved.document.id)), files);
+  assert.equal(await readFile(source(root, moved.scripts[0]), 'utf8'), saved.document.content);
+  // A metadata-only folder move must not invalidate a dirty script's disk hash.
+  const edited = await save(host, saved.document, saved.document.content + '# buffer kept\n');
+  assert.equal(edited.document.folderId, nested.id);
+  const movedToRoot = await host.request('folder.move', { id: nested.id, parentId: null });
+  await host.request('workspace.close');
+  const reopened = await host.request('workspace.open', { path: root, create: false });
+  assert.deepEqual(reopened, movedToRoot);
+  assert.equal((await host.request('script.read', { id: edited.document.id })).content, edited.document.content);
+}));
+
+test('invalid folder moves leave manifest and sources byte-for-byte intact and host usable', async () => fixture(async (host, root) => {
+  const folder = async (name, parentId = null) => (await host.request('folder.create', { name, parentId })).folders.find(f => f.name === name && f.parentId === parentId);
+  const parent = await folder('Parent');
+  const child = await folder('Child', parent.id);
+  const grandchild = await folder('Grandchild', child.id);
+  const destination = await folder('Destination');
+  await folder('PARENT', destination.id);
+  const script = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file, 'utf8');
+  for (const [id, parentId, code] of [
+    [parent.id, parent.id, 'invalid_workspace'],
+    [parent.id, grandchild.id, 'invalid_workspace'],
+    [parent.id, randomUUID(), 'invalid_workspace'],
+    [randomUUID(), null, 'not_found'],
+    [parent.id, destination.id, 'invalid_request']
+  ]) {
+    await assert.rejects(host.request('folder.move', { id, parentId }), { code });
+    assert.equal(await readFile(file, 'utf8'), before);
+    assert.equal(await readFile(source(root, script.workspace.scripts[0]), 'utf8'), '');
+  }
+  const noop = await host.request('folder.move', { id: parent.id, parentId: null });
+  assert.equal(noop.revision, JSON.parse(before).revision);
+  assert.equal(await readFile(file, 'utf8'), before);
+  assert.equal((await host.request('folder.move', { id: child.id, parentId: null })).folders.find(f => f.id === child.id).parentId, null);
+}));
+
+test('folder move detects external metadata conflicts including no-ops and preserves external bytes', async () => fixture(async (host, root) => {
+  const state = await host.request('folder.create', { name: 'Move me', parentId: null });
+  const file = path.join(root, 'workspace.json');
+  const external = JSON.parse(await readFile(file, 'utf8'));
+  external.name = 'Reviewed external metadata';
+  const bytes = JSON.stringify(external); await writeFile(file, bytes);
+  await assert.rejects(host.request('folder.move', { id: state.folders[0].id, parentId: null }), { code: 'conflict' });
+  assert.equal(await readFile(file, 'utf8'), bytes);
+  await host.request('workspace.open', { path: root, create: false });
+  const destination = await host.request('folder.create', { name: 'Destination', parentId: null });
+  const result = await host.request('folder.move', { id: state.folders[0].id, parentId: destination.folders[1].id });
+  assert.equal(result.name, external.name);
+  for (const params of [
+    { id: state.folders[0].id }, { id: state.folders[0].id, parentId: '' },
+    { id: state.folders[0].id, parentId: '../../escape' },
+    { id: state.folders[0].id, parentId: null, path: root }
+  ]) await assert.rejects(host.request('folder.move', params), /invalid|Invalid/);
+  assert.equal((await host.info()).product, 'ASTELVO');
+}));
