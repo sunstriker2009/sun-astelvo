@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore locally validated; Windows organizer, persistent catalog, collection extensions and loose imports/history acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import locally validated; Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `030b0aed` contains source-search PR #29 with passing CI; earlier organizer/editor, collections, classification and recycle work is merged.
+Main `f97f1624` contains archive export/fresh-folder restore PR #30 with passing CI; earlier organizer/editor/search/collection/recycle work is merged.
 
-Current-state workspace archive export and fresh-folder restore are locally implemented/validated in `feature/m1-workspace-archives` ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Exact metadata/current source across both recycle bins survives restore; validation precedes target writes and manifest-last commit bounds interrupted restore visibility. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+Loose UTF-8 JavaScript/Python/C# source import is locally implemented/validated in `feature/m1-loose-script-import` ([evidence](../operations/M1-IMPORT-VALIDATION.md)). Explicit numbered copies resolve collisions without overwrite, and one commit exposes the whole bounded batch while retaining unsaved editor drafts. Check the new PR for CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Loose script import/merge, backup history/retention, persistent catalog, collection extensions and remaining editor/runners/packaging remain unfinished. New organizer Windows, interactive/clean-machine and governance follow-ups stay distinct from the M0 baseline. Continue M1–M5 implementation and acceptance.
+Persistent catalog, collection extensions, useful standard-library examples and remaining M2–M5 editor/recovery/formatter/runner/packaging work remain unfinished. Windows organizer/import/restore, clean-machine and governance follow-ups stay distinct from the M0 baseline. Archive merges/history retention are optional future enhancements; current-state archive restore remains the v1 backup path.
 
 ## M0 foundation evidence
 
@@ -69,3 +69,8 @@ Locally implemented/validated in `feature/m1-source-search`: bounded read-only s
 ### Workspace snapshot archives — 2026-11-15
 
 Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.
+
+
+### Loose-source import — 2026-11-15
+
+Locally implemented/validated in `feature/m1-loose-script-import`: native-selected JS/Python/C# UTF-8 copy, exact bytes/new IDs, explicit numbered name conflicts and single-commit complete-batch visibility. Release/TypeScript/renderer builds, 20 frontend/protocol tests, 57 host tests and headless Electron acceptance passed ([evidence](../operations/M1-IMPORT-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent catalog, collection extensions/examples and remaining M1–M5/Windows/clean-machine/final product gates stay open.

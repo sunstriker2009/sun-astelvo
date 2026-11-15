@@ -1427,3 +1427,137 @@ test('abrupt restore termination leaves either no manifest or the complete works
     await host.request('workspace.close'); await rm(output, { recursive: true, force: true });
   }
 }));
+
+const importScripts = (host, state, paths, folderId = null, renameConflicts = false) => host.request('workspace.import', { paths, folderId, expectedRevision: state.revision, renameConflicts }, 30000);
+
+test('loose import atomically preserves UTF-8/BOM/CRLF bytes across all languages and existing v5 metadata without executing sources', async () => fixture(async (host, root) => {
+  const input = await mkdtemp(path.join(os.tmpdir(), 'astelvo-import-'));
+  try {
+    let state = await host.request('folder.create', { name: 'Destination', parentId: null });
+    const folderId = state.folders[0].id;
+    const original = await create(host);
+    state = await classifyScript(host, original.workspace, original.document.id, ['existing'], true, true);
+    state = (await createCollection(host, state, 'Existing collection', collectionFilter(), true)).workspace;
+    const marker = path.join(input, 'must-not-execute.txt');
+    const contents = [Buffer.from(`require('fs').writeFileSync(${JSON.stringify(marker)}, 'executed');\r\n// বাংলা 🌞`), Buffer.from('\ufeffprint("বাংলা")\r\n'), Buffer.from('Console.WriteLine("hello");\n')];
+    const names = ['example.JS', 'unicode.py', 'sample.cs'], files = names.map(name => path.join(input, name));
+    for (let i = 0; i < files.length; i++) await writeFile(files[i], contents[i]);
+    const result = await importScripts(host, state, files, folderId);
+    assert.equal(result.importedIds.length, 3); assert.equal(result.renamedCount, 0); assert.equal(result.workspace.revision, state.revision + 1); assert.equal(result.workspace.schemaVersion, 5);
+    for (const field of ['folders', 'deletedScripts', 'deletedFolderTrees', 'collections']) assert.deepEqual(result.workspace[field], state[field]);
+    assert.deepEqual(result.workspace.scripts.slice(0, state.scripts.length), state.scripts);
+    const imported = result.importedIds.map(id => result.workspace.scripts.find(s => s.id === id));
+    assert.deepEqual(imported.map(s => s.language), ['javascript', 'python', 'csharp']);
+    for (let i = 0; i < imported.length; i++) {
+      assert.equal(imported[i].folderId, folderId); assert.deepEqual(imported[i].classification, { tags: [], favourite: false });
+      assert.deepEqual(await readFile(source(root, imported[i])), contents[i]); assert.deepEqual(await readFile(files[i]), contents[i]);
+    }
+    await assert.rejects(readFile(marker), { code: 'ENOENT' });
+    await writeFile(files[0], 'later external edit');
+    assert.equal((await host.request('script.read', { id: imported[0].id })).content, contents[0].toString('utf8'));
+    await host.request('workspace.close');
+    const reopened = await host.request('workspace.open', { path: root, create: false });
+    assert.deepEqual(reopened.scripts, result.workspace.scripts);
+    assert.deepEqual(new Set((await searchSource(host, reopened, 'বাংলা')).scriptIds), new Set(imported.slice(0, 2).map(s => s.id)));
+  } finally { await rm(input, { recursive: true, force: true }); }
+}));
+
+test('import rejects whole name-conflict batches by default; explicit numbered copies are deterministic and preserve Unicode boundaries', async () => fixture(async (host, root) => {
+  const input = await mkdtemp(path.join(os.tmpdir(), 'astelvo-import-names-'));
+  try {
+    const initial = await create(host);
+    const a = path.join(input, 'a'), b = path.join(input, 'b'); await mkdir(a); await mkdir(b);
+    const files = [path.join(a, 'hello.js'), path.join(b, 'HELLO.py')]; await writeFile(files[0], 'first'); await writeFile(files[1], 'second');
+    const before = await readFile(path.join(root, 'workspace.json')), dirs = await readdir(path.join(root, 'scripts'));
+    await assert.rejects(importScripts(host, initial.workspace, files), { code: 'conflict' });
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before); assert.deepEqual(await readdir(path.join(root, 'scripts')), dirs);
+    let result = await importScripts(host, initial.workspace, files, null, true);
+    assert.equal(result.renamedCount, 2);
+    assert.deepEqual(result.workspace.scripts.slice(-2).map(s => s.name), ['hello (2)', 'HELLO (3)']);
+    assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
+    const longName = 'a'.repeat(115) + '😀bbb'; assert.equal(longName.length, 120);
+    const existing = await host.request('script.create', { name: longName, language: 'javascript', folderId: null });
+    const file = path.join(input, longName + '.js'); await writeFile(file, 'exact');
+    result = await importScripts(host, existing.workspace, [file], null, true);
+    const copy = result.workspace.scripts.find(s => s.id === result.importedIds[0]);
+    assert.equal(copy.name, 'a'.repeat(115) + ' (2)'); assert.equal(copy.name.includes('\ufffd'), false);
+  } finally { await rm(input, { recursive: true, force: true }); }
+}));
+
+test('import preflight rejects stale/missing/linked/unsupported/oversized/invalid UTF-8 and duplicate selections before any staging', async () => fixture(async (host, root) => {
+  const input = await mkdtemp(path.join(os.tmpdir(), 'astelvo-import-invalid-'));
+  try {
+    const initial = await create(host), good = path.join(input, 'good.js'); await writeFile(good, 'retained');
+    const invalid = path.join(input, 'bad.py'); await writeFile(invalid, Buffer.from([255]));
+    const unsupported = path.join(input, 'unsafe.sh'); await writeFile(unsupported, 'echo never');
+    const huge = path.join(input, 'huge.cs'); await writeFile(huge, Buffer.alloc(MAX_SOURCE + 1, 'x'));
+    const alias = path.join(input, 'linked'); await symlink(input, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    const before = await readFile(path.join(root, 'workspace.json')), dirs = await readdir(path.join(root, 'scripts'));
+    for (const action of [
+      () => importScripts(host, initial.workspace, [good, invalid]),
+      () => importScripts(host, initial.workspace, [good, unsupported]),
+      () => importScripts(host, initial.workspace, [good, huge]),
+      () => importScripts(host, initial.workspace, [good, path.join(input, 'missing.js')]),
+      () => importScripts(host, initial.workspace, [good, good], null, true),
+      () => importScripts(host, initial.workspace, [path.join(alias, 'good.js')]),
+      () => importScripts(host, { ...initial.workspace, revision: 0 }, [good]),
+      () => importScripts(host, initial.workspace, [good], randomUUID())
+    ]) {
+      await assert.rejects(action());
+      assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before); assert.deepEqual(await readdir(path.join(root, 'scripts')), dirs);
+    }
+    assert.equal(await readFile(good, 'utf8'), 'retained'); assert.deepEqual(await readFile(invalid), Buffer.from([255]));
+    const result = await importScripts(host, initial.workspace, [good]); assert.equal(result.workspace.schemaVersion, 1);
+  } finally { await rm(input, { recursive: true, force: true }); }
+}));
+
+test('import accepts the bounded 32-file batch and rejects exhausted revision/catalog limits before staging', async () => fixture(async (host, root) => {
+  const input = await mkdtemp(path.join(os.tmpdir(), 'astelvo-import-limits-'));
+  try {
+    const initial = await create(host), files = [];
+    for (let i = 0; i < 32; i++) { const file = path.join(input, `File ${i}.js`); await writeFile(file, Buffer.alloc(MAX_SOURCE, 'x')); files.push(file); }
+    await assert.rejects(importScripts(host, initial.workspace, [...files, files[0]]));
+    let state = (await importScripts(host, initial.workspace, files)).workspace;
+    assert.equal(state.scripts.length, 33); assert.equal(state.revision, initial.workspace.revision + 1);
+    const file = path.join(root, 'workspace.json'), metadata = JSON.parse(await readFile(file, 'utf8'));
+    metadata.revision = Number.MAX_SAFE_INTEGER; await writeFile(file, JSON.stringify(metadata));
+    state = await host.request('workspace.open', { path: root, create: false });
+    let before = await readFile(file), dirs = await readdir(path.join(root, 'scripts'));
+    await assert.rejects(importScripts(host, state, files, null, true), { code: 'invalid_workspace' });
+    assert.deepEqual(await readFile(file), before); assert.deepEqual(await readdir(path.join(root, 'scripts')), dirs);
+    metadata.revision = 3; metadata.scripts = Array.from({ length: 1000 }, (_, i) => ({ ...metadata.scripts[0], id: i === 0 ? metadata.scripts[0].id : randomUUID(), name: `Existing ${i}` }));
+    await writeFile(file, JSON.stringify(metadata)); state = await host.request('workspace.open', { path: root, create: false }); before = await readFile(file);
+    await assert.rejects(importScripts(host, state, [files[0]]), { code: 'limit_exceeded' });
+    assert.deepEqual(await readFile(file), before); assert.deepEqual(await readdir(path.join(root, 'scripts')), dirs);
+  } finally { await rm(input, { recursive: true, force: true }); }
+}));
+
+test('abrupt import death publishes the complete batch or none and retains original selected source files', async () => fixture(async (host, root) => {
+  const input = await mkdtemp(path.join(os.tmpdir(), 'astelvo-import-death-'));
+  let writer, closed, watcher, deadline, observed = false;
+  try {
+    const state = await host.request('workspace.open', { path: root, create: false }), files = [];
+    for (let i = 0; i < 32; i++) { const file = path.join(input, `Source ${i}.js`); await writeFile(file, 'original '.repeat(8000)); files.push(file); }
+    await host.request('workspace.close');
+    const { executable, args, env } = launch(); writer = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+    closed = once(writer, 'close'); writer.stderr.resume();
+    const openId = randomUUID();
+    const opened = new Promise((resolve, reject) => {
+      const decoder = new FrameDecoder(); writer.once('error', reject);
+      writer.stdout.on('data', chunk => { try { for (const reply of decoder.push(chunk)) if (reply.id === openId) reply.error ? reject(new Error(reply.error.message)) : resolve(reply.result); } catch (error) { reject(error); } });
+    });
+    writer.stdin.write(encodeFrame({ version: 1, id: openId, method: 'workspace.open', params: { path: root, create: false } })); await opened;
+    const { watch } = await import('node:fs');
+    watcher = watch(path.join(root, 'scripts'), (_event, filename) => { if (filename) { observed = true; writer.kill('SIGKILL'); } });
+    deadline = setTimeout(() => writer.kill('SIGKILL'), 5000);
+    writer.stdin.write(encodeFrame({ version: 1, id: randomUUID(), method: 'workspace.import', params: { paths: files, folderId: null, expectedRevision: state.revision, renameConflicts: false } }));
+    await closed; watcher.close(); clearTimeout(deadline); assert.equal(observed, true);
+    const recovered = await host.request('workspace.open', { path: root, create: false });
+    assert.ok(recovered.scripts.length === 0 || recovered.scripts.length === 32, 'No partial imported manifest');
+    for (const script of recovered.scripts) assert.equal(await readFile(source(root, script), 'utf8'), 'original '.repeat(8000));
+    for (const file of files) assert.equal(await readFile(file, 'utf8'), 'original '.repeat(8000));
+  } finally {
+    watcher?.close(); clearTimeout(deadline); if (writer) { writer.kill(); await closed; }
+    await rm(input, { recursive: true, force: true });
+  }
+}));

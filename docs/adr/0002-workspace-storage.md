@@ -27,3 +27,6 @@ Saved metadata collections extend the manifest with explicit schema v5 and exact
 
 
 [ADR-005](0005-workspace-archives.md) adds verified ZIP snapshot export and restore into an empty leased folder. Exact manifest bytes and every currently referenced source across live/recycle partitions are retained; unknown/unsafe members and integrity failures are rejected before target writes. Restore publishes the manifest last after staged-source verification. Historical/orphan revisions and unsaved drafts are outside this current-state snapshot. Loose-file import/merge, retention and Windows/power-loss acceptance remain open.
+
+
+[ADR-006](0006-loose-script-import.md) adds native-selected local loose-file import. It caches/validates the bounded UTF-8 batch, assigns fresh IDs, preflights metadata limits, stages independent revisions, rechecks input/copy hashes and commits the entire batch once. Original files and existing workspace metadata remain intact; late failures can leave unreferenced staging copies. No schema migration, encoding conversion or code execution occurs.

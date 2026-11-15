@@ -7,6 +7,7 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
+  'workspace.import': ['paths', 'folderId', 'expectedRevision', 'renameConflicts'],
   'workspace.export': ['archivePath', 'expectedRevision'],
   'workspace.restore': ['archivePath', 'path'],
   'workspace.search': ['query', 'expectedRevision', 'rebuild'],
@@ -29,7 +30,8 @@ export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
     const valid = key === 'path' || key === 'archivePath' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
-      : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' ? typeof value === 'boolean'
+      : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' || key === 'renameConflicts' ? typeof value === 'boolean'
+      : key === 'paths' ? Array.isArray(value) && value.length > 0 && value.length <= 32 && value.every(path => typeof path === 'string' && path.length > 0 && path.length <= 4096)
       : key === 'query' ? typeof value === 'string' && value.trim().length > 0 && value.length <= 120 && !/[\x00-\x1f\x7f-\x9f]/.test(value)
       : key === 'filter' ? collectionFilter(value)
       : key === 'tags' ? tags(value)
@@ -88,6 +90,11 @@ export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'workspace.restore', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : method === 'workspace.import' ? fields(value, ['workspace', 'importedIds', 'renamedCount']) && snapshot(value.workspace)
+      && value.workspace.revision === params.expectedRevision + 1 && Array.isArray(value.importedIds) && value.importedIds.length === params.paths.length
+      && value.importedIds.every(id) && new Set(value.importedIds).size === value.importedIds.length
+      && value.importedIds.every(id => value.workspace.scripts.some(s => s.id === id && s.folderId === params.folderId))
+      && Number.isInteger(value.renamedCount) && value.renamedCount >= 0 && value.renamedCount <= value.importedIds.length && (params.renameConflicts || value.renamedCount === 0)
     : method === 'workspace.export' ? fields(value, ['archivePath', 'workspaceId', 'revision', 'schemaVersion', 'scriptCount', 'sourceBytes'])
       && typeof value.archivePath === 'string' && id(value.workspaceId) && value.revision === params.expectedRevision && [1, 2, 3, 4, 5].includes(value.schemaVersion)
       && Number.isInteger(value.scriptCount) && value.scriptCount >= 0 && value.scriptCount <= 1000

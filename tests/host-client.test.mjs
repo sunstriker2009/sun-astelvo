@@ -144,3 +144,16 @@ test('archive contracts accept only native host paths/bounded results and correl
   assert.doesNotThrow(() => assertResult('workspace.export', result, params));
   for (const extra of [{ revision: 2 }, { scriptCount: 1001 }, { sourceBytes: 65 * 1024 * 1024 }, { schemaVersion: 99 }]) assert.throws(() => assertResult('workspace.export', { ...result, ...extra }, params));
 });
+
+test('loose import contract bounds native selections and correlates complete imported identities/destination/conflict policy', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const params = { paths: ['/selected/script.js'], folderId: null, expectedRevision: 1, renameConflicts: false };
+  assert.doesNotThrow(() => assertRequest('workspace.import', params));
+  for (const extra of [{ paths: [] }, { paths: Array(33).fill('/file.js') }, { paths: [''] }, { renameConflicts: 'yes' }, { content: 'renderer bytes' }]) assert.throws(() => assertRequest('workspace.import', { ...params, ...extra }));
+  const script = { id, name: 'script', language: 'javascript', folderId: null, sourceHash: 'a'.repeat(64) };
+  const workspace = { root: '/workspace', schemaVersion: 1, id, name: 'Workspace', revision: 2, folders: [], scripts: [script] };
+  const result = { workspace, importedIds: [id], renamedCount: 0 };
+  assert.doesNotThrow(() => assertResult('workspace.import', result, params));
+  for (const extra of [{ importedIds: [] }, { renamedCount: 1 }, { workspace: { ...workspace, revision: 1 } }, { workspace: { ...workspace, scripts: [] } }]) assert.throws(() => assertResult('workspace.import', { ...result, ...extra }, params));
+});

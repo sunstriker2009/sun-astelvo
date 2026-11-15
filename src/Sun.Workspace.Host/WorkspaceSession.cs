@@ -34,6 +34,10 @@ internal sealed class WorkspaceSession : IDisposable
         var active = workspace ?? throw new WorkspaceException("no_workspace", "Create or open a workspace first.");
         switch (method)
         {
+            case "workspace.import":
+                Keys(p, "paths", "folderId", "expectedRevision", "renameConflicts");
+                var paths = p.GetProperty("paths").EnumerateArray().Select(path => path.GetString() ?? throw Invalid()).ToList();
+                return active.ImportScripts(paths, OptionalId(p, "folderId"), Revision(p), p.GetProperty("renameConflicts").GetBoolean());
             case "workspace.export":
                 Keys(p, "archivePath", "expectedRevision");
                 return active.ExportArchive(Text(p, "archivePath"), Revision(p));
