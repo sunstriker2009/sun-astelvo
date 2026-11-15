@@ -1,12 +1,20 @@
-<p align="center">
-  <img src="branding/assets/readme-banner.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
-</p>
+<div align="center">
+
+<img src="branding/assets/readme-banner.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%" />
 
 # ASTELVO by Sun
 
 **Organize. Script. Explore.**
 
-A local code organizer and interactive scripting workspace. Organize scripts using folders, tags and smart collections, edit with language-aware tools, and try JavaScript, Python and C# through local runtime adapters.
+**A local code organizer and interactive scripting workspace.**
+
+Keep useful scripts in a workspace you control, organize them into folders, and return to your work without losing context. ASTELVO is growing toward a unified place to organize, edit and try JavaScript, Python and C# through local runtime adapters, with tags, smart collections and language-aware tools planned.
+
+[Local Development](docs/operations/LOCAL-DEVELOPMENT.md) · [Architecture](docs/architecture/OVERVIEW.md) · [Roadmap](docs/roadmap/MILESTONES.md)
+
+</div>
+
+---
 
 ## Project status
 
