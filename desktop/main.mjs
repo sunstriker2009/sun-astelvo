@@ -83,6 +83,22 @@ async function startDesktop() {
       buttons: ['Upgrade and save', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
+  ipcMain.handle('astelvo:confirm-collections-upgrade', event => {
+    trusted(event);
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Enable saved collections?', message: 'Upgrade this workspace to format v5 for saved collections?',
+      detail: 'Older ASTELVO builds cannot open format v5. Exact pre-upgrade metadata is retained beside workspace.json. Scripts, tags, favourites and recycle-bin contents are preserved.',
+      buttons: ['Upgrade and save collection', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
+  ipcMain.handle('astelvo:confirm-delete-collection', event => {
+    trusted(event);
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Delete saved collection?', message: 'Delete this saved filter definition?',
+      detail: 'Scripts, folders and source files are retained. Collection deletion has no undo.',
+      buttons: ['Delete collection', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
   let choosing = false;
   ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
     trusted(event);
@@ -97,7 +113,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
+    if (!['workspace.close', 'collection.create', 'collection.update', 'collection.delete', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

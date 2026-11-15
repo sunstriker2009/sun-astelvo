@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor work through folder recycle PR #26 are merged with passing CI. Tags/favourites and combined folder/name/language/tag/favourite metadata filters are implemented and locally validated in `feature/m1-tags-favourites` ([evidence](operations/M1-TAGS-FAVOURITES-VALIDATION.md)): explicit v4 upgrade/checkpoint and preserved source/identity/recycle metadata. Check the new PR for CI/merge state. Saved collections and indexed source search are next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
+The foundation, branding and organizer/editor work through tags/favourites PR #27 are merged with passing CI. Saved metadata collections are implemented and locally validated in `feature/m1-saved-collections` ([evidence](operations/M1-COLLECTIONS-VALIDATION.md)): explicit v5 checkpoint/migration, stable filter definitions and dormant recycled-folder scopes. Check the new PR for CI/merge state. Indexed source search/index rebuild and collection predicate extensions remain next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
 
 ## Sources
 
@@ -246,3 +246,8 @@ Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subt
 ### Tags and favourites — 2026-11-15
 
 Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.
+
+
+### Saved collections baseline — 2026-11-15
+
+Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.

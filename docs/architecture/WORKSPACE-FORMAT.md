@@ -1,4 +1,4 @@
-# Workspace formats v1–v4
+# Workspace formats v1–v5
 
 Status: implemented for the first M1 slice; full organizer acceptance remains open.
 
@@ -68,7 +68,7 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 - Host methods: information, workspace open/close, folder create/rename/move/duplicate/delete/restore, script create/read/save/duplicate/delete/restore/classify. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, saved collections, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 
@@ -116,3 +116,18 @@ Classification contains a required `tags` string array and required boolean `fav
 The UI provides explicit Save tags and favourite. Label edits have their own unsaved indicator and navigation/quit guard. Saving source text retains an unsaved label draft; saving labels requires a clean saved source buffer and keeps source content/Monaco undo state. Script/folder duplication and deletion require saved label drafts as well. OS termination can still lose unsaved labels or source: autosave/recovery is unfinished.
 
 The script list combines direct selected-folder scope, case-insensitive name substring, language, case-insensitive exact tag and favourites-only filters with AND. The all-scripts view spans active folders. Only active scripts appear in the list/tag vocabulary. Clearing filters restores all active scripts in the current folder scope. Filters are local UI state and reset when selecting/opening a workspace. This is bounded metadata filtering, not indexed full-text/source search; saved collections, persistent search/index rebuild, recency filters and Windows performance acceptance remain unfinished.
+
+
+## Saved collections and explicit v5 upgrade
+
+The first `collection.create` explicitly confirms format v5, retains the exact pre-upgrade v1/v2/v3/v4 manifest through the existing checkpoint mechanism, and initializes the required `collections` array. Direct upgrades from v1–v3 also initialize every script's v4 classification across all live/recycle partitions. Existing tags, favourite state, folder/script identities, source hashes and deleted states are preserved. Ordinary operations on v1–v4 retain their existing schema until an explicit feature upgrade. V5 operations retain v5, including classification and folder/script recycling. Collections fields on older versions, absent/null arrays on v5 and unknown nested fields fail closed.
+
+Each collection is `{id, name, filter}`. Filter fields are all required: `nameContains` (trimmed string, 0–120 UTF-16 units without controls), nullable `language` (JavaScript/Python/C# identifier), nullable `folderId`, nullable `tag` (same label rules as classification), and boolean `favouritesOnly`. Null folder means all active folders; a concrete folder means its direct scripts. Conditions combine with AND using the existing metadata-filter semantics. Names and tags match case-insensitively in the desktop view; tag matching is exact and name matching is substring-based. The current baseline saves one tag condition. Multiple-tag groups, recency and indexed source/text conditions are future extensions, not implicit fields.
+
+Collections have stable GUID identities, globally unique among live/recycled folders/scripts/other collections, and case-insensitively unique names. The preview limit is 100 saved collections within the existing 1 MiB manifest cap. `collection.create`, `collection.update` and `collection.delete` take the expected workspace revision; create additionally takes upgrade consent. Updates keep identity while replacing the explicit name/filter; deletion removes only the saved filter definition and has no undo. All use manifest freshness checks and the same atomic commit point; no source files are written and scripts are never copied into a collection.
+
+A concrete scope must reference a live folder or a folder retained in the folder recycle bin. Recycling/renaming/moving a folder retains the collection's original identity reference without widening to all folders. A scope in the recycle bin produces zero results with a visible explanation; restoration reactivates the same scope automatically. Tags absent from active scripts also give zero results, and their saved filter value remains visible. A dangling folder reference not present in either live/recycled metadata is rejected. Future purge/import work must handle these references explicitly.
+
+The desktop can save the current working filters as a new collection, apply/reload a saved definition, rename/update it from current filters, and delete it after a native confirmation that defaults to Cancel. Working filters can differ from the selected collection; only explicit Update changes its persisted definition. Switching collections/filters leaves the open editor and unsaved source/label drafts intact. A currently applied deleted folder scope stays empty immediately after deletion; choosing a different working folder is explicit. Create script/folder is disabled in an unavailable scope. Reopen preserves definitions but resets the transient working selection.
+
+Checkpoints/temp leftovers from a failed pre-commit upgrade are ignored/preserved on restart. Lost responses may have committed; reopen and inspect before retrying. Existing power-loss and local-filesystem limitations apply. This is saved metadata filtering, not the planned SQLite catalog/full-text index or search-performance acceptance.

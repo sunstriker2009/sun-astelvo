@@ -13,7 +13,9 @@ type Folder = { id: string; name: string; parentId: string | null };
 type Classification = { tags: string[]; favourite: boolean };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string; classification?: Classification };
 type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
-type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[] };
+type CollectionFilter = { nameContains: string; language: Language | null; folderId: string | null; tag: string | null; favouritesOnly: boolean };
+type SmartCollection = { id: string; name: string; filter: CollectionFilter };
+type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[]; collections: SmartCollection[] };
 type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean; classification: Classification };
 type Draft = Pick<Document, 'name' | 'language' | 'folderId'>;
 type Result<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
@@ -26,11 +28,16 @@ declare global {
       confirmDeleteFolder: (upgrade: boolean) => Promise<boolean>;
       confirmDeleteScript: (upgrade: boolean) => Promise<boolean>;
       confirmClassificationUpgrade: () => Promise<boolean>;
+      confirmCollectionsUpgrade: () => Promise<boolean>;
+      confirmDeleteCollection: () => Promise<boolean>;
       confirmDiscard: () => Promise<boolean>;
       workspace: {
         create: () => Promise<Result<Workspace>>;
         open: () => Promise<Result<Workspace>>;
         close: () => Promise<Result<null>>;
+        createCollection: (input: { name: string; filter: CollectionFilter; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<{ workspace: Workspace; collectionId: string }>>;
+        updateCollection: (input: { id: string; name: string; filter: CollectionFilter; expectedRevision: number }) => Promise<Result<Workspace>>;
+        deleteCollection: (input: { id: string; expectedRevision: number }) => Promise<Result<Workspace>>;
         createFolder: (input: { name: string; parentId: string | null }) => Promise<Result<Workspace>>;
         renameFolder: (input: { id: string; name: string }) => Promise<Result<Workspace>>;
         moveFolder: (input: { id: string; parentId: string | null }) => Promise<Result<Workspace>>;
@@ -77,6 +84,8 @@ function App() {
   const [tagText, setTagText] = useState('');
   const [favourite, setFavourite] = useState(false);
   const [classificationDirty, setClassificationDirty] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState('');
+  const [collectionName, setCollectionName] = useState('');
   const [filterText, setFilterText] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -174,7 +183,7 @@ function App() {
     void run(async () => {
       if (!await canLeave()) return;
       const next = unwrap(await (create ? window.astelvo.workspace.create() : window.astelvo.workspace.open()));
-      clearFilters(); setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
+      clearFilters(); setSelectedCollectionId(''); setCollectionName(''); setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
     });
   }
   function openScript(id: string, reload = false) {
@@ -223,7 +232,15 @@ function App() {
     }
     return true;
   });
-  const availableTags = [...new Set((workspace?.scripts ?? []).flatMap(s => s.classification?.tags ?? []))].sort((a, b) => a.localeCompare(b));
+  const availableTags = [...new Set([...(workspace?.scripts ?? []).flatMap(s => s.classification?.tags ?? []), ...(filterTag ? [filterTag] : [])])].sort((a, b) => a.localeCompare(b));
+  const currentCollection = workspace?.collections.find(c => c.id === selectedCollectionId);
+  const currentFilter: CollectionFilter = { nameContains: filterText.trim(), language: (filterLanguage || null) as Language | null, folderId: selectedFolder, tag: filterTag || null, favouritesOnly };
+  const scopeUnavailable = selectedFolder !== null && !workspace?.folders.some(f => f.id === selectedFolder);
+  function applyCollection(collection: SmartCollection) {
+    setSelectedCollectionId(collection.id); setCollectionName(collection.name); selectFolder(collection.filter.folderId);
+    setFilterText(collection.filter.nameContains); setFilterLanguage(collection.filter.language ?? ''); setFilterTag(collection.filter.tag ?? ''); setFavouritesOnly(collection.filter.favouritesOnly);
+    setStatus('Saved collection applied. Working filters can be changed without modifying its saved definition.');
+  }
   const scripts = [...workspace?.scripts ?? []].filter(s => (selectedFolder === null || s.folderId === selectedFolder)
     && s.name.toLowerCase().includes(filterText.trim().toLowerCase())
     && (!filterLanguage || s.language === filterLanguage)
@@ -244,6 +261,33 @@ function App() {
     <section className="workspace">
       <aside>
         {!workspace ? <p>Create a workspace in an empty local folder, or open one you already use.</p> : <>
+          <details><summary>Saved collections</summary>
+            <label>Saved collection<select disabled={busy} value={selectedCollectionId} onChange={event => {
+              const collection = workspace.collections.find(c => c.id === event.target.value);
+              if (collection) applyCollection(collection); else { setSelectedCollectionId(''); setCollectionName(''); }
+            }}><option value="">Choose a collection</option>{[...workspace.collections].sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+            <form onSubmit={event => { event.preventDefault(); void run(async () => {
+              const upgrade = workspace.schemaVersion < 5;
+              if (upgrade && !await window.astelvo.confirmCollectionsUpgrade()) return;
+              const next = unwrap(await window.astelvo.workspace.createCollection({ name: collectionName.trim(), filter: currentFilter, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
+              setWorkspace(next.workspace); setSelectedCollectionId(next.collectionId); setCollectionName(next.workspace.collections.find(c => c.id === next.collectionId)!.name); setStatus('Collection saved from the current filters.');
+            }); }}>
+              <label>Collection name<input required maxLength={120} disabled={busy} value={collectionName} onChange={event => setCollectionName(event.target.value)} /></label>
+              <button disabled={busy}>Save as new collection</button>
+              <button type="button" disabled={busy || !currentCollection} onClick={() => void run(async () => {
+                const next = unwrap(await window.astelvo.workspace.updateCollection({ id: selectedCollectionId, name: collectionName.trim(), filter: currentFilter, expectedRevision: workspace.revision }));
+                setWorkspace(next); setCollectionName(next.collections.find(c => c.id === selectedCollectionId)!.name); setStatus('Collection name and filters updated.');
+              })}>Update collection</button>
+              <button type="button" disabled={busy || !currentCollection} onClick={() => currentCollection && applyCollection(currentCollection)}>Reload collection</button>
+              <button type="button" disabled={busy || !currentCollection} onClick={() => void run(async () => {
+                if (!await window.astelvo.confirmDeleteCollection()) return;
+                setWorkspace(unwrap(await window.astelvo.workspace.deleteCollection({ id: selectedCollectionId, expectedRevision: workspace.revision })));
+                setSelectedCollectionId(''); setCollectionName(''); setStatus('Collection deleted. Scripts and working filters are unchanged.');
+              })}>Delete collection</button>
+            </form>
+            <p className="muted">Collections save the current folder/name/language/tag/favourite filters. Changing the working view only changes the saved definition when you choose Update collection. No source or recency search yet.</p>
+          </details>
+          {scopeUnavailable && <p role="note">This collection's folder is in the recycle bin. Restore it or select a live folder; results stay empty.</p>}
           <h2>Folders</h2>
           <nav aria-label="Workspace folders">
             <button className="folder" disabled={busy} aria-pressed={selectedFolder === null} onClick={() => selectFolder(null)}>All scripts</button>
@@ -254,7 +298,7 @@ function App() {
             setWorkspace(unwrap(await window.astelvo.workspace.createFolder({ name: folderName.trim(), parentId: selectedFolder }))); setFolderName(''); setStatus('Folder created.');
           }); }}>
             <label>New folder{selectedFolder ? ' inside selected folder' : ''}<input value={folderName} maxLength={120} required disabled={busy} onChange={e => setFolderName(e.target.value)} /></label>
-            <button disabled={busy}>Add folder</button>
+            <button disabled={busy || scopeUnavailable}>Add folder</button>
           </form></details>
           {selectedFolder && <form onSubmit={event => { event.preventDefault(); void run(async () => {
             setWorkspace(unwrap(await window.astelvo.workspace.renameFolder({ id: selectedFolder, name: renameName.trim() }))); setStatus('Folder renamed.');
@@ -295,7 +339,7 @@ function App() {
               if (!await window.astelvo.confirmDeleteFolder(upgrade)) return;
               const next = unwrap(await window.astelvo.workspace.deleteFolder({ id: selected.id, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
               if (documentRef.current && !next.scripts.some(s => s.id === documentRef.current!.id)) display(null);
-              setWorkspace(next); selectFolder(null); setRestoreId(''); setStatus('Folder moved to recycle bin. Source files retained.');
+              setWorkspace(next); if (currentCollection?.filter.folderId !== selectedFolder) selectFolder(null); setRestoreId(''); setStatus('Folder moved to recycle bin. Source files retained.');
             });
           }}>Delete folder</button>}
           <h2>Scripts</h2>
@@ -315,7 +359,7 @@ function App() {
           }); }}>
             <label>New script name<input required maxLength={120} value={scriptName} disabled={busy} onChange={e => setScriptName(e.target.value)} /></label>
             <label>New script language<select value={newLanguage} disabled={busy} onChange={e => setNewLanguage(e.target.value as Language)}>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <button disabled={busy}>Create script</button>
+            <button disabled={busy || scopeUnavailable}>Create script</button>
           </form></details>
           {document && <details><summary>Duplicate current script</summary>
             <p className="muted">Copy the saved revision of {document.name}. Save any changes and resolve external edits first.</p>

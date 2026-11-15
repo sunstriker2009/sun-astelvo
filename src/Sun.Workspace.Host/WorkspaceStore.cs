@@ -18,6 +18,8 @@ internal sealed record Script(Guid Id, string Name, string Language, Guid? Folde
     public Classification? Classification { get; init; }
 }
 internal sealed record DeletedFolderTree(Guid RootId, List<Folder> Folders, List<Script> Scripts, List<Script> DeletedScripts);
+internal sealed record CollectionFilter(string NameContains, string? Language, Guid? FolderId, string? Tag, bool FavouritesOnly);
+internal sealed record SmartCollection(Guid Id, string Name, CollectionFilter Filter);
 internal sealed record Manifest
 {
     public required string Format { get; init; }
@@ -31,6 +33,8 @@ internal sealed record Manifest
     public List<Script>? DeletedScripts { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<DeletedFolderTree>? DeletedFolderTrees { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<SmartCollection>? Collections { get; init; }
 }
 
 internal sealed class WorkspaceStore : IDisposable
@@ -98,7 +102,7 @@ internal sealed class WorkspaceStore : IDisposable
         catch { lease.Dispose(); throw; }
     }
 
-    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts, deletedScripts = manifest.DeletedScripts ?? [], deletedFolderTrees = manifest.DeletedFolderTrees ?? [] };
+    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts, deletedScripts = manifest.DeletedScripts ?? [], deletedFolderTrees = manifest.DeletedFolderTrees ?? [], collections = manifest.Collections ?? [] };
 
     public void Refresh()
     {
@@ -339,21 +343,69 @@ internal sealed class WorkspaceStore : IDisposable
         ValidateClassification(classification);
         if (manifest.SchemaVersion < 4 && !allowUpgrade)
             throw Error("upgrade_required", "Tags and favourites require workspace format v4. Confirm the upgrade; older ASTELVO builds cannot open v4 workspaces.");
-        Script Upgrade(Script script) => script with { Classification = script.Classification ?? new([], false) };
-        var next = manifest with
-        {
-            SchemaVersion = 4,
-            Scripts = manifest.Scripts.Select(script => script.Id == id ? script with { Classification = classification } : Upgrade(script)).ToList(),
-            DeletedScripts = (manifest.DeletedScripts ?? []).Select(Upgrade).ToList(),
-            DeletedFolderTrees = (manifest.DeletedFolderTrees ?? []).Select(tree => tree with
-            {
-                Scripts = tree.Scripts.Select(Upgrade).ToList(), DeletedScripts = tree.DeletedScripts.Select(Upgrade).ToList()
-            }).ToList()
-        };
+        var next = UpgradeMetadata(4);
+        next = next with { Scripts = next.Scripts.Select(script => script.Id == id ? script with { Classification = classification } : script).ToList() };
         PreflightCommit(next);
         BackupBeforeUpgrade(4);
         Commit(next);
         return Snapshot();
+    }
+
+    public object CreateCollection(string name, CollectionFilter filter, long expectedRevision, bool allowUpgrade)
+    {
+        CheckRevision(expectedRevision);
+        if (manifest.SchemaVersion < 5 && !allowUpgrade)
+            throw Error("upgrade_required", "Saved collections require workspace format v5. Confirm the upgrade; older ASTELVO builds cannot open v5 workspaces.");
+        var collection = new SmartCollection(Guid.NewGuid(), Name(name), filter);
+        var next = UpgradeMetadata(5);
+        next = next with { Collections = [.. next.Collections!, collection] };
+        PreflightCommit(next);
+        BackupBeforeUpgrade(5);
+        Commit(next);
+        return new { workspace = Snapshot(), collectionId = collection.Id };
+    }
+
+    public object UpdateCollection(Guid id, string name, CollectionFilter filter, long expectedRevision)
+    {
+        CheckRevision(expectedRevision);
+        if (!(manifest.Collections ?? []).Any(c => c.Id == id)) throw Error("not_found", "Collection not found.");
+        var collection = new SmartCollection(id, Name(name), filter);
+        Commit(manifest with { Collections = manifest.Collections!.Select(c => c.Id == id ? collection : c).ToList() });
+        return Snapshot();
+    }
+
+    public object DeleteCollection(Guid id, long expectedRevision)
+    {
+        CheckRevision(expectedRevision);
+        if (!(manifest.Collections ?? []).Any(c => c.Id == id)) throw Error("not_found", "Collection not found.");
+        Commit(manifest with { Collections = manifest.Collections!.Where(c => c.Id != id).ToList() });
+        return Snapshot();
+    }
+
+    private Manifest UpgradeMetadata(int minimumVersion)
+    {
+        if (manifest.SchemaVersion >= minimumVersion) return manifest;
+        Script Upgrade(Script script) => script with { Classification = script.Classification ?? new([], false) };
+        return manifest with
+        {
+            SchemaVersion = minimumVersion,
+            Scripts = manifest.Scripts.Select(Upgrade).ToList(),
+            DeletedScripts = (manifest.DeletedScripts ?? []).Select(Upgrade).ToList(),
+            DeletedFolderTrees = (manifest.DeletedFolderTrees ?? []).Select(tree => tree with
+            {
+                Scripts = tree.Scripts.Select(Upgrade).ToList(), DeletedScripts = tree.DeletedScripts.Select(Upgrade).ToList()
+            }).ToList(),
+            Collections = minimumVersion >= 5 ? manifest.Collections ?? [] : manifest.Collections
+        };
+    }
+
+    private static void ValidateCollectionFilter(CollectionFilter filter, HashSet<Guid> folders)
+    {
+        if (filter == null || filter.NameContains == null || filter.NameContains.Length > 120 || filter.NameContains != filter.NameContains.Trim()
+            || filter.NameContains.Any(char.IsControl) || filter.FolderId != null && !folders.Contains(filter.FolderId.Value))
+            throw Error("invalid_request", "Invalid collection name filter or folder scope.");
+        if (filter.Language != null) Language(filter.Language);
+        if (filter.Tag != null) ValidateClassification(new([filter.Tag], false));
     }
 
     private static void ValidateClassification(Classification value)
@@ -480,9 +532,10 @@ internal sealed class WorkspaceStore : IDisposable
 
     private static void Validate(Manifest value)
     {
-        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2 or 3 or 4)
+        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2 or 3 or 4 or 5)
             || (value.SchemaVersion == 1 ? value.DeletedScripts != null : value.DeletedScripts == null)
             || (value.SchemaVersion < 3 ? value.DeletedFolderTrees != null : value.DeletedFolderTrees == null)
+            || (value.SchemaVersion < 5 ? value.Collections != null : value.Collections == null)
             || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
             throw Error("invalid_workspace", "Unsupported or invalid workspace manifest.");
         Name(value.Name);
@@ -514,6 +567,16 @@ internal sealed class WorkspaceStore : IDisposable
                 || tree.Scripts.Concat(tree.DeletedScripts).Any(s => s.FolderId == null))
                 throw Error("invalid_workspace", "Deleted folder trees must be connected and contain only their own scripts.");
         }
+        var collections = value.Collections ?? [];
+        if (collections.Count > 100) throw Error("limit_exceeded", "Preview limit: 100 saved collections.");
+        var folderIds = value.Folders.Concat(trees.SelectMany(t => t.Folders)).Select(f => f.Id).ToHashSet();
+        foreach (var collection in collections)
+        {
+            if (collection == null || collection.Id == Guid.Empty || !ids.Add(collection.Id)) throw Error("invalid_workspace", "Invalid or duplicate collection identity.");
+            Name(collection.Name); ValidateCollectionFilter(collection.Filter, folderIds);
+        }
+        if (collections.GroupBy(c => c.Name.ToUpperInvariant()).Any(g => g.Count() > 1))
+            throw Error("invalid_request", "Collection names must be unique ignoring case.");
     }
 
     private static void ValidatePartition(List<Folder> folderList, List<Script> scripts, List<Script> deleted, HashSet<Guid> ids)
@@ -575,6 +638,8 @@ internal sealed class WorkspaceStore : IDisposable
                 : value.ValueKind == JsonValueKind.Array && value.EnumerateArray().Any(HasClassification);
             if (HasClassification(document.RootElement)) throw Error("invalid_workspace", "Classification metadata requires workspace schema v4.");
         }
+        if (document.RootElement.TryGetProperty("schemaVersion", out schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out version) && version < 5 && document.RootElement.TryGetProperty("collections", out _))
+            throw Error("invalid_workspace", "Saved collections require workspace schema v5.");
         return JsonSerializer.Deserialize<Manifest>(bytes, Json) ?? throw Error("invalid_workspace", "Workspace manifest is missing.");
     }
 
