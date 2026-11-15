@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation and branding are merged. M0 automated Windows portable acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). Organizer persistence, folder moves and script duplication are now merged through PRs #14–#16. Folder subtree duplication is implemented and locally validated in `feature/m1-folder-duplicate` ([evidence](operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); the portable [workspace format](architecture/WORKSPACE-FORMAT.md) remains v1. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) now authorizes CI-gated auto-merge and final manual product review. New organizer Windows, interactive/clean-machine and governance enforcement acceptance remain open. Delete/restore and the rest of M1–M5 stay unfinished; no script runner is implemented.
+The foundation, branding and organizer/editor improvements through PR #24 are merged. Folder subtree duplication (#18), script write preflight (#19), Monaco commands (#20) and save buffer preservation (#21) extend the original persistence/move/script-copy slices. Script recycle bin is implemented and locally validated in `feature/m1-script-recycle-bin` ([evidence](operations/M1-SCRIPT-RECYCLE-VALIDATION.md)), with an explicitly confirmed v2 upgrade and identity-preserving restore. Check the PR for required CI and merge state. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Folder subtree delete/restore is next; remaining M1–M5 work, new organizer Windows, interactive/clean-machine and governance enforcement acceptance remain open. No script runner is implemented. The M0 Windows baseline remains distinct.
 
 ## Sources
 
@@ -231,3 +231,8 @@ Validate dependency versions, formatter packaging and platform behaviour during 
 ### Save buffer preservation — 2026-11-14
 
 Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
+
+
+### Script recycle bin — 2026-11-15
+
+Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('astelvo', Object.freeze({
   hostInfo: () => ipcRenderer.invoke('astelvo:host-info'),
   confirmDiscard: () => ipcRenderer.invoke('astelvo:confirm-discard'),
+  confirmDeleteScript: upgrade => ipcRenderer.invoke('astelvo:confirm-delete-script', upgrade),
   workspace: Object.freeze({
     create: () => ipcRenderer.invoke('astelvo:choose-workspace', true),
     open: () => ipcRenderer.invoke('astelvo:choose-workspace', false),
@@ -13,6 +14,8 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
     createScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.create', input),
     readScript: id => ipcRenderer.invoke('astelvo:workspace-command', 'script.read', { id }),
     duplicateScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.duplicate', input),
+    deleteScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.delete', input),
+    restoreScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.restore', input),
     saveScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.save', input)
   })
 }));

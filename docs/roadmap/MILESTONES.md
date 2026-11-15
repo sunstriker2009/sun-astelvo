@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication locally validated; Windows organizer, delete/restore, tags/search and backup/import/export acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin locally validated; folder delete/restore, Windows organizer, tags/search and backup/import/export acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-PRs [#14](https://github.com/sunstriker2009/sun-astelvo/pull/14), [#15](https://github.com/sunstriker2009/sun-astelvo/pull/15) and [#16](https://github.com/sunstriker2009/sun-astelvo/pull/16) are merged. Main `8bf8a52` has the same tree as the validated script-duplication head. Folder moves were reconciled with the squash-merged foundation without rewriting branch history; the refreshed CI passed in [run 43634097751](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43634097751).
+Main `a1f1456` contains merged implementation PRs #14–#21 and subsequent branding/introduction PRs through #24. Workspace persistence, folder moves, script/folder duplication, write preflight and editor command/save improvements are merged.
 
-Folder subtree duplication is implemented in `feature/m1-folder-duplicate`, directly on that main tree ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)). Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md) to this and subsequent ready implementation PRs. The former review-ready stack is complete; delete/restore is the next organizer batch, followed by tags/collections/search and import/export/backup.
+Script recycle bin is implemented and locally validated in `feature/m1-script-recycle-bin` ([evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md)). First delete explicitly upgrades to format v2 with a retained v1 metadata checkpoint; restore preserves the original identity. The PR/required CI must still be checked for merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-New organizer Windows, interactive/clean-machine and governance enforcement follow-ups remain open and distinct from the M0 baseline. M2–M5 are planned; final manual product acceptance remains required.
+Folder subtree delete/restore is next, followed by tags/collections/search and safe import/export/backup. New organizer Windows, interactive/clean-machine and governance enforcement follow-ups remain open and distinct from the M0 baseline. Remaining M1–M5 implementation and acceptance continue.
 
 ## M0 foundation evidence
 
@@ -39,3 +39,8 @@ Find/replace and command palette contributions are now registered explicitly in 
 ### Save buffer preservation — 2026-11-14
 
 Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
+
+
+### Script recycle bin — 2026-11-15
+
+Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.

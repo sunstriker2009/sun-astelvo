@@ -47,6 +47,14 @@ internal sealed class WorkspaceSession : IDisposable
                 var duplicateHash = Text(p, "expectedHash");
                 if (!WorkspaceStore.ValidHash(duplicateHash)) throw Invalid();
                 return active.DuplicateScript(Id(p, "id"), Text(p, "name"), OptionalId(p, "folderId"), duplicateHash);
+            case "script.delete":
+                Keys(p, "id", "expectedHash", "expectedRevision", "allowUpgrade");
+                var deleteHash = Text(p, "expectedHash");
+                if (!WorkspaceStore.ValidHash(deleteHash)) throw Invalid();
+                return active.DeleteScript(Id(p, "id"), deleteHash, Revision(p), p.GetProperty("allowUpgrade").GetBoolean());
+            case "script.restore":
+                Keys(p, "id", "name", "folderId", "expectedRevision");
+                return active.RestoreScript(Id(p, "id"), Text(p, "name"), OptionalId(p, "folderId"), Revision(p));
             case "script.save":
                 Keys(p, "id", "name", "language", "folderId", "content", "expectedHash");
                 var hash = Text(p, "expectedHash");
@@ -54,6 +62,11 @@ internal sealed class WorkspaceSession : IDisposable
                 return active.SaveScript(Id(p, "id"), Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"), Text(p, "content"), hash);
             default: throw Invalid();
         }
+    }
+    private static long Revision(JsonElement p)
+    {
+        var revision = p.GetProperty("expectedRevision").GetInt64();
+        return revision is >= 0 and <= 9_007_199_254_740_991 ? revision : throw Invalid();
     }
     private static void Keys(JsonElement value, params string[] allowed)
     {

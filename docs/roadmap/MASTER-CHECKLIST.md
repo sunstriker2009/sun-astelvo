@@ -26,8 +26,9 @@
 - [ ] Validate the new organizer on Windows through the extended manual acceptance workflow.
 - [x] Folder move to another parent/root with stable subtree/script identities; rejects cycles, missing destinations and case-insensitive sibling collisions. Merged [PR #15](https://github.com/sunstriker2009/sun-astelvo/pull/15); [local evidence](../operations/M1-FOLDER-MOVES-VALIDATION.md). Windows organizer acceptance remains open.
 - [x] Script duplication with explicit name/destination, new identity, reviewed committed content and independent source storage; merged [PR #16](https://github.com/sunstriker2009/sun-astelvo/pull/16) ([evidence](../operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Windows acceptance remains open.
-- [x] Folder subtree duplication with new identities, all-source preflight, aggregate limits and one manifest commit; locally validated in `feature/m1-folder-duplicate` ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); Windows acceptance remains open.
-- [ ] Remaining script/folder CRUD: delete/restore.
+- [x] Folder subtree duplication with new identities, all-source preflight, aggregate limits and one manifest commit; merged in [PR #18](https://github.com/sunstriker2009/sun-astelvo/pull/18) ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); Windows acceptance remains open.
+- [x] Script recycle bin and identity-preserving restore locally implemented/validated; explicit schema upgrade and conflict/recovery checks ([evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md)). Merge/CI and Windows acceptance remain separate.
+- [ ] Folder subtree delete/restore.
 - [ ] Tags, favourites, smart collection filters and indexed search.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.
@@ -75,3 +76,8 @@ v1 acceptance: import JS/Python/C#, organize via folders and overlapping tags, s
 ### Save buffer preservation — 2026-11-14
 
 Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
+
+
+### Script recycle bin — 2026-11-15
+
+Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.

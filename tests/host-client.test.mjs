@@ -45,3 +45,23 @@ test('folder duplicate contract validates revision bounds and the new destinatio
   assert.throws(() => assertResult('folder.duplicate', { workspace: { ...workspace, folders: [] }, folderId: copyId }, params));
   assert.throws(() => assertResult('folder.duplicate', { workspace: { ...workspace, revision: 10 }, folderId: copyId }, params));
 });
+
+test('recycle contract bounds consent/revisions and rejects misplaced delete/restore results', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const script = { id, name: 'Hello', language: 'javascript', folderId: null, sourceHash: 'a'.repeat(64) };
+  const params = { id, expectedHash: script.sourceHash, expectedRevision: 3, allowUpgrade: true };
+  const workspace = { root: '/workspace', schemaVersion: 2, id, name: 'Workspace', revision: 4, folders: [], scripts: [], deletedScripts: [script] };
+  assert.doesNotThrow(() => assertRequest('script.delete', params));
+  for (const changes of [{ allowUpgrade: 'yes' }, { expectedRevision: -1 }, { expectedHash: 'invalid' }, { path: '/outside' }])
+    assert.throws(() => assertRequest('script.delete', { ...params, ...changes }));
+  assert.doesNotThrow(() => assertResult('script.delete', workspace, params));
+  for (const changes of [{ schemaVersion: 1 }, { revision: 3 }, { scripts: [script] }, { deletedScripts: [] }, { deletedScripts: null }])
+    assert.throws(() => assertResult('script.delete', { ...workspace, ...changes }, params));
+  const restore = { id, name: 'Restored', folderId: null, expectedRevision: 4 };
+  assert.doesNotThrow(() => assertRequest('script.restore', restore));
+  const restored = { ...workspace, revision: 5, deletedScripts: [], scripts: [{ ...script, name: 'Restored' }] };
+  assert.doesNotThrow(() => assertResult('script.restore', restored, restore));
+  for (const changes of [{ deletedScripts: [script] }, { scripts: [script] }, { revision: 4 }])
+    assert.throws(() => assertResult('script.restore', { ...restored, ...changes }, restore));
+});

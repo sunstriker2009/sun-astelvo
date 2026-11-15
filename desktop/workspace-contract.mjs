@@ -12,13 +12,15 @@ const shapes = {
   'folder.duplicate': ['id', 'name', 'parentId', 'expectedRevision'],
   'script.create': ['name', 'language', 'folderId'], 'script.read': ['id'],
   'script.duplicate': ['id', 'name', 'folderId', 'expectedHash'],
+  'script.delete': ['id', 'expectedHash', 'expectedRevision', 'allowUpgrade'],
+  'script.restore': ['id', 'name', 'folderId', 'expectedRevision'],
   'script.save': ['id', 'name', 'language', 'folderId', 'content', 'expectedHash']
 };
 export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
     const valid = key === 'path' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
-      : key === 'create' ? typeof value === 'boolean'
+      : key === 'create' || key === 'allowUpgrade' ? typeof value === 'boolean'
       : key === 'id' ? id(value)
       : key === 'folderId' || key === 'parentId' ? optionalId(value)
       : key === 'name' ? name(value)
@@ -29,11 +31,16 @@ export function assertRequest(method, params) {
     if (!valid) throw new Error(`Invalid ${key}`);
   }
 }
+function script(value) {
+  return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId) && hash(value.sourceHash);
+}
 function snapshot(value) {
-  return object(value) && typeof value.root === 'string' && value.schemaVersion === 1 && id(value.id) && name(value.name)
+  return object(value) && typeof value.root === 'string' && [1, 2].includes(value.schemaVersion) && id(value.id) && name(value.name)
     && Number.isSafeInteger(value.revision) && value.revision >= 0
     && Array.isArray(value.folders) && value.folders.length <= 200 && value.folders.every(f => object(f) && id(f.id) && name(f.name) && optionalId(f.parentId))
-    && Array.isArray(value.scripts) && value.scripts.length <= 1000 && value.scripts.every(s => object(s) && id(s.id) && name(s.name) && language(s.language) && optionalId(s.folderId) && hash(s.sourceHash));
+    && Array.isArray(value.scripts) && value.scripts.length <= 1000 && value.scripts.every(script)
+    && (value.schemaVersion === 1 ? value.deletedScripts === undefined || Array.isArray(value.deletedScripts) && value.deletedScripts.length === 0
+      : Array.isArray(value.deletedScripts) && value.scripts.length + value.deletedScripts.length <= 1000 && value.deletedScripts.every(script));
 }
 function document(value) {
   return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId)
@@ -46,6 +53,10 @@ export function assertResult(method, value, params) {
     : method === 'folder.duplicate' ? object(value) && snapshot(value.workspace) && id(value.folderId) && value.folderId !== params.id
       && value.workspace.revision === params.expectedRevision + 1
       && value.workspace.folders.some(f => f.id === value.folderId && f.name === params.name && f.parentId === params.parentId)
+    : method === 'script.delete' ? snapshot(value) && value.schemaVersion === 2 && value.revision === params.expectedRevision + 1
+      && !value.scripts.some(s => s.id === params.id) && value.deletedScripts.some(s => s.id === params.id && s.sourceHash === params.expectedHash)
+    : method === 'script.restore' ? snapshot(value) && value.schemaVersion === 2 && value.revision === params.expectedRevision + 1
+      && !value.deletedScripts.some(s => s.id === params.id) && value.scripts.some(s => s.id === params.id && s.name === params.name && s.folderId === params.folderId)
     : method === 'script.read' ? document(value) && value.id === params.id
     : ['script.create', 'script.save', 'script.duplicate'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document)
       && (method !== 'script.save' || value.document.id === params.id)

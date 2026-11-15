@@ -11,7 +11,7 @@ import './style.css';
 type Language = 'javascript' | 'python' | 'csharp';
 type Folder = { id: string; name: string; parentId: string | null };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string };
-type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[] };
+type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
 type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean };
 type Draft = Pick<Document, 'name' | 'language' | 'folderId'>;
 type Result<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
@@ -21,6 +21,7 @@ declare global {
   interface Window {
     astelvo: {
       hostInfo: () => Promise<HostResponse>;
+      confirmDeleteScript: (upgrade: boolean) => Promise<boolean>;
       confirmDiscard: () => Promise<boolean>;
       workspace: {
         create: () => Promise<Result<Workspace>>;
@@ -33,6 +34,8 @@ declare global {
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
         duplicateScript: (input: { id: string; name: string; folderId: string | null; expectedHash: string }) => Promise<Result<WriteResult>>;
+        deleteScript: (input: { id: string; expectedHash: string; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<Workspace>>;
+        restoreScript: (input: { id: string; name: string; folderId: string | null; expectedRevision: number }) => Promise<Result<Workspace>>;
         saveScript: (input: Draft & { id: string; content: string; expectedHash: string }) => Promise<Result<WriteResult>>;
       };
     };
@@ -71,6 +74,9 @@ function App() {
   const [folderCopyParent, setFolderCopyParent] = useState<string | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
+  const [restoreId, setRestoreId] = useState('');
+  const [restoreName, setRestoreName] = useState('');
+  const [restoreFolder, setRestoreFolder] = useState<string | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
   const [duplicateFolder, setDuplicateFolder] = useState<string | null>(null);
 
@@ -139,7 +145,7 @@ function App() {
     void run(async () => {
       if (!await canLeave()) return;
       const next = unwrap(await (create ? window.astelvo.workspace.create() : window.astelvo.workspace.open()));
-      setWorkspace(next); setSelectedFolder(null); display(null); setStatus('Workspace opened. Select or create a script.');
+      setWorkspace(next); setSelectedFolder(null); setRestoreId(''); display(null); setStatus('Workspace opened. Select or create a script.');
     });
   }
   function openScript(id: string, reload = false) {
@@ -275,6 +281,33 @@ function App() {
           </details>}
           <nav aria-label="Saved scripts">{scripts.map(script => <button className="script" aria-pressed={document?.id === script.id} key={script.id} disabled={busy} onClick={() => openScript(script.id)}><span>{script.name}</span><small>{languages[script.language]}{script.folderId ? ' · ' + folderLabel(script.folderId) : ''}</small></button>)}</nav>
           {scripts.length === 0 && <p className="muted">No scripts here yet.</p>}
+          {document && <button disabled={busy || dirty || document.externalChanged} onClick={() => {
+            if (dirtyRef.current || documentRef.current?.externalChanged) return;
+            void run(async () => {
+              const upgrade = workspace.schemaVersion === 1;
+              if (!await window.astelvo.confirmDeleteScript(upgrade)) return;
+              const current = documentRef.current!;
+              const next = unwrap(await window.astelvo.workspace.deleteScript({ id: current.id, expectedHash: current.hash, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
+              setWorkspace(next); display(null); setStatus('Script moved to recycle bin. Source files retained.');
+            });
+          }}>Delete script</button>}
+          <details><summary>Recycle bin ({workspace.deletedScripts.length})</summary>
+            <p className="muted">Restore saved scripts with their original identity. Choose a free name and destination. Permanent deletion is unavailable.</p>
+            <form onSubmit={event => { event.preventDefault(); void run(async () => {
+              const next = unwrap(await window.astelvo.workspace.restoreScript({ id: restoreId, name: restoreName.trim(), folderId: restoreFolder, expectedRevision: workspace.revision }));
+              setWorkspace(next); setRestoreId(''); setRestoreName(''); setStatus('Script restored. The open editor is unchanged.');
+            }); }}>
+              <label>Deleted script<select disabled={busy} value={restoreId} onChange={event => {
+                const script = workspace.deletedScripts.find(s => s.id === event.target.value);
+                setRestoreId(script?.id ?? ''); setRestoreName(script?.name ?? ''); setRestoreFolder(script?.folderId ?? null);
+              }}><option value="">Choose a script</option>{workspace.deletedScripts.map(script => <option key={script.id} value={script.id}>{script.name} · {languages[script.language]} · {folderLabel(script.folderId) || 'Workspace root'} · {script.id}</option>)}</select></label>
+              <label>Restore name<input required maxLength={120} disabled={busy || !restoreId} value={restoreName} onChange={event => setRestoreName(event.target.value)} /></label>
+              <label>Restore destination<select disabled={busy || !restoreId} value={restoreFolder ?? ''} onChange={event => setRestoreFolder(event.target.value || null)}>
+                <option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
+              </select></label>
+              <button disabled={busy || !restoreId}>Restore script</button>
+            </form>
+          </details>
         </>}
       </aside>
       <section className="content">

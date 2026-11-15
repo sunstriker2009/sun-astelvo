@@ -57,6 +57,15 @@ async function startDesktop() {
   }
   window.webContents.on('will-prevent-unload', event => { if (discard()) event.preventDefault(); });
   ipcMain.handle('astelvo:confirm-discard', event => { trusted(event); return discard(); });
+  ipcMain.handle('astelvo:confirm-delete-script', (event, upgrade) => {
+    trusted(event);
+    if (typeof upgrade !== 'boolean') return false;
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Move script to recycle bin?', message: 'Move the saved script to the recycle bin?',
+      detail: 'Source files are retained. Restore the script from the recycle bin.' + (upgrade ? ' This upgrades this workspace to format v2, which older ASTELVO builds cannot open. An exact v1 metadata backup will be retained beside workspace.json before upgrading.' : ''),
+      buttons: [upgrade ? 'Upgrade and move to bin' : 'Move to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
   let choosing = false;
   ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
     trusted(event);
@@ -71,7 +80,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'script.create', 'script.read', 'script.save', 'script.duplicate'].includes(method))
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

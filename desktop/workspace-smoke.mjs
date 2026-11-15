@@ -71,6 +71,7 @@ void app.whenReady().then(async () => {
     await wait("!!document.querySelector('.unsaved')", 'dirty buffer');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate script').disabled"), true, 'Duplication must require a saved buffer');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate folder').disabled"), true, 'Folder duplication must require saved open edits');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Delete script').disabled"), true, 'Deletion must require saved edits');
     // Move a parent while its script buffer is dirty. No editor discard or
     // source write is needed for a logical folder move.
     const beforeMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
@@ -177,13 +178,49 @@ void app.whenReady().then(async () => {
     await wait("!!document.querySelector('.quick-input-widget') && document.querySelector('.quick-input-widget').style.display !== 'none'", 'command palette');
     window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Escape' });
     window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' });
+    // Cancel the first format upgrade/delete: no disk or editor change.
+    allowDiscard = false;
+    const beforeDelete = await readFile(path.join(root, 'workspace.json'));
+    const beforeDeletePrompts = prompts;
+    await click('Delete script');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Delete script').disabled", 'cancelled deletion');
+    assert.ok(prompts > beforeDeletePrompts);
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), beforeDelete);
+    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value"), 'Renamed greeting');
+    allowDiscard = true;
+    await click('Delete script');
+    await wait("document.querySelector('[role=status]').textContent.includes('moved to recycle bin')", 'delete committed');
+    const deletedState = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    assert.equal(deletedState.schemaVersion, 2);
+    assert.equal(deletedState.deletedScripts[0].id, copiedScript.id);
+    assert.equal(deletedState.scripts.some(s => s.id === copiedScript.id), false);
+    const { createHash } = await import('node:crypto');
+    assert.deepEqual(await readFile(path.join(root, `workspace.v1.${createHash('sha256').update(beforeDelete).digest('hex')}.json`)), beforeDelete);
+    await click('Close workspace');
+    await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'close deleted workspace');
+    await click('Open workspace');
+    await wait("!!Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Recycle bin (1)')", 'reopened recycle bin');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Recycle bin (1)').click()");
+    await select('Deleted script', `Renamed greeting · JavaScript · Archive / Utilities copy · ${copiedScript.id}`);
+    await input('Restore name', 'Greeting copy'); await select('Restore destination', 'Workspace root');
+    await click('Restore script');
+    await wait("!!document.querySelector('.error')", 'restore collision');
+    assert.deepEqual(JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8')), deletedState);
+    await input('Restore name', 'Restored greeting'); await click('Restore script');
+    await wait("document.querySelector('[role=status]').textContent.includes('Script restored')", 'restore committed');
+    const restoredState = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
+    assert.equal(restoredState.deletedScripts.length, 0);
+    assert.equal(restoredState.scripts.find(s => s.id === copiedScript.id).name, 'Restored greeting');
+    await js("Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Restored greeting')).click()");
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Restored greeting'", 'restored script opened');
+    assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copiedScript.id)})`)).value.content, 'console.log("external accepted");');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication guards and cancelled-quit preservation.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation and recycle-bin upgrade/cancel/reopen/restore conflicts.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);
