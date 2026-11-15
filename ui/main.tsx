@@ -7,6 +7,7 @@ import 'monaco-editor/languages/definitions/csharp/register';
 import 'monaco-editor/features/find/register';
 import 'monaco-editor/features/quickCommand/register';
 import './style.css';
+import { FormatClient } from './format-client';
 import { AutomaticCheckpoint } from './automatic-checkpoint';
 
 type Language = 'javascript' | 'python' | 'csharp';
@@ -91,6 +92,9 @@ function App() {
   const dirtyRef = useRef(false);
   const classificationDirtyRef = useRef(false);
   const busyRef = useRef(false);
+  const formatter = useRef(new FormatClient());
+  const formatRef = useRef<() => void>(() => {});
+  const [formatting, setFormatting] = useState(false);
   const saveRef = useRef<() => void>(() => {});
   const closeTabRef = useRef<() => void>(() => {});
   const cycleTabRef = useRef<(direction: number) => void>(() => {});
@@ -290,6 +294,7 @@ function App() {
     emptyModel.current = monaco.editor.createModel('', 'javascript');
     const instance = monaco.editor.create(container.current!, { model: emptyModel.current, readOnly: true, theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 15 });
     editor.current = instance;
+    const formatAction = instance.addAction({ id: 'astelvo.format', label: 'Format script', keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF], precondition: 'editorLangId == javascript && !editorReadonly', run: () => formatRef.current() });
     const change = instance.onDidChangeModelContent(() => { if (switchingModel.current) return; contentRef.current = instance.getValue(); calculateDirty(); });
     const unsubscribeClose = window.astelvo.onPrepareClose(() => prepareCloseRef.current());
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -303,7 +308,7 @@ function App() {
     window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('keydown', shortcut, true);
     return () => {
-      automatic.current?.stop(); unsubscribeClose();
+      formatter.current.cancel(); formatAction.dispose(); automatic.current?.stop(); unsubscribeClose();
       change.dispose(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('keydown', shortcut, true);
       instance.dispose(); for (const tab of tabs.current.values()) tab.model.dispose(); tabs.current.clear(); emptyModel.current?.dispose(); emptyModel.current = null; editor.current = null;
     };
@@ -405,6 +410,34 @@ function App() {
       setWorkspace(next.workspace); display(next.document, true); setStatus('Saved.');
     });
   }
+  function formatDocument() {
+    if (!documentRef.current || busyRef.current || draftRef.current.language !== 'javascript') return;
+    void run(async () => {
+      const model = editor.current!.getModel()!;
+      const currentId = documentRef.current!.id;
+      const version = model.getVersionId();
+      const content = model.getValue();
+      const cursor = model.getOffsetAt(editor.current!.getPosition()!);
+      setFormatting(true);
+      try {
+        const result = await formatter.current.format(content, cursor);
+        if (editor.current?.getModel() !== model || documentRef.current?.id !== currentId || model.getVersionId() !== version || draftRef.current.language !== 'javascript')
+          throw new Error('The buffer changed during formatting. Result discarded; format again.');
+        if (result.formatted === content) { setStatus('JavaScript is already formatted.'); return; }
+        const scrollTop = editor.current.getScrollTop(), scrollLeft = editor.current.getScrollLeft();
+        model.pushStackElement();
+        const selections = model.pushEditOperations(editor.current.getSelections(), [{range: model.getFullModelRange(), text: result.formatted}], () => {
+          const position = model.getPositionAt(result.cursorOffset);
+          return [new monaco.Selection(position.lineNumber, position.column, position.lineNumber, position.column)];
+        });
+        model.pushStackElement();
+        if (selections) editor.current.setSelections(selections);
+        editor.current.setScrollPosition({scrollTop, scrollLeft});
+        setStatus('JavaScript formatted. Review and save; Undo restores the previous text.');
+      } finally { setFormatting(false); }
+    });
+  }
+  formatRef.current = formatDocument;
   saveRef.current = save;
   const folderLabels = useMemo(() => {
     const byId = new Map((workspace?.folders ?? []).map(folder => [folder.id, folder]));
@@ -698,8 +731,11 @@ function App() {
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'actions.find', null); }}>Find</button>
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.startFindReplaceAction', null); }}>Replace</button>
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.quickCommand', null); }}>Commands</button>
+          <button disabled={busy || !document || draft.language !== 'javascript'} onClick={formatDocument}>Format</button>
+          {formatting && <button onClick={() => { if (formatter.current.cancel()) setStatus('Formatting cancelled. Original buffer retained.'); }}>Cancel format</button>}
           <button disabled title="Script runners are planned">Run</button>
         </div>
+        {document && <p className="capabilities" role="note">Editing available · {draft.language === 'javascript' ? 'Format: bundled Prettier (Alt+Shift+F)' : `Format: ${languages[draft.language]} formatter not yet available`} · Run: not yet available</p>}
         {document && workspace && <details className="classification-panel"><summary>Tags and favourite{classificationDirty ? ' — unsaved' : ''}</summary>
           <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
             const current = documentRef.current!;

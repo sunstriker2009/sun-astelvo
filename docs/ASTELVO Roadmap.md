@@ -110,7 +110,7 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/checkpoints merged (#32–#33); automatic checkpoints/normal-close flush locally validated; formatting and Windows gates open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints merged (#32–#34); JavaScript formatter locally validated; Python/C# formatters and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, tabs and manual recovery through [PR #33](https://github.com/sunstriker2009/sun-astelvo/pull/33) are merged. Opt-in automatic checkpoints and normal-close/workspace-transition flushing are locally implemented/validated on `feature/m2-automatic-checkpoints` ([evidence](operations/M2-AUTOMATIC-CHECKPOINT-VALIDATION.md), [ADR-009](adr/0009-automatic-checkpoints.md)); check the new PR for CI/merge state. Recovery retains base hashes and never commits scripts automatically. Only acknowledged snapshots are protected; Windows/full shutdown/power-loss, clean-machine, governance and final human gates stay open and distinct from M0. Formatting, runners, persistent catalog, collection extensions/examples and remaining M1–M5 work remain unfinished. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Saved-state archive restore is the v1 backup path, excluding recovery checkpoints. No script runner is implemented.
+The foundation, organizer/import/archive, tabs, explicit recovery and automatic checkpoints through [PR #34](https://github.com/sunstriker2009/sun-astelvo/pull/34) are merged. Bundled JavaScript/Prettier formatting is locally implemented/validated on `feature/m2-javascript-formatting` ([evidence](operations/M2-JAVASCRIPT-FORMAT-VALIDATION.md), [ADR-010](adr/0010-javascript-formatting.md)); check the new PR for CI/merge state. Formatting is explicit/undoable and changes no saved file until Save. Python/Ruff, C#/Roslyn, runners, catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility, governance and final human gates stay distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Saved-state archives exclude recovery checkpoints; no script runner is implemented.
 
 ## Sources
 

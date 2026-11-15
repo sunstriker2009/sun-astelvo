@@ -59,6 +59,9 @@ for (const platform of ['win32', 'linux']) {
       for (const name of ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs', 'workspace-contract.mjs']) await fixture(path.join(root, 'desktop', name));
       await fixture(path.join(root, 'dist/index.html'));
       await fixture(path.join(root, 'dist/editor.worker.js'));
+      await fixture(path.join(root, 'dist/formatter.worker.js'));
+      await fixture(path.join(root, 'dist/licenses/prettier/LICENSE'), 'prettier-license');
+      await fixture(path.join(root, 'dist/licenses/prettier/THIRD-PARTY-NOTICES.md'), 'prettier-notices');
       await fixture(path.join(root, 'node_modules/private-development-file'));
       await fixture(path.join(root, '.env'), 'do-not-copy');
       await fixture(path.join(root, 'desktop/unlisted-file'), 'do-not-copy');
@@ -75,6 +78,9 @@ for (const platform of ['win32', 'linux']) {
       const application = path.join(output, 'resources/app');
       assert.equal(JSON.parse(await readFile(path.join(application, 'package.json'), 'utf8')).dependencies, undefined);
       await access(path.join(application, 'dist/editor.worker.js'));
+      await access(path.join(application, 'dist/formatter.worker.js'));
+      assert.equal(await readFile(path.join(application, 'dist/licenses/prettier/LICENSE'), 'utf8'), 'prettier-license');
+      assert.equal(await readFile(path.join(application, 'dist/licenses/prettier/THIRD-PARTY-NOTICES.md'), 'utf8'), 'prettier-notices');
       await access(path.join(output, 'resources/host/nested/runtime-file'));
       assert.equal(await readFile(path.join(output, 'LICENSE'), 'utf8'), 'electron-license');
       assert.equal(await readFile(path.join(output, 'resources/host/LICENSE.txt'), 'utf8'), 'host-license');

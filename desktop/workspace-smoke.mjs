@@ -2,7 +2,7 @@
 // Native dialogs are replaced here solely to select an isolated temporary folder.
 import assert from 'node:assert/strict';
 import { app, BrowserWindow, dialog } from 'electron';
-import { mkdtemp, rm, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, readFile, rename } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -741,13 +741,79 @@ void app.whenReady().then(async () => {
     assert.deepEqual(JSON.parse(await readFile(path.join(nextWorkspaceRoot, 'workspace.json'))).scripts, []);
     await assert.rejects(readFile(path.join(nextWorkspaceRoot, '.astelvo-recovery.json')), { code: 'ENOENT' });
     assert.equal(await js("Array.from(document.querySelectorAll('button')).some(b => b.textContent === 'Stop automatic checkpoints')"), false, 'Automatic mode does not follow a new workspace');
+    await input('New script name', 'Formatting example'); await click('Create script');
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Formatting example' && !Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'formatting fixture created');
+    await key('A');
+    const originalFormatSource = 'throw new Error("must never execute");const settings={text:"বাংলা 🌞",values:[1,2]};';
+    await window.webContents.insertText(originalFormatSource);
+    await wait("!!document.querySelector('.unsaved')", 'format fixture typed');
+    await click('Save'); await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'unformatted source saved');
+    const beforeFormatMetadata = await readFile(path.join(nextWorkspaceRoot, 'workspace.json'));
+    const formatScript = JSON.parse(beforeFormatMetadata).scripts[0];
+    const formatSourcePath = path.join(nextWorkspaceRoot, 'scripts', formatScript.id, formatScript.sourceHash + '.js');
+    assert.equal(await readFile(formatSourcePath, 'utf8'), originalFormatSource);
+    await input('Script tags (comma separated)', 'format draft label');
+    await click('Format');
+    await wait("document.querySelector('[role=status]').textContent.startsWith('JavaScript formatted.')", 'real JavaScript worker format');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('const settings = { text:')", 'formatted view');
+    assert.equal(await js("!!document.querySelector('.unsaved')"), true);
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'format draft label');
+    assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), beforeFormatMetadata, 'Formatting cannot commit source/metadata');
+    assert.equal(await readFile(formatSourcePath, 'utf8'), originalFormatSource);
+    await key('Z'); await wait("!document.querySelector('.unsaved')", 'format undo restores committed source');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('settings={')", 'unformatted view retained');
+    await key('Z', true); await wait("!!document.querySelector('.unsaved')", 'format redo');
+    await click('Save'); await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'formatted source explicitly saved');
+    const afterFormatMetadata = await readFile(path.join(nextWorkspaceRoot, 'workspace.json'));
+    assert.notDeepEqual(afterFormatMetadata, beforeFormatMetadata);
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'format draft label', 'Save preserves labels after formatting');
+    await click('Format'); await wait("document.querySelector('[role=status]').textContent === 'JavaScript is already formatted.'", 'unchanged format result');
+    await key('Z'); await wait("!!document.querySelector('.unsaved')", 'no-op format and save preserve earlier undo');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('settings={')", 'unformatted view retained');
+    await key('Z', true); await wait("!document.querySelector('.unsaved')", 'format redo after save');
+    await key('A'); await window.webContents.insertText('const = ; // invalid kept');
+    await wait("!!document.querySelector('.unsaved')", 'invalid source typed');
+    // Native EditContext can split inserted text into word-sized undo groups.
+    // Record the actual prior undo step instead of assuming one insertion group.
+    await key('Z'); await js("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+    const invalidUndoView = await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ')");
+    await key('Z', true);
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('invalid kept')", 'invalid input redo');
+    await click('Format'); await wait("document.querySelector('.error')?.textContent.includes('Unexpected token')", 'format syntax failure');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('invalid kept')", 'syntax error retained view');
+    assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), afterFormatMetadata);
+    await key('Z');
+    await wait(`document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ') === ${JSON.stringify(invalidUndoView)}`, 'failed format preserves undo');
+    await click('Reload'); await wait("!document.querySelector('.unsaved')", 'format failure explicitly reloaded');
+    await select('Language', 'Python');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Format').disabled"), true);
+    assert.ok(await js("document.querySelector('.capabilities').textContent.includes('Python formatter not yet available')"));
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Run').disabled"), true);
+    await select('Language', 'JavaScript');
+    await key('A'); await window.webContents.insertText(originalFormatSource);
+    await wait("!!document.querySelector('.unsaved')", 'shortcut formatting fixture');
+    window.webContents.sendInputEvent({type: 'keyDown', keyCode: 'F', modifiers: ['alt', 'shift']});
+    window.webContents.sendInputEvent({type: 'keyUp', keyCode: 'F', modifiers: ['alt', 'shift']});
+    await wait("document.querySelector('[role=status]').textContent.startsWith('JavaScript formatted.') && !document.querySelector('.unsaved')", 'format keyboard action');
+    // Removing the built worker simulates missing packaged assets without any
+    // production hooks. Restore it even if a UI assertion fails.
+    await key('A'); await window.webContents.insertText(originalFormatSource);
+    await wait("!!document.querySelector('.unsaved')", 'missing formatter buffer');
+    await rename('dist/formatter.worker.js', 'dist/formatter.worker.js.held');
+    try {
+      await click('Format'); await wait("document.querySelector('.error')?.textContent.includes('JavaScript formatter unavailable')", 'missing formatter retained buffer');
+      await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('settings={')", 'unformatted view retained');
+      assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), afterFormatMetadata);
+    } finally { await rename('dist/formatter.worker.js.held', 'dist/formatter.worker.js'); }
+    await click('Format');
+    await wait("document.querySelector('[role=status]').textContent.startsWith('JavaScript formatted.') && !document.querySelector('.unsaved')", 'formatter recovers after asset restored');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true }); await rm(archiveArea, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity; manual draft checkpoints, renderer reload/recovery, stale hash/token rejection and corrupt checkpoint discard; timed automatic checkpoints, normal-close/workspace flush, failure pause and reviewed restart.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity; manual draft checkpoints, renderer reload/recovery, stale hash/token rejection and corrupt checkpoint discard; timed automatic checkpoints, normal-close/workspace flush, failure pause and reviewed restart; bundled JavaScript formatting, undo/redo/save, label preservation, syntax/missing-worker failure and capability/keyboard controls.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);
