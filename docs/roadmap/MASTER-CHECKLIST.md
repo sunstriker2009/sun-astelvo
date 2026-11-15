@@ -42,10 +42,11 @@
 
 - [x] Register Monaco find/replace and command palette with explicit toolbar access; TypeScript/build and real headless widget activation checks passed (2026-11-14). Full editor/Windows acceptance remains open.
 
-- [x] In-session Monaco tabs, independent source/metadata/label drafts, language selection, shortcuts and per-model undo locally implemented/validated on `feature/m2-editor-tabs` ([evidence](../operations/M2-TABS-VALIDATION.md)). PR/CI/merge and Windows acceptance remain separate.
+- [x] In-session Monaco tabs, independent source/metadata/label drafts, language selection, shortcuts and per-model undo merged in [PR #32](https://github.com/sunstriker2009/sun-astelvo/pull/32) ([evidence](../operations/M2-TABS-VALIDATION.md)); Windows acceptance remains open.
 - [ ] Full editor keyboard/focus/accessibility and Windows acceptance.
 - [ ] Three formatter adapters with undo and failure handling.
-- [ ] Autosave/recovery and external-change conflict handling.
+- [x] Explicit durable draft checkpoint/recovery locally implemented/validated on `feature/m2-draft-checkpoints`, with retained base hashes and preserved canonical data ([evidence](../operations/M2-RECOVERY-VALIDATION.md)). Check PR for CI/merge state.
+- [ ] Timed autosave/shutdown flushing, full recovery/external-conflict and Windows acceptance.
 - [ ] Separate edit/format/run capabilities and runtime setup view.
 
 ### M3 — JavaScript/Python

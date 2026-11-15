@@ -6,7 +6,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import merged (#31); Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — in-session tabs locally validated; formatting/recovery and Windows gates open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs merged (#32); explicit checkpoints locally validated; timed autosave/formatting and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `1e3d5706` contains merged loose-source import PR #31; no open implementation PR overlapped this batch.
+Main `6d396514` contains merged tabs PR #32; no implementation PR overlapped this batch.
 
-M2 in-session editor tabs are locally implemented/validated in `feature/m2-editor-tabs` ([evidence](../operations/M2-TABS-VALIDATION.md), [ADR-007](../adr/0007-editor-tabs.md)). Each tab retains source/metadata/label drafts and undo; inactive drafts participate in workspace/quit and export/bulk-folder guards. Capacity is checked before persistent creation. Check the new PR for CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+Explicit workspace-local draft checkpoint/recovery is locally implemented/validated in `feature/m2-draft-checkpoints` ([evidence](../operations/M2-RECOVERY-VALIDATION.md), [ADR-008](../adr/0008-draft-checkpoints.md)). It preserves independent source/metadata/label drafts and base hashes, rejects stale/corrupt/oversized data without source commits, and survives automated renderer reload/host process-death checks. Check the new PR for required CI/merge state. Apply [owner-authorized auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Persistent catalog, collection extensions, examples and remaining M2–M5 formatting/recovery/runner/packaging work remain unfinished. Tabs are memory-only; unsaved crash recovery is not delivered. Windows organizer/editor/import/restore, clean-machine and governance follow-ups stay distinct from M0. Archive merges/history retention remain optional future enhancements.
+Checkpointing is manual. Timed autosave/shutdown flushing, formatting, runners, persistent catalog, collection extensions/examples and remaining M1–M5 work remain open. Windows organizer/editor/recovery/import/restore, clean-machine, power-loss and governance follow-ups are distinct from M0. Archive merges/history retention remain optional future enhancements; checkpoints are excluded from saved workspace archives.
 
 ## M0 foundation evidence
 

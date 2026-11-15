@@ -110,7 +110,7 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — in-session tabs locally validated; formatting/recovery and Windows gates open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs merged (#32); explicit checkpoints locally validated; timed autosave/formatting and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/import/archive work through [PR #31](https://github.com/sunstriker2009/sun-astelvo/pull/31) are merged. M2 in-session editor tabs are locally implemented/validated in `feature/m2-editor-tabs` ([evidence](operations/M2-TABS-VALIDATION.md), [ADR-007](adr/0007-editor-tabs.md)); check the new PR for CI/merge state. Tabs retain independent source/metadata/label drafts and undo, with all-tab discard guards and bounded model ownership. Autosave/recovery and formatting remain unfinished. Persistent catalog, collection extensions, useful examples and remaining M1–M5 work stay open. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated auto-merge and final product review. Windows organizer/editor/import/restore, clean-machine and governance acceptance remain open; M0 Windows evidence is distinct. Current-state archive restore is the v1 backup path; archive merges/history retention are optional future enhancements. No script runner is implemented.
+The foundation, organizer/import/archive and in-session tabs through [PR #32](https://github.com/sunstriker2009/sun-astelvo/pull/32) are merged. Explicit manual draft checkpoint/recovery is locally implemented/validated in `feature/m2-draft-checkpoints` ([evidence](operations/M2-RECOVERY-VALIDATION.md), [ADR-008](adr/0008-draft-checkpoints.md)); check the new PR for CI/merge state. Recovery preserves base hashes and never commits scripts automatically. Timed autosave/shutdown flushing, formatting, persistent catalog, collection extensions/examples and remaining M1–M5 work remain unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated auto-merge and final product review. Windows organizer/editor/recovery/import/restore, clean-machine, power-loss and governance gates remain open; M0 Windows evidence is distinct. Saved-state archive restore is the v1 backup path, excluding draft checkpoints. Archive merge/history retention remain optional. No script runner is implemented.
 
 ## Sources
 

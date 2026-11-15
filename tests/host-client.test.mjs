@@ -157,3 +157,20 @@ test('loose import contract bounds native selections and correlates complete imp
   assert.doesNotThrow(() => assertResult('workspace.import', result, params));
   for (const extra of [{ importedIds: [] }, { renamedCount: 1 }, { workspace: { ...workspace, revision: 1 } }, { workspace: { ...workspace, scripts: [] } }]) assert.throws(() => assertResult('workspace.import', { ...result, ...extra }, params));
 });
+
+test('recovery contracts reject path overrides, unknown fields and malformed or mismatched checkpoint results', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const snapshot = { format: 'astelvo-draft-checkpoint', version: 1, workspaceId: id, tabs: [{
+    saved: { id, name: 'Saved', language: 'javascript', folderId: null, content: '', hash: 'a'.repeat(64), externalChanged: false, classification: {tags: [], favourite: false} },
+    draft: { name: '', language: 'python', folderId: null }, content: 'draft', tagText: 'incomplete, ,', favourite: true }] };
+  assert.doesNotThrow(() => assertRequest('recovery.write', { expectedToken: null, snapshot }));
+  for (const change of [{ path: '/arbitrary' }, { expectedToken: 'bad' }, { snapshot: { ...snapshot, version: 2 } }, { snapshot: { ...snapshot, tabs: [snapshot.tabs[0], snapshot.tabs[0]] } }, { snapshot: { ...snapshot, tabs: [{ ...snapshot.tabs[0], unexpected: true }] } }])
+    assert.throws(() => assertRequest('recovery.write', { expectedToken: null, snapshot, ...change }));
+  const result = {workspaceId: id, token: 'b'.repeat(64), snapshot, problem: null};
+  assert.doesNotThrow(() => assertResult('recovery.read', result, {}));
+  assert.throws(() => assertResult('recovery.read', { ...result, token: null }, {}));
+  assert.throws(() => assertResult('recovery.read', { ...result, problem: 'corrupt' }, {}));
+  assert.doesNotThrow(() => assertResult('recovery.read', { ...result, snapshot: null, problem: 'corrupt' }, {}));
+  assert.throws(() => assertResult('recovery.write', {workspaceId: '10000000-0000-0000-0000-000000000002', token: result.token}, {snapshot}));
+});
