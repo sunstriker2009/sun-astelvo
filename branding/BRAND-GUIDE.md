@@ -13,7 +13,8 @@ On 2026-11-14 the owner returned to this direction after the A-shaped experiment
 | Path relative to `branding/assets/` | Purpose |
 | --- | --- |
 | `readme-banner-v1.png` | Original approved 2172 × 724 panoramic banner, unchanged |
-| `symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol |
+| `symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol (versioned source) |
+| `symbol.png` | Byte-identical canonical alias for SUN ecosystem registry synchronization |
 | `icons/icon-{size}.png` | Transparent PNG exports: 16, 24, 32, 48, 64, 128, 256, 512, 1024 px |
 | `icons/app.ico` | Windows ICO with 16, 24, 32, 48, 64, 128, 256 px frames |
 | `tokens.json` / `tokens.css` | Working brand palette; not a complete UI theme |
