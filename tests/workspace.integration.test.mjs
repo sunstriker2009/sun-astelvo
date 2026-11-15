@@ -696,3 +696,206 @@ test('upgrade backup conflict and exhausted revisions fail before committing; an
   await assert.rejects(restoreScript(host, state, state.deletedScripts[0]), { code: 'invalid_workspace' });
   assert.deepEqual(await readFile(file), exhausted);
 }));
+
+const removeFolder = (host, state, id, allowUpgrade = false) => host.request('folder.delete', { id, expectedRevision: state.revision, allowUpgrade }, 30000);
+const restoreFolder = (host, state, id, name, parentId = null) => host.request('folder.restore', { id, name, parentId, expectedRevision: state.revision }, 30000);
+
+test('folder recycle bin preserves whole subtree identities, source bytes and independently deleted script state across restart', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const parent = state.folders[0];
+  state = await host.request('folder.create', { name: 'Nested', parentId: parent.id });
+  const nested = state.folders.find(f => f.name === 'Nested');
+  state = await host.request('folder.create', { name: 'Empty', parentId: nested.id });
+  const documents = [];
+  for (const language of ['javascript', 'python', 'csharp']) {
+    const created = await host.request('script.create', { name: language, language, folderId: nested.id });
+    const saved = await save(host, created.document, `// ${language} বাংলা 🌞`);
+    state = saved.workspace; documents.push(saved.document);
+  }
+  state = await removeScript(host, state, documents[1], true);
+  const before = await readFile(path.join(root, 'workspace.json'));
+  const originalState = state;
+  await assert.rejects(removeFolder(host, state, parent.id), { code: 'upgrade_required' });
+  assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before);
+  state = await removeFolder(host, state, parent.id, true);
+  assert.equal(state.schemaVersion, 3);
+  assert.deepEqual(await readFile(path.join(root, `workspace.v2.${hash(before)}.json`)), before);
+  assert.deepEqual(state.folders, []); assert.deepEqual(state.scripts, []); assert.deepEqual(state.deletedScripts, []);
+  const tree = state.deletedFolderTrees[0];
+  assert.equal(tree.rootId, parent.id);
+  assert.deepEqual(tree.folders, originalState.folders);
+  assert.deepEqual(tree.scripts, originalState.scripts);
+  assert.deepEqual(tree.deletedScripts, originalState.deletedScripts);
+  for (const doc of documents) {
+    const stored = [...tree.scripts, ...tree.deletedScripts].find(s => s.id === doc.id);
+    assert.equal(await readFile(source(root, stored), 'utf8'), doc.content);
+    await assert.rejects(host.request('script.read', { id: doc.id }), { code: 'not_found' });
+  }
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.deepEqual(state.deletedFolderTrees, [tree]);
+  state = await host.request('folder.create', { name: 'Archive', parentId: null });
+  const archive = state.folders[0];
+  // All ordinary v3 script mutations preserve the separate folder trash.
+  const outside = await create(host);
+  state = await removeScript(host, outside.workspace, outside.document);
+  assert.equal(state.schemaVersion, 3); assert.deepEqual(state.deletedFolderTrees, [tree]);
+  state = await restoreFolder(host, state, parent.id, 'Restored', archive.id);
+  assert.equal(state.deletedFolderTrees.length, 0);
+  assert.deepEqual(state.folders.find(f => f.id === parent.id), { ...parent, name: 'Restored', parentId: archive.id });
+  assert.deepEqual(state.folders.find(f => f.id === nested.id), nested);
+  assert.deepEqual(state.scripts, tree.scripts);
+  assert.ok(state.deletedScripts.some(s => s.id === documents[1].id), 'Independently deleted script must stay deleted');
+  await assert.rejects(host.request('script.read', { id: documents[1].id }), { code: 'not_found' });
+  assert.equal((await host.request('script.read', { id: documents[0].id })).content, documents[0].content);
+  state = await restoreScript(host, state, state.deletedScripts.find(s => s.id === documents[1].id));
+  assert.equal(state.schemaVersion, 3);
+}));
+
+test('folder delete/restore reject stale metadata, external/missing/linked source and destinations without partial writes', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const folder = state.folders[0];
+  const created = await host.request('script.create', { name: 'Hello', language: 'javascript', folderId: folder.id });
+  state = created.workspace;
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file);
+  await assert.rejects(removeFolder(host, { ...state, revision: 0 }, folder.id, true), { code: 'conflict' });
+  await assert.rejects(removeFolder(host, state, randomUUID(), true), { code: 'not_found' });
+  const sourceFile = source(root, state.scripts[0]);
+  await writeFile(sourceFile, 'external');
+  await assert.rejects(removeFolder(host, state, folder.id, true), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), before);
+  assert.equal((await readdir(root)).some(f => f.startsWith('workspace.v1.')), false);
+  await writeFile(sourceFile, '');
+  state = await removeFolder(host, state, folder.id, true);
+  const removed = await readFile(file);
+  await assert.rejects(restoreFolder(host, { ...state, revision: 0 }, folder.id, 'Restored'), { code: 'conflict' });
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Restored', folder.id));
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Restored', randomUUID()));
+  await rm(sourceFile);
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Restored'), { code: 'io_error' });
+  await writeFile(sourceFile, '');
+  const sourceDirectory = path.dirname(sourceFile), moved = sourceDirectory + '.retained';
+  await rename(sourceDirectory, moved);
+  await symlink(moved, sourceDirectory, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Restored'), { code: 'invalid_workspace' });
+  await rm(sourceDirectory, { recursive: true }); await rename(moved, sourceDirectory);
+  assert.deepEqual(await readFile(file), removed);
+  state = await host.request('folder.create', { name: 'ORIGINAL', parentId: null });
+  const collision = await readFile(file);
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Original'), { code: 'invalid_request' });
+  assert.deepEqual(await readFile(file), collision);
+  const external = JSON.parse(collision); external.name = 'External workspace';
+  await writeFile(file, JSON.stringify(external));
+  await assert.rejects(restoreFolder(host, state, folder.id, 'Renamed'), { code: 'conflict' });
+  state = await host.request('workspace.open', { path: root, create: false });
+  state = await restoreFolder(host, state, folder.id, 'Renamed');
+  assert.equal(state.deletedFolderTrees.length, 0);
+  assert.equal((await host.request('script.read', { id: created.document.id })).content, '');
+}));
+
+test('deleted folder can be restored after its original parent is deleted separately; v1 upgrade checkpoints recover safely', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Parent', parentId: null });
+  const parentId = state.folders[0].id;
+  state = await host.request('folder.create', { name: 'Child', parentId: parentId });
+  const childId = state.folders.find(f => f.name === 'Child').id;
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file);
+  // A retained checkpoint and partial temp are an interrupted pre-commit state.
+  const backup = path.join(root, `workspace.v1.${hash(before)}.json`);
+  await writeFile(backup, before);
+  await writeFile(path.join(root, 'workspace.json.folder-interrupted.tmp'), '{partial');
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal(state.schemaVersion, 1); assert.equal(state.folders.length, 2);
+  state = await removeFolder(host, state, childId, true);
+  assert.deepEqual(await readFile(backup), before);
+  state = await removeFolder(host, state, parentId);
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal(state.deletedFolderTrees.length, 2);
+  state = await restoreFolder(host, state, childId, 'Independent child');
+  assert.deepEqual(state.folders, [{ id: childId, name: 'Independent child', parentId: null }]);
+  assert.equal(state.deletedFolderTrees[0].rootId, parentId);
+  state = await restoreFolder(host, state, parentId, 'Parent');
+  assert.equal(state.folders.length, 2);
+}));
+
+test('v3 rejects cross-tree identities, disconnected trees and invalid source references; total limits include deleted trees', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const folder = state.folders[0];
+  state = await removeFolder(host, state, folder.id, true);
+  const file = path.join(root, 'workspace.json');
+  const original = JSON.parse(await readFile(file, 'utf8'));
+  const tree = original.deletedFolderTrees[0];
+  await host.request('workspace.close');
+  const invalidCases = [
+    { ...original, deletedFolderTrees: null },
+    { ...original, schemaVersion: 2 },
+    { ...original, deletedFolderTrees: [{ ...tree, futureMetadata: 'preserve' }] },
+    { ...original, folders: [folder] },
+    { ...original, deletedFolderTrees: [tree, tree] },
+    { ...original, deletedFolderTrees: [{ ...tree, rootId: randomUUID() }] },
+    { ...original, deletedFolderTrees: [{ ...tree, folders: [...tree.folders, { id: randomUUID(), name: 'Disconnected', parentId: null }] }] },
+    { ...original, deletedFolderTrees: [{ ...tree, scripts: [{ id: randomUUID(), name: 'Outside', language: 'python', folderId: null, sourceHash: 'a'.repeat(64) }] }] }
+  ];
+  for (const metadata of invalidCases) {
+    const bytes = JSON.stringify(metadata); await writeFile(file, bytes);
+    await assert.rejects(host.request('workspace.open', { path: root, create: false }));
+    assert.equal(await readFile(file, 'utf8'), bytes);
+  }
+  const folders = Array.from({ length: 200 }, (_, i) => ({ id: i === 0 ? folder.id : randomUUID(), name: `Folder ${i}`, parentId: i === 0 ? null : folder.id }));
+  const scripts = Array.from({ length: 1000 }, (_, i) => ({ id: randomUUID(), name: `Script ${i}`, language: 'javascript', folderId: folder.id, sourceHash: 'a'.repeat(64) }));
+  const full = { ...original, deletedFolderTrees: [{ rootId: folder.id, folders, scripts, deletedScripts: [] }] };
+  await writeFile(file, JSON.stringify(full));
+  state = await host.request('workspace.open', { path: root, create: false });
+  const before = await readFile(file);
+  await assert.rejects(host.request('folder.create', { name: 'Too many', parentId: null }), { code: 'limit_exceeded' });
+  await assert.rejects(create(host), { code: 'limit_exceeded' });
+  assert.deepEqual(await readFile(file), before);
+}));
+
+test('abrupt death around folder upgrade leaves either complete active or complete deleted subtree with source intact', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const id = state.folders[0].id;
+  for (let i = 0; i < 4; i++) {
+    const created = await host.request('script.create', { name: `Script ${i}`, language: 'javascript', folderId: id });
+    state = (await save(host, created.document, 'retained source 🌞')).workspace;
+  }
+  await host.request('workspace.close');
+  const { executable, args, env } = launch();
+  const writer = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const closed = once(writer, 'close'); writer.stderr.resume();
+  let watcher, deadline, observed = false;
+  try {
+    const openId = randomUUID();
+    const opened = new Promise((resolve, reject) => {
+      const decoder = new FrameDecoder(); writer.once('error', reject);
+      writer.stdout.on('data', chunk => {
+        try { for (const reply of decoder.push(chunk)) if (reply.id === openId) reply.error ? reject(new Error(reply.error.message)) : resolve(reply.result); }
+        catch (error) { reject(error); }
+      });
+    });
+    writer.stdin.write(encodeFrame({ version: 1, id: openId, method: 'workspace.open', params: { path: root, create: false } }));
+    await opened;
+    const { watch } = await import('node:fs');
+    watcher = watch(root, (_event, filename) => {
+      if (filename?.toString().startsWith('workspace.v1.')) { observed = true; writer.kill('SIGKILL'); }
+    });
+    deadline = setTimeout(() => writer.kill('SIGKILL'), 5000);
+    writer.stdin.write(encodeFrame({ version: 1, id: randomUUID(), method: 'folder.delete', params: { id, expectedRevision: state.revision, allowUpgrade: true } }));
+    await closed; watcher.close(); clearTimeout(deadline);
+    assert.equal(observed, true, 'Test must observe upgrade backup activity before terminating');
+    const recovered = await host.request('workspace.open', { path: root, create: false });
+    if (recovered.schemaVersion === 1) {
+      assert.deepEqual(recovered.folders, state.folders); assert.deepEqual(recovered.scripts, state.scripts);
+      assert.deepEqual(recovered.deletedFolderTrees, []);
+    } else {
+      assert.equal(recovered.schemaVersion, 3); assert.deepEqual(recovered.folders, []); assert.deepEqual(recovered.scripts, []);
+      assert.equal(recovered.deletedFolderTrees.length, 1);
+      assert.deepEqual(recovered.deletedFolderTrees[0].folders, state.folders);
+      assert.deepEqual(recovered.deletedFolderTrees[0].scripts, state.scripts);
+    }
+    for (const script of state.scripts) assert.equal(await readFile(source(root, script), 'utf8'), 'retained source 🌞');
+  } finally { watcher?.close(); clearTimeout(deadline); writer.kill(); await closed; }
+}));

@@ -11,7 +11,8 @@ import './style.css';
 type Language = 'javascript' | 'python' | 'csharp';
 type Folder = { id: string; name: string; parentId: string | null };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string };
-type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
+type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
+type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[] };
 type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean };
 type Draft = Pick<Document, 'name' | 'language' | 'folderId'>;
 type Result<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
@@ -21,6 +22,7 @@ declare global {
   interface Window {
     astelvo: {
       hostInfo: () => Promise<HostResponse>;
+      confirmDeleteFolder: (upgrade: boolean) => Promise<boolean>;
       confirmDeleteScript: (upgrade: boolean) => Promise<boolean>;
       confirmDiscard: () => Promise<boolean>;
       workspace: {
@@ -31,6 +33,8 @@ declare global {
         renameFolder: (input: { id: string; name: string }) => Promise<Result<Workspace>>;
         moveFolder: (input: { id: string; parentId: string | null }) => Promise<Result<Workspace>>;
         duplicateFolder: (input: { id: string; name: string; parentId: string | null; expectedRevision: number }) => Promise<Result<{ workspace: Workspace; folderId: string }>>;
+        deleteFolder: (input: { id: string; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<Workspace>>;
+        restoreFolder: (input: { id: string; name: string; parentId: string | null; expectedRevision: number }) => Promise<Result<Workspace>>;
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
         duplicateScript: (input: { id: string; name: string; folderId: string | null; expectedHash: string }) => Promise<Result<WriteResult>>;
@@ -74,6 +78,9 @@ function App() {
   const [folderCopyParent, setFolderCopyParent] = useState<string | null>(null);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
+  const [restoreTreeId, setRestoreTreeId] = useState('');
+  const [restoreTreeName, setRestoreTreeName] = useState('');
+  const [restoreTreeParent, setRestoreTreeParent] = useState<string | null>(null);
   const [restoreId, setRestoreId] = useState('');
   const [restoreName, setRestoreName] = useState('');
   const [restoreFolder, setRestoreFolder] = useState<string | null>(null);
@@ -145,7 +152,7 @@ function App() {
     void run(async () => {
       if (!await canLeave()) return;
       const next = unwrap(await (create ? window.astelvo.workspace.create() : window.astelvo.workspace.open()));
-      setWorkspace(next); setSelectedFolder(null); setRestoreId(''); display(null); setStatus('Workspace opened. Select or create a script.');
+      setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
     });
   }
   function openScript(id: string, reload = false) {
@@ -254,6 +261,16 @@ function App() {
               <button disabled={busy || dirty || document?.externalChanged}>Duplicate folder</button>
             </form>
           </details>}
+          {selected && <button disabled={busy || dirty || document?.externalChanged} onClick={() => {
+            if (dirtyRef.current || documentRef.current?.externalChanged) return;
+            void run(async () => {
+              const upgrade = workspace.schemaVersion < 3;
+              if (!await window.astelvo.confirmDeleteFolder(upgrade)) return;
+              const next = unwrap(await window.astelvo.workspace.deleteFolder({ id: selected.id, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
+              if (documentRef.current && !next.scripts.some(s => s.id === documentRef.current!.id)) display(null);
+              setWorkspace(next); selectFolder(null); setRestoreId(''); setStatus('Folder moved to recycle bin. Source files retained.');
+            });
+          }}>Delete folder</button>}
           <h2>Scripts</h2>
           <details><summary>New script</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {
@@ -291,6 +308,25 @@ function App() {
               setWorkspace(next); display(null); setStatus('Script moved to recycle bin. Source files retained.');
             });
           }}>Delete script</button>}
+          <details><summary>Deleted folders ({workspace.deletedFolderTrees.length})</summary>
+            <p className="muted">Restore an entire subtree with original identities. Previously deleted scripts stay in the script recycle bin.</p>
+            <form onSubmit={event => { event.preventDefault(); void run(async () => {
+              const next = unwrap(await window.astelvo.workspace.restoreFolder({ id: restoreTreeId, name: restoreTreeName.trim(), parentId: restoreTreeParent, expectedRevision: workspace.revision }));
+              setWorkspace(next); setRestoreTreeId(''); setRestoreTreeName(''); setStatus('Folder restored. Previously deleted scripts remain in the recycle bin.');
+            }); }}>
+              <label>Deleted folder<select disabled={busy} value={restoreTreeId} onChange={event => {
+                const tree = workspace.deletedFolderTrees.find(t => t.rootId === event.target.value);
+                const root = tree?.folders.find(f => f.id === tree.rootId);
+                setRestoreTreeId(tree?.rootId ?? ''); setRestoreTreeName(root?.name ?? '');
+                setRestoreTreeParent(root?.parentId && workspace.folders.some(f => f.id === root.parentId) ? root.parentId : null);
+              }}><option value="">Choose a folder</option>{workspace.deletedFolderTrees.map(tree => <option key={tree.rootId} value={tree.rootId}>{tree.folders.find(f => f.id === tree.rootId)!.name} · {tree.folders.length} folders · {tree.scripts.length} scripts · {tree.rootId}</option>)}</select></label>
+              <label>Folder restore name<input required maxLength={120} disabled={busy || !restoreTreeId} value={restoreTreeName} onChange={event => setRestoreTreeName(event.target.value)} /></label>
+              <label>Folder restore destination<select disabled={busy || !restoreTreeId} value={restoreTreeParent ?? ''} onChange={event => setRestoreTreeParent(event.target.value || null)}>
+                <option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
+              </select></label>
+              <button disabled={busy || !restoreTreeId}>Restore folder</button>
+            </form>
+          </details>
           <details><summary>Recycle bin ({workspace.deletedScripts.length})</summary>
             <p className="muted">Restore saved scripts with their original identity. Choose a free name and destination. Permanent deletion is unavailable.</p>
             <form onSubmit={event => { event.preventDefault(); void run(async () => {

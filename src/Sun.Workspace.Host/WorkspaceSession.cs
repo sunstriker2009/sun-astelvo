@@ -38,6 +38,12 @@ internal sealed class WorkspaceSession : IDisposable
                 var revision = p.GetProperty("expectedRevision").GetInt64();
                 if (revision is < 0 or > 9_007_199_254_740_991) throw Invalid();
                 return active.DuplicateFolder(Id(p, "id"), Text(p, "name"), OptionalId(p, "parentId"), revision);
+            case "folder.delete":
+                Keys(p, "id", "expectedRevision", "allowUpgrade");
+                return active.DeleteFolder(Id(p, "id"), Revision(p), p.GetProperty("allowUpgrade").GetBoolean());
+            case "folder.restore":
+                Keys(p, "id", "name", "parentId", "expectedRevision");
+                return active.RestoreFolder(Id(p, "id"), Text(p, "name"), OptionalId(p, "parentId"), Revision(p));
             case "script.create":
                 Keys(p, "name", "language", "folderId"); return active.CreateScript(Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"));
             case "script.read":

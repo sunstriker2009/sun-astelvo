@@ -49,7 +49,7 @@ async function startDesktop() {
     return host;
   }
   async function command(method, params) {
-    try { return { ok: true, value: await getHost().request(method, params, method === 'folder.duplicate' ? 30000 : 5000) }; }
+    try { return { ok: true, value: await getHost().request(method, params, ['folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
   }
   function discard() {
@@ -66,6 +66,15 @@ async function startDesktop() {
       buttons: [upgrade ? 'Upgrade and move to bin' : 'Move to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
+  ipcMain.handle('astelvo:confirm-delete-folder', (event, upgrade) => {
+    trusted(event);
+    if (typeof upgrade !== 'boolean') return false;
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Move folder to recycle bin?', message: 'Move the selected folder and all nested folders/scripts to the recycle bin?',
+      detail: 'Source files and original identities are retained. Scripts already deleted stay deleted when the folder is restored.' + (upgrade ? ' This upgrades this workspace to format v3, which older ASTELVO builds cannot open. Exact pre-upgrade metadata is retained beside workspace.json.' : ''),
+      buttons: [upgrade ? 'Upgrade and move folder to bin' : 'Move folder to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
   let choosing = false;
   ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
     trusted(event);
@@ -80,7 +89,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

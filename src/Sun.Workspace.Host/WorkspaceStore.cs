@@ -12,6 +12,7 @@ internal sealed class WorkspaceException(string code, string message) : Exceptio
 
 internal sealed record Folder(Guid Id, string Name, Guid? ParentId);
 internal sealed record Script(Guid Id, string Name, string Language, Guid? FolderId, string SourceHash);
+internal sealed record DeletedFolderTree(Guid RootId, List<Folder> Folders, List<Script> Scripts, List<Script> DeletedScripts);
 internal sealed record Manifest
 {
     public required string Format { get; init; }
@@ -23,6 +24,8 @@ internal sealed record Manifest
     public required List<Script> Scripts { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<Script>? DeletedScripts { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DeletedFolderTree>? DeletedFolderTrees { get; init; }
 }
 
 internal sealed class WorkspaceStore : IDisposable
@@ -90,7 +93,7 @@ internal sealed class WorkspaceStore : IDisposable
         catch { lease.Dispose(); throw; }
     }
 
-    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts, deletedScripts = manifest.DeletedScripts ?? [] };
+    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts, deletedScripts = manifest.DeletedScripts ?? [], deletedFolderTrees = manifest.DeletedFolderTrees ?? [] };
 
     public void Refresh()
     {
@@ -247,26 +250,12 @@ internal sealed class WorkspaceStore : IDisposable
             throw Error("upgrade_required", "Script deletion requires workspace format v2. Confirm the upgrade; older ASTELVO builds cannot open v2 workspaces.");
         var next = manifest with
         {
-            SchemaVersion = 2,
+            SchemaVersion = Math.Max(2, manifest.SchemaVersion),
             Scripts = manifest.Scripts.Where(s => s.Id != id).ToList(),
             DeletedScripts = [.. manifest.DeletedScripts ?? [], original]
         };
         PreflightCommit(next);
-        if (manifest.SchemaVersion == 1)
-        {
-            // Preserve exact v1 metadata before the first v2 commit. The hash in
-            // the name makes retries after a failed commit safe without overwrite.
-            var bytes = ReadBytes(ManifestPath, MaxManifestBytes);
-            if (Hash(bytes) != manifestHash) throw Error("conflict", "Workspace metadata changed before upgrade.");
-            var backup = Path.Combine(Root, "workspace.v1." + manifestHash + ".json");
-            PlainPath(backup);
-            if (File.Exists(backup))
-            {
-                if (!ReadBytes(backup, MaxManifestBytes).AsSpan().SequenceEqual(bytes))
-                    throw Error("conflict", "The workspace upgrade backup already exists with different bytes.");
-            }
-            else AtomicWrite(backup, bytes, false);
-        }
+        BackupBeforeUpgrade(2);
         VerifyCommittedSource(original, expectedHash);
         Commit(next);
         return Snapshot();
@@ -288,10 +277,80 @@ internal sealed class WorkspaceStore : IDisposable
         return Snapshot();
     }
 
+    public object DeleteFolder(Guid id, long expectedRevision, bool allowUpgrade)
+    {
+        CheckRevision(expectedRevision);
+        if (!manifest.Folders.Any(f => f.Id == id)) throw Error("not_found", "Folder not found.");
+        if (manifest.SchemaVersion < 3 && !allowUpgrade)
+            throw Error("upgrade_required", "Folder deletion requires workspace format v3. Confirm the upgrade; older ASTELVO builds cannot open v3 workspaces.");
+        var subtree = new HashSet<Guid> { id };
+        var pending = new Queue<Guid>(); pending.Enqueue(id);
+        while (pending.TryDequeue(out var parent))
+            foreach (var child in manifest.Folders.Where(f => f.ParentId == parent))
+                if (subtree.Add(child.Id)) pending.Enqueue(child.Id);
+        bool InSubtree(Script script) => script.FolderId is Guid folder && subtree.Contains(folder);
+        var tree = new DeletedFolderTree(id, manifest.Folders.Where(f => subtree.Contains(f.Id)).ToList(),
+            manifest.Scripts.Where(InSubtree).ToList(), (manifest.DeletedScripts ?? []).Where(InSubtree).ToList());
+        var next = manifest with
+        {
+            SchemaVersion = 3,
+            Folders = manifest.Folders.Where(f => !subtree.Contains(f.Id)).ToList(),
+            Scripts = manifest.Scripts.Where(s => !InSubtree(s)).ToList(),
+            DeletedScripts = (manifest.DeletedScripts ?? []).Where(s => !InSubtree(s)).ToList(),
+            DeletedFolderTrees = [.. manifest.DeletedFolderTrees ?? [], tree]
+        };
+        PreflightCommit(next);
+        VerifyTreeSources(tree);
+        BackupBeforeUpgrade(3);
+        VerifyTreeSources(tree);
+        Commit(next);
+        return Snapshot();
+    }
+
+    public object RestoreFolder(Guid id, string name, Guid? parentId, long expectedRevision)
+    {
+        CheckRevision(expectedRevision);
+        var tree = manifest.DeletedFolderTrees?.FirstOrDefault(t => t.RootId == id) ?? throw Error("not_found", "Deleted folder not found.");
+        var rootName = Name(name);
+        var folders = tree.Folders.Select(f => f.Id == id ? f with { Name = rootName, ParentId = parentId } : f).ToList();
+        var next = manifest with
+        {
+            Folders = [.. manifest.Folders, .. folders],
+            Scripts = [.. manifest.Scripts, .. tree.Scripts],
+            DeletedScripts = [.. manifest.DeletedScripts ?? [], .. tree.DeletedScripts],
+            DeletedFolderTrees = manifest.DeletedFolderTrees!.Where(t => t.RootId != id).ToList()
+        };
+        PreflightCommit(next);
+        VerifyTreeSources(tree);
+        Commit(next);
+        return Snapshot();
+    }
+
+    private void VerifyTreeSources(DeletedFolderTree tree)
+    {
+        // Stream one bounded file at a time, without accumulating subtree content.
+        foreach (var script in tree.Scripts.Concat(tree.DeletedScripts)) VerifyCommittedSource(script, script.SourceHash);
+    }
+
+    private void BackupBeforeUpgrade(int targetVersion)
+    {
+        if (manifest.SchemaVersion >= targetVersion) return;
+        var bytes = ReadBytes(ManifestPath, MaxManifestBytes);
+        if (Hash(bytes) != manifestHash) throw Error("conflict", "Workspace metadata changed before upgrade.");
+        var backup = Path.Combine(Root, $"workspace.v{manifest.SchemaVersion}.{manifestHash}.json");
+        PlainPath(backup);
+        if (File.Exists(backup))
+        {
+            if (!ReadBytes(backup, MaxManifestBytes).AsSpan().SequenceEqual(bytes))
+                throw Error("conflict", "The workspace upgrade backup already exists with different bytes.");
+        }
+        else AtomicWrite(backup, bytes, false);
+    }
+
     private void CheckRevision(long expectedRevision)
     {
         CheckManifest();
-        if (manifest.Revision != expectedRevision) throw Error("conflict", "Workspace organization changed. Reopen it before deleting or restoring a script.");
+        if (manifest.Revision != expectedRevision) throw Error("conflict", "Workspace organization changed. Reopen it before deleting or restoring.");
     }
 
     private void VerifyCommittedSource(Script script, string expectedHash)
@@ -384,18 +443,44 @@ internal sealed class WorkspaceStore : IDisposable
 
     private static void Validate(Manifest value)
     {
-        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2) || (value.SchemaVersion == 1 ? value.DeletedScripts != null : value.DeletedScripts == null) || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
+        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2 or 3)
+            || (value.SchemaVersion == 1 ? value.DeletedScripts != null : value.DeletedScripts == null)
+            || (value.SchemaVersion < 3 ? value.DeletedFolderTrees != null : value.DeletedFolderTrees == null)
+            || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
             throw Error("invalid_workspace", "Unsupported or invalid workspace manifest.");
         Name(value.Name);
-        if (value.Folders.Count > 200 || value.Scripts.Count + (value.DeletedScripts?.Count ?? 0) > 1000) throw Error("limit_exceeded", "Preview limit: 200 folders and 1,000 scripts including the recycle bin.");
+        var trees = value.DeletedFolderTrees ?? [];
+        if (trees.Any(t => t == null || t.Folders == null || t.Scripts == null || t.DeletedScripts == null))
+            throw Error("invalid_workspace", "Invalid deleted folder tree.");
+        if (value.Folders.Count + trees.Sum(t => t.Folders.Count) > 200
+            || value.Scripts.Count + (value.DeletedScripts?.Count ?? 0) + trees.Sum(t => t.Scripts.Count + t.DeletedScripts.Count) > 1000)
+            throw Error("limit_exceeded", "Preview limit: 200 folders and 1,000 scripts including the recycle bin.");
         var ids = new HashSet<Guid>();
+        ValidatePartition(value.Folders, value.Scripts, value.DeletedScripts ?? [], ids);
+        foreach (var tree in trees)
+        {
+            var root = tree.Folders.FirstOrDefault(f => f != null && f.Id == tree.RootId);
+            if (root == null || root.ParentId == Guid.Empty || tree.Folders.Any(f => f != null && f.Id == root.ParentId))
+                throw Error("invalid_workspace", "Invalid deleted folder root.");
+            // The original parent is historical metadata: it may be deleted
+            // independently later. Restore always chooses a live destination.
+            var normalized = tree.Folders.Select(f => f != null && f.Id == tree.RootId ? f with { ParentId = null } : f!).ToList();
+            ValidatePartition(normalized, tree.Scripts, tree.DeletedScripts, ids);
+            if (normalized.Count(f => f.ParentId == null) != 1
+                || tree.Scripts.Concat(tree.DeletedScripts).Any(s => s.FolderId == null))
+                throw Error("invalid_workspace", "Deleted folder trees must be connected and contain only their own scripts.");
+        }
+    }
+
+    private static void ValidatePartition(List<Folder> folderList, List<Script> scripts, List<Script> deleted, HashSet<Guid> ids)
+    {
         var folders = new Dictionary<Guid, Folder>();
-        foreach (var f in value.Folders)
+        foreach (var f in folderList)
         {
             if (f == null || f.Id == Guid.Empty || !ids.Add(f.Id)) throw Error("invalid_workspace", "Invalid or duplicate folder identity.");
             Name(f.Name); folders.Add(f.Id, f);
         }
-        foreach (var f in value.Folders)
+        foreach (var f in folderList)
         {
             var seen = new HashSet<Guid> { f.Id };
             var parent = f.ParentId;
@@ -405,13 +490,15 @@ internal sealed class WorkspaceStore : IDisposable
                 parent = ancestor.ParentId;
             }
         }
-        foreach (var s in value.Scripts.Concat(value.DeletedScripts ?? []))
+        foreach (var script in scripts.Concat(deleted))
         {
-            if (s == null || s.Id == Guid.Empty || !ids.Add(s.Id) || s.FolderId != null && !folders.ContainsKey(s.FolderId.Value) || !ValidHash(s.SourceHash))
+            if (script == null || script.Id == Guid.Empty || !ids.Add(script.Id)
+                || script.FolderId != null && !folders.ContainsKey(script.FolderId.Value) || !ValidHash(script.SourceHash))
                 throw Error("invalid_workspace", "Invalid script identity, folder or content reference.");
-            Name(s.Name); Language(s.Language);
+            Name(script.Name); Language(script.Language);
         }
-        if (value.Folders.GroupBy(f => (f.ParentId, f.Name.ToUpperInvariant())).Any(g => g.Count() > 1) || value.Scripts.GroupBy(s => (s.FolderId, s.Name.ToUpperInvariant())).Any(g => g.Count() > 1))
+        if (folderList.GroupBy(f => (f.ParentId, f.Name.ToUpperInvariant())).Any(g => g.Count() > 1)
+            || scripts.GroupBy(s => (s.FolderId, s.Name.ToUpperInvariant())).Any(g => g.Count() > 1))
             throw Error("invalid_request", "Names must be unique within their folder (ignoring case).");
     }
 
@@ -435,6 +522,8 @@ internal sealed class WorkspaceStore : IDisposable
         UniqueProperties(document.RootElement);
         if (document.RootElement.TryGetProperty("schemaVersion", out var schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out var version) && version == 1 && document.RootElement.TryGetProperty("deletedScripts", out _))
             throw Error("invalid_workspace", "Recycle-bin metadata requires workspace schema v2.");
+        if (document.RootElement.TryGetProperty("schemaVersion", out schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out version) && version < 3 && document.RootElement.TryGetProperty("deletedFolderTrees", out _))
+            throw Error("invalid_workspace", "Folder recycle-bin metadata requires workspace schema v3.");
         return JsonSerializer.Deserialize<Manifest>(bytes, Json) ?? throw Error("invalid_workspace", "Workspace manifest is missing.");
     }
 

@@ -12,6 +12,8 @@ const shapes = {
   'folder.duplicate': ['id', 'name', 'parentId', 'expectedRevision'],
   'script.create': ['name', 'language', 'folderId'], 'script.read': ['id'],
   'script.duplicate': ['id', 'name', 'folderId', 'expectedHash'],
+  'folder.delete': ['id', 'expectedRevision', 'allowUpgrade'],
+  'folder.restore': ['id', 'name', 'parentId', 'expectedRevision'],
   'script.delete': ['id', 'expectedHash', 'expectedRevision', 'allowUpgrade'],
   'script.restore': ['id', 'name', 'folderId', 'expectedRevision'],
   'script.save': ['id', 'name', 'language', 'folderId', 'content', 'expectedHash']
@@ -34,13 +36,23 @@ export function assertRequest(method, params) {
 function script(value) {
   return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId) && hash(value.sourceHash);
 }
+function folder(value) { return object(value) && id(value.id) && name(value.name) && optionalId(value.parentId); }
+function tree(value) {
+  return object(value) && id(value.rootId) && Array.isArray(value.folders) && value.folders.length > 0 && value.folders.every(folder)
+    && value.folders.some(f => f.id === value.rootId) && Array.isArray(value.scripts) && value.scripts.every(script)
+    && Array.isArray(value.deletedScripts) && value.deletedScripts.every(script);
+}
 function snapshot(value) {
-  return object(value) && typeof value.root === 'string' && [1, 2].includes(value.schemaVersion) && id(value.id) && name(value.name)
+  return object(value) && typeof value.root === 'string' && [1, 2, 3].includes(value.schemaVersion) && id(value.id) && name(value.name)
     && Number.isSafeInteger(value.revision) && value.revision >= 0
-    && Array.isArray(value.folders) && value.folders.length <= 200 && value.folders.every(f => object(f) && id(f.id) && name(f.name) && optionalId(f.parentId))
+    && Array.isArray(value.folders) && value.folders.length <= 200 && value.folders.every(folder)
     && Array.isArray(value.scripts) && value.scripts.length <= 1000 && value.scripts.every(script)
     && (value.schemaVersion === 1 ? value.deletedScripts === undefined || Array.isArray(value.deletedScripts) && value.deletedScripts.length === 0
-      : Array.isArray(value.deletedScripts) && value.scripts.length + value.deletedScripts.length <= 1000 && value.deletedScripts.every(script));
+      : Array.isArray(value.deletedScripts) && value.scripts.length + value.deletedScripts.length <= 1000 && value.deletedScripts.every(script))
+    && (value.schemaVersion < 3 ? value.deletedFolderTrees === undefined || Array.isArray(value.deletedFolderTrees) && value.deletedFolderTrees.length === 0
+      : Array.isArray(value.deletedFolderTrees) && value.deletedFolderTrees.every(tree)
+        && value.folders.length + value.deletedFolderTrees.reduce((n, t) => n + t.folders.length, 0) <= 200
+        && value.scripts.length + value.deletedScripts.length + value.deletedFolderTrees.reduce((n, t) => n + t.scripts.length + t.deletedScripts.length, 0) <= 1000);
 }
 function document(value) {
   return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId)
@@ -53,9 +65,13 @@ export function assertResult(method, value, params) {
     : method === 'folder.duplicate' ? object(value) && snapshot(value.workspace) && id(value.folderId) && value.folderId !== params.id
       && value.workspace.revision === params.expectedRevision + 1
       && value.workspace.folders.some(f => f.id === value.folderId && f.name === params.name && f.parentId === params.parentId)
-    : method === 'script.delete' ? snapshot(value) && value.schemaVersion === 2 && value.revision === params.expectedRevision + 1
+    : method === 'folder.delete' ? snapshot(value) && value.schemaVersion === 3 && value.revision === params.expectedRevision + 1
+      && !value.folders.some(f => f.id === params.id) && value.deletedFolderTrees.some(t => t.rootId === params.id)
+    : method === 'folder.restore' ? snapshot(value) && value.schemaVersion === 3 && value.revision === params.expectedRevision + 1
+      && !value.deletedFolderTrees.some(t => t.rootId === params.id) && value.folders.some(f => f.id === params.id && f.name === params.name && f.parentId === params.parentId)
+    : method === 'script.delete' ? snapshot(value) && value.schemaVersion >= 2 && value.revision === params.expectedRevision + 1
       && !value.scripts.some(s => s.id === params.id) && value.deletedScripts.some(s => s.id === params.id && s.sourceHash === params.expectedHash)
-    : method === 'script.restore' ? snapshot(value) && value.schemaVersion === 2 && value.revision === params.expectedRevision + 1
+    : method === 'script.restore' ? snapshot(value) && value.schemaVersion >= 2 && value.revision === params.expectedRevision + 1
       && !value.deletedScripts.some(s => s.id === params.id) && value.scripts.some(s => s.id === params.id && s.name === params.name && s.folderId === params.folderId)
     : method === 'script.read' ? document(value) && value.id === params.id
     : ['script.create', 'script.save', 'script.duplicate'].includes(method) ? object(value) && snapshot(value.workspace) && document(value.document)

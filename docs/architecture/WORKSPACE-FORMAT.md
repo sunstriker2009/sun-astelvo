@@ -1,4 +1,4 @@
-# Workspace formats v1 and v2
+# Workspace formats v1, v2 and v3
 
 Status: implemented for the first M1 slice; full organizer acceptance remains open.
 
@@ -63,12 +63,12 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 ## Limits and bridge
 
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
-- 200 folders and 1,000 scripts including deleted scripts in this preview.
+- 200 folders and 1,000 scripts including all recycle-bin records in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename/move/duplicate, script create/read/save/duplicate/delete/restore. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move/duplicate/delete/restore, script create/read/save/duplicate/delete/restore. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, tags, favourites, collections, folder delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, tags, favourites, collections, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 
@@ -83,6 +83,23 @@ Opening or ordinarily editing v1 keeps the serialized manifest at v1. The first 
 
 Delete takes ID, expected source hash and expected workspace revision. It verifies committed UTF-8 source bytes and metadata freshness, then moves the complete Script record from `scripts` to `deletedScripts` in one manifest replacement. No source path is moved or erased, IDs and folder/language/hash metadata survive, and active read/save/duplicate cannot address deleted scripts. The UI disables delete for unsaved or unadopted external edits. Cancelling confirmation leaves the editor and workspace unchanged.
 
-Restore takes the deleted identity, explicit destination/name and expected workspace revision. It verifies source presence, hash, UTF-8 and path containment, validates active sibling-name uniqueness, then moves the same identity back in one manifest replacement. An explicit name/destination resolves collisions without overwriting another script. Deleted names may repeat; IDs remain globally unique across folders, active scripts and deleted scripts. The combined active/deleted count remains limited to 1,000. All other mutations preserve the deleted records, and v2 remains v2 even after the bin empties. Permanent purge and folder subtree delete/restore are not implemented.
+Restore takes the deleted identity, explicit destination/name and expected workspace revision. It verifies source presence, hash, UTF-8 and path containment, validates active sibling-name uniqueness, then moves the same identity back in one manifest replacement. An explicit name/destination resolves collisions without overwriting another script. Deleted names may repeat; IDs remain globally unique across folders, active scripts and deleted scripts. The combined active/deleted count remains limited to 1,000. All other mutations preserve the deleted records, and v2 remains v2 even after the bin empties. Permanent purge is not implemented. Folder subtree recycling uses the explicit v3 extension below.
 
 Preflight rejection does not alter source files or the manifest. Upgrade can leave an unused v1 backup after a later failure; restart still uses only `workspace.json` and ignores partial temp files. A lost response can still have committed: reopen/inspect before retrying. Existing atomic-rename and power-loss limitations apply. Changed/missing deleted source blocks restore without replacing external bytes; manual source recovery may be needed. The recycle bin is not a backup of externally mutable source files.
+
+
+## Folder subtree recycle bin and explicit v3 upgrade
+
+`folder.delete` takes an active folder ID, expected workspace revision and `allowUpgrade`. First folder deletion from v1 or v2 requires explicit confirmation of format v3 and retains the exact previous manifest at `workspace.v<previous-schema>.<manifest-sha256>.json`. Existing v1/v2 workspaces keep their schema until an operation explicitly needs an upgrade. Ordinary script deletion/restoration on v3 preserves v3 and all folder trash; there is no automatic downgrade.
+
+V3 requires `deletedScripts` and `deletedFolderTrees` arrays. A deleted tree has `rootId`, `folders`, `scripts` and `deletedScripts`. It stores the complete folder records and complete Script records with original IDs. `scripts` are the subtree's previously active scripts; `deletedScripts` are scripts already in the script bin whose original folder lies in the subtree. Deleting the tree removes these records from their live arrays and publishes the entire tree through one manifest replacement. Source files remain in place. Independent deleted trees are not merged when their historical parent is later deleted.
+
+`folder.restore` takes the deleted root ID, explicit new root name, nullable live destination parent and expected revision. It restores the original folder hierarchy and active script identities, returns independently deleted scripts to the script bin, and removes the group through one manifest replacement. Root renaming/reparenting resolves collisions and a missing original parent. Descendant relationships and all script IDs/source references survive. A restored tree cannot target its own deleted IDs or an unavailable parent. Deleted roots may retain historical parent IDs that are no longer live; only an explicit live destination is used at restore time.
+
+Validation requires each deleted tree to be connected, its root to exist, all script folder references to stay inside it, and global identity uniqueness across live records and every recycle-bin partition. Unknown fields, missing required arrays and folder-trash fields on v1/v2 fail closed. Combined limits remain 200 folders and 1,000 scripts, including complete deleted trees and all independently deleted scripts; moving records to the bin does not free these limits. Name uniqueness applies to active sibling folders/scripts within each partition. Deleted script names may repeat.
+
+Delete and restore preflight the full candidate manifest before source verification or backup. Every affected source must be present, valid UTF-8, inside the managed path and match its committed hash, including already-deleted scripts in the tree. Source verification reads one bounded file at a time without retaining the whole tree. Delete rechecks sources after backup and manifest freshness at commit. A missing/changed deleted source blocks whole-tree restore without overwriting it. Folder delete/restore use a 30-second desktop deadline; timed-out/lost responses can have committed, so reopen and inspect before retrying. There are no automatic retries.
+
+The UI disables folder delete while any open buffer is dirty or has unadopted external edits. Native confirmation defaults to Cancel and explains the upgrade and retained source files. Cancellation/failure preserves the editor. Successful deletion clears the current document only when it belonged to the deleted subtree; an unrelated editor is retained. Restore leaves the current editor unchanged. Deleted folders have a separate selector showing root name, subtree counts and identity. Permanent purge, retention cleanup and full workspace backup/restore remain unfinished.
+
+Local host tests include abrupt process termination observed during upgrade backup activity, validating complete active-or-deleted visibility and intact source bytes after reopening. A separate test constructs checkpoint/temp leftovers to validate a pre-commit restart. Neither establishes power-loss durability or Windows acceptance.
