@@ -20,7 +20,7 @@ export async function verifyDesktop(window, { packaged }) {
     };
   })()`);
   assert.equal(result.nodeDisabled, true);
-  assert.deepEqual(result.bridge.sort(), ['confirmClassificationUpgrade', 'confirmCollectionsUpgrade', 'confirmDeleteCollection', 'confirmDeleteFolder', 'confirmDeleteScript', 'confirmDiscard', 'confirmDiscardRecovery', 'hostInfo', 'workspace']);
+  assert.deepEqual(result.bridge.sort(), ['confirmClassificationUpgrade', 'confirmCollectionsUpgrade', 'confirmDeleteCollection', 'confirmDeleteFolder', 'confirmDeleteScript', 'confirmDiscard', 'confirmDiscardRecovery', 'hostInfo', 'onPrepareClose', 'workspace']);
   assert.deepEqual(result.workspaceMethods.sort(), ['classifyScript', 'clearRecovery', 'close', 'create', 'createCollection', 'createFolder', 'createScript', 'deleteCollection', 'deleteFolder', 'deleteScript', 'duplicateFolder', 'duplicateScript', 'exportArchive', 'importScripts', 'moveFolder', 'open', 'readRecovery', 'readScript', 'renameFolder', 'restoreArchive', 'restoreFolder', 'restoreScript', 'saveScript', 'searchSource', 'updateCollection', 'writeRecovery']);
   assert.equal(result.host.ok, true, result.host.message);
   assert.equal(result.host.info.product, 'ASTELVO');

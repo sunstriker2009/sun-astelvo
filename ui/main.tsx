@@ -7,6 +7,7 @@ import 'monaco-editor/languages/definitions/csharp/register';
 import 'monaco-editor/features/find/register';
 import 'monaco-editor/features/quickCommand/register';
 import './style.css';
+import { AutomaticCheckpoint } from './automatic-checkpoint';
 
 type Language = 'javascript' | 'python' | 'csharp';
 type Folder = { id: string; name: string; parentId: string | null };
@@ -33,6 +34,7 @@ declare global {
   interface Window {
     astelvo: {
       hostInfo: () => Promise<HostResponse>;
+      onPrepareClose: (handler: () => Promise<boolean>) => () => void;
       confirmDeleteFolder: (upgrade: boolean) => Promise<boolean>;
       confirmDeleteScript: (upgrade: boolean) => Promise<boolean>;
       confirmClassificationUpgrade: () => Promise<boolean>;
@@ -99,7 +101,37 @@ function App() {
   const [tabList, setTabList] = useState<{ id: string; name: string; dirty: boolean; external: boolean }[]>([]);
   const [recovery, setRecovery] = useState<RecoveryState | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState('');
+  const recoveryRef = useRef<RecoveryState | null>(null);
+  const workspaceRef = useRef<Workspace | null>(null);
+  const [automaticEnabled, setAutomaticEnabled] = useState(false);
+  const [automaticReady, setAutomaticReady] = useState(false);
+  const [automaticProblem, setAutomaticProblem] = useState(false);
+  const prepareCloseRef = useRef<() => Promise<boolean>>(async () => false);
+  const automatic = useRef<AutomaticCheckpoint | null>(null);
+  if (!automatic.current) automatic.current = new AutomaticCheckpoint({
+    capture: () => {
+      const active = workspaceRef.current;
+      if (!active) return null;
+      const snapshot = captureDrafts(active.id);
+      return snapshot ? JSON.stringify(snapshot) : null;
+    },
+    write: async serialized => {
+      const snapshot = JSON.parse(serialized) as RecoverySnapshot;
+      const reviewed = recoveryRef.current;
+      if (!reviewed || reviewed.problem || reviewed.workspaceId !== snapshot.workspaceId) throw new Error('Read and review recovery before enabling automatic checkpoints.');
+      const result = unwrap(await window.astelvo.workspace.writeRecovery({ expectedToken: reviewed.token, snapshot }));
+      updateRecovery({ ...result, snapshot, problem: null });
+      setRecoveryMessage(`Automatic checkpoint saved: ${snapshot.tabs.length} drafts. Saved scripts are unchanged.`);
+    },
+    available: () => !busyRef.current,
+    state: setAutomaticEnabled,
+    failed: cause => {
+      setAutomaticReady(false); setAutomaticProblem(true);
+      setRecoveryMessage(`Automatic checkpoints paused: ${cause instanceof Error ? cause.message : 'Write failed.'} Read the checkpoint before resuming. Current drafts remain in the editor.`);
+    }
+  });
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  workspaceRef.current = workspace;
   const [document, setDocument] = useState<Document | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [dirty, setDirty] = useState(false);
@@ -259,6 +291,7 @@ function App() {
     const instance = monaco.editor.create(container.current!, { model: emptyModel.current, readOnly: true, theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 15 });
     editor.current = instance;
     const change = instance.onDidChangeModelContent(() => { if (switchingModel.current) return; contentRef.current = instance.getValue(); calculateDirty(); });
+    const unsubscribeClose = window.astelvo.onPrepareClose(() => prepareCloseRef.current());
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if ([...tabs.current.values()].some(tab => tab.dirty || tab.classificationDirty)) { event.preventDefault(); event.returnValue = ''; }
     };
@@ -270,6 +303,7 @@ function App() {
     window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('keydown', shortcut, true);
     return () => {
+      automatic.current?.stop(); unsubscribeClose();
       change.dispose(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('keydown', shortcut, true);
       instance.dispose(); for (const tab of tabs.current.values()) tab.model.dispose(); tabs.current.clear(); emptyModel.current?.dispose(); emptyModel.current = null; editor.current = null;
     };
@@ -279,7 +313,7 @@ function App() {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true); setError('');
     editor.current?.updateOptions({ readOnly: true });
-    try { await action(); }
+    try { await automatic.current!.drain(); await action(); }
     catch (cause) {
       if (!(cause instanceof Error && 'code' in cause && cause.code === 'cancelled')) setError(cause instanceof Error ? cause.message : 'Workspace operation failed.');
     } finally {
@@ -287,34 +321,49 @@ function App() {
       editor.current?.updateOptions({ readOnly: documentRef.current === null });
     }
   }
-  async function canLeave() { return !hasPendingTabs() || await window.astelvo.confirmDiscard(); }
+  async function canLeave() {
+    await automatic.current!.flush();
+    return !hasPendingTabs() || await window.astelvo.confirmDiscard();
+  }
+  prepareCloseRef.current = async () => {
+    if (busyRef.current) { setError('Finish the current workspace operation before closing.'); return false; }
+    let ready = false;
+    await run(async () => { await automatic.current!.flush(); ready = true; });
+    return ready;
+  };
+  function updateRecovery(next: RecoveryState | null) { recoveryRef.current = next; setRecovery(next); }
+  function captureDrafts(workspaceId: string): RecoverySnapshot | null {
+    const drafts = [...tabs.current.values()].filter(tab => tab.dirty || tab.classificationDirty || tab.saved.externalChanged);
+    if (!drafts.length) return null;
+    return { format: 'astelvo-draft-checkpoint', version: 1, workspaceId,
+      tabs: drafts.map(tab => ({ saved: tab.saved, draft: tab.draft, content: tab.model.getValue(), tagText: tab.tagText, favourite: tab.favourite })) };
+  }
   async function loadRecovery(next: Workspace) {
-    setRecovery(null); setRecoveryMessage('');
+    automatic.current!.stop(); setAutomaticReady(false); setAutomaticProblem(false); updateRecovery(null); setRecoveryMessage('');
     try {
       const state = unwrap(await window.astelvo.workspace.readRecovery());
       if (state.workspaceId !== next.id) throw new Error('Recovery workspace changed. Read the checkpoint again.');
-      setRecovery(state);
+      updateRecovery(state); setAutomaticReady(state.token === null && state.problem === null);
       setRecoveryMessage(state.problem ?? (state.snapshot ? `${state.snapshot.tabs.length} checkpointed drafts available. Review before recovery or replacement.` : 'No draft checkpoint.'));
     } catch (cause) { setRecoveryMessage(cause instanceof Error ? cause.message : 'Checkpoint unavailable. Existing files were preserved.'); }
   }
   function checkpointDrafts() {
     if (!workspace || !recovery || recovery.problem) return;
     void run(async () => {
-      syncTab();
-      const drafts = [...tabs.current.values()].filter(tab => tab.dirty || tab.classificationDirty || tab.saved.externalChanged);
-      if (!drafts.length) throw new Error('There are no unsaved or externally reviewed drafts to checkpoint. Existing checkpoint retained.');
-      const snapshot: RecoverySnapshot = { format: 'astelvo-draft-checkpoint', version: 1, workspaceId: workspace.id,
-        tabs: drafts.map(tab => ({ saved: tab.saved, draft: tab.draft, content: tab.model.getValue(), tagText: tab.tagText, favourite: tab.favourite })) };
-      const result = unwrap(await window.astelvo.workspace.writeRecovery({ expectedToken: recovery.token, snapshot }));
-      setRecovery({ ...result, snapshot, problem: null });
-      setRecoveryMessage(`Checkpoint saved: ${drafts.length} drafts. Later edits require another checkpoint.`);
+      automatic.current!.stop(); syncTab();
+      const snapshot = captureDrafts(workspace.id);
+      if (!snapshot) throw new Error('There are no unsaved or externally reviewed drafts to checkpoint. Existing checkpoint retained.');
+      const result = unwrap(await window.astelvo.workspace.writeRecovery({ expectedToken: recoveryRef.current!.token, snapshot }));
+      updateRecovery({ ...result, snapshot, problem: null }); setAutomaticReady(true); setAutomaticProblem(false);
+      setRecoveryMessage(`Checkpoint saved: ${snapshot.tabs.length} drafts. Later edits require another checkpoint.`);
     });
   }
   function recoverDrafts() {
     if (!workspace || !recovery?.snapshot) return;
     void run(async () => {
+      automatic.current!.stop();
       if (!await canLeave()) return;
-      const records = recovery.snapshot!.tabs;
+      const records = recoveryRef.current!.snapshot!.tabs;
       // Validate the entire restore before touching any open models. A deleted
       // script must be restored through the organizer before its draft can return.
       for (const record of records) {
@@ -327,6 +376,7 @@ function App() {
         editor.current?.setValue(record.content);
         changeDraft(record.draft); changeClassification(record.tagText, record.favourite);
       }
+      setAutomaticReady(true); setAutomaticProblem(false);
       setRecoveryMessage(`Recovered ${records.length} drafts into tabs. Review before Save; stale source hashes still reject conflicting writes. The checkpoint is retained.`);
     });
   }
@@ -424,7 +474,7 @@ function App() {
       <span className="workspace-title" title={workspace?.root}>{workspace?.name ?? 'No workspace open'}</span>
       <button disabled={busy || !workspace} onClick={() => void run(async () => {
         if (!await canLeave()) return;
-        unwrap(await window.astelvo.workspace.close()); display(null); setWorkspace(null); setRecovery(null); setRecoveryMessage(''); setStatus('Workspace closed.');
+        unwrap(await window.astelvo.workspace.close()); display(null); setWorkspace(null); automatic.current!.stop(); updateRecovery(null); setAutomaticReady(false); setRecoveryMessage(''); setStatus('Workspace closed.');
       })}>Close workspace</button>
     </div>
     <section className="workspace">
@@ -614,18 +664,23 @@ function App() {
         </>}
       </aside>
       <section className="content">
-        {workspace && <details className="recovery-panel"><summary>Draft recovery{recovery?.snapshot ? ` (${recovery.snapshot.tabs.length})` : ''}</summary>
-          <p>Checkpoint unsaved source, script fields and labels from every open tab. This is manual; later edits are not automatically protected. Checkpoints stay in this workspace until explicitly replaced or discarded, including after Save, tab close or quit. Workspace exports contain saved scripts only.</p>
+        {workspace && <details className="recovery-panel"><summary>Draft recovery{automaticEnabled ? ' — automatic' : automaticProblem ? ' — automatic paused' : ''}{recovery?.snapshot ? ` (${recovery.snapshot.tabs.length})` : ''}</summary>
+          <p>Checkpoint unsaved source, script fields and labels from every open tab. Optional automatic checkpoints replace the current checkpoint about every two seconds and flush before workspace changes or normal window close. Recover, replace or discard an existing checkpoint before enabling them. Checkpoints stay after Save/close/quit until replaced or discarded. Workspace exports contain saved scripts only.</p>
           <button disabled={busy} onClick={() => void run(async () => loadRecovery(workspace))}>Read checkpoint</button>
           <button disabled={busy || !recovery || !!recovery.problem || !tabList.some(tab => tab.dirty || tab.external)} onClick={checkpointDrafts}>{recovery?.snapshot ? 'Replace checkpoint with open drafts' : 'Checkpoint open drafts'}</button>
           <button disabled={busy || !recovery?.snapshot} onClick={recoverDrafts}>Recover checkpoint</button>
           <button disabled={busy || !recovery?.token} onClick={() => void run(async () => {
+            automatic.current!.stop();
             if (!await window.astelvo.confirmDiscardRecovery()) return;
-            const result = unwrap(await window.astelvo.workspace.clearRecovery(recovery!.token));
+            const result = unwrap(await window.astelvo.workspace.clearRecovery(recoveryRef.current!.token));
             if (result.workspaceId !== workspace.id) throw new Error('Recovery workspace changed. Read the checkpoint again.');
-            setRecovery({ ...result, snapshot: null, problem: null }); setRecoveryMessage('Checkpoint discarded. Open drafts and saved scripts are unchanged.');
+            updateRecovery({ ...result, snapshot: null, problem: null }); setAutomaticReady(true); setAutomaticProblem(false); setRecoveryMessage('Checkpoint discarded. Open drafts and saved scripts are unchanged.');
           })}>Discard checkpoint</button>
-          <p role="note">{recoveryMessage}</p>
+          <button disabled={busy || (!automaticEnabled && !automaticReady)} onClick={() => void run(async () => {
+            if (automaticEnabled) { automatic.current!.stop(); setRecoveryMessage('Automatic checkpoints stopped. Last acknowledged checkpoint retained.'); }
+            else { setAutomaticProblem(false); automatic.current!.start(); }
+          })}>{automaticEnabled ? 'Stop automatic checkpoints' : 'Start automatic checkpoints'}</button>
+          <p role="note">{automaticEnabled ? 'Automatic checkpoints enabled for this workspace session. Unacknowledged edits can still be lost on a crash. ' : ''}{recoveryMessage}</p>
         </details>}
 
         <nav className="editor-tabs" aria-label="Open editor tabs">

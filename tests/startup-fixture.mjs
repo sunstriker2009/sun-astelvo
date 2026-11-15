@@ -5,8 +5,10 @@ import { registerHooks } from 'node:module';
 // Model that ordering while evaluating the actual production entry module.
 const source = `
   import { EventEmitter } from 'node:events';
+  import { pathToFileURL } from 'node:url';
   export let windowCreated = false;
   export let pageLoaded = false;
+  export let lastWindow;
   let ready = false;
   let release;
   const readiness = new Promise(resolve => { release = resolve; });
@@ -18,15 +20,22 @@ const source = `
     releaseReady() { ready = true; release(); }
   });
   export const session = { defaultSession: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } };
-  export const ipcMain = { handle() {} };
+  export const ipcMain = Object.assign(new EventEmitter(), { handle() {} });
   export const dialog = { showMessageBoxSync() { return 1; }, async showOpenDialog() { return { canceled: true, filePaths: [] }; } };
-  export class BrowserWindow {
+  export class BrowserWindow extends EventEmitter {
     constructor() {
+      super(); lastWindow = this; this.destroyed = false; this.requests = [];
       if (!ready) throw new Error('Window created before app readiness');
       windowCreated = true;
-      this.webContents = Object.assign(new EventEmitter(), { setWindowOpenHandler() {} });
+      this.webContents = Object.assign(new EventEmitter(), { setWindowOpenHandler() {}, mainFrame: {url: ''}, send: (channel, id) => this.requests.push({channel, id}) });
     }
-    async loadFile() { pageLoaded = true; }
+    async loadFile(file) { this.webContents.mainFrame.url = pathToFileURL(file).href; pageLoaded = true; }
+    isDestroyed() { return this.destroyed; }
+    close() {
+      const event = { prevented: false, preventDefault() { this.prevented = true; } };
+      this.emit('close', event);
+      if (!event.prevented) { this.destroyed = true; this.emit('closed'); }
+    }
   }
 `;
 registerHooks({
@@ -44,4 +53,22 @@ electron.app.releaseReady();
 await new Promise(resolve => setImmediate(resolve));
 assert.equal(electron.windowCreated, true);
 assert.equal(electron.pageLoaded, true);
+const window = electron.lastWindow;
+const event = {sender: window.webContents, senderFrame: window.webContents.mainFrame};
+window.close();
+assert.equal(window.isDestroyed(), false);
+assert.equal(window.requests.length, 1);
+assert.equal(window.requests[0].channel, 'astelvo:prepare-close');
+window.close(); assert.equal(window.requests.length, 1, 'Repeated closes share one preparation');
+electron.ipcMain.emit('astelvo:prepared-close', event, 'wrong-id', true);
+assert.equal(window.isDestroyed(), false);
+electron.ipcMain.emit('astelvo:prepared-close', {...event, sender: {}}, window.requests[0].id, true);
+assert.equal(window.isDestroyed(), false, 'Untrusted acknowledgement is ignored');
+electron.ipcMain.emit('astelvo:prepared-close', event, window.requests[0].id, false);
+assert.equal(window.isDestroyed(), false, 'Failed flush keeps the window open');
+window.close(); assert.equal(window.requests.length, 2);
+electron.ipcMain.emit('astelvo:prepared-close', event, window.requests[0].id, true);
+assert.equal(window.isDestroyed(), false, 'Superseded acknowledgement cannot close a later attempt');
+electron.ipcMain.emit('astelvo:prepared-close', event, window.requests[1].id, true);
+assert.equal(window.isDestroyed(), true);
 console.log('Entry import finished before readiness; window/page startup followed readiness.');
