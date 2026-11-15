@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { CsharpFormatter } from './csharp-formatter.mjs';
 import { HostClient } from './host-client.mjs';
 import { hostLaunch } from './launch-config.mjs';
 import { assertRequest } from './workspace-contract.mjs';
@@ -50,6 +51,21 @@ async function startDesktop() {
     }
     return host;
   }
+  const csharpFormatter = new CsharpFormatter(() => hostLaunch({appRoot: root, resourcesPath: process.resourcesPath, isPackaged: app.isPackaged}));
+  const stopFormatter = () => { void csharpFormatter.cancel().catch(error => console.error('C# formatter cleanup failed:', error.message)); };
+  window.webContents.on('render-process-gone', stopFormatter);
+  window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) stopFormatter(); });
+  window.on('closed', stopFormatter);
+  ipcMain.handle('astelvo:format-csharp', async (event, input) => {
+    trusted(event);
+    try { return {ok: true, value: await csharpFormatter.format(input)}; }
+    catch (error) { return {ok: false, code: error.code ?? 'formatter_error', message: error.message}; }
+  });
+  ipcMain.handle('astelvo:cancel-csharp-format', async event => {
+    trusted(event);
+    try { return {ok: true, value: await csharpFormatter.cancel()}; }
+    catch (error) { return {ok: false, code: error.code ?? 'cleanup_failed', message: error.message}; }
+  });
   async function command(method, params) {
     try { return { ok: true, value: await getHost().request(method, params, ['workspace.import', 'workspace.export', 'workspace.restore', 'workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
@@ -206,7 +222,7 @@ async function startDesktop() {
       // workspace lease. A cancelled quit must leave the host usable.
       if (!window.isDestroyed()) { window.close(); return; }
       quitting = true;
-      void host.close().finally(() => app.quit());
+      void csharpFormatter.cancel().catch(error => console.error(error.message)).then(() => host.close()).finally(() => app.quit());
     }
   });
   try {

@@ -4,7 +4,9 @@ using Sun.Workspace.Host;
 
 // Local workspace operations only. Never execute script content in this process.
 const int maxFrameBytes = 4 * 1024 * 1024;
-using var workspace = new WorkspaceSession();
+if (args.Length > 0 && !(args.Length == 1 && args[0] == "--format-csharp")) return 2;
+var formattingOnly = args.Length == 1;
+using var workspace = formattingOnly ? null : new WorkspaceSession();
 var responseJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 var input = Console.OpenStandardInput();
 var output = Console.OpenStandardOutput();
@@ -31,7 +33,8 @@ try
 
         object? result = null;
         object? error = null;
-        try { result = workspace.Execute(method.GetString()!, root); }
+        try { result = formattingOnly ? CSharpFormatting.Execute(method.GetString()!, root) : workspace!.Execute(method.GetString()!, root); }
+        catch (OperationCanceledException) { error = new { code = "timed_out", message = "C# formatting timed out. Original buffer retained." }; }
         catch (WorkspaceException exception) { error = new { code = exception.Code, message = exception.Message }; }
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException or KeyNotFoundException or FormatException or OverflowException)
         { error = new { code = "invalid_request", message = "Invalid request or workspace manifest. No existing source was overwritten." }; }
@@ -43,6 +46,7 @@ try
         await output.WriteAsync(header);
         await output.WriteAsync(bytes);
         await output.FlushAsync();
+        if (formattingOnly) return 0;
     }
     return 0;
 }
