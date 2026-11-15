@@ -7,3 +7,5 @@ details{margin:10px 0}summary{color:#b4c1ff;font-size:13px;cursor:pointer;paddin
 .editor-tabs{display:flex;gap:6px;overflow-x:auto;flex-shrink:0;padding:8px 14px;border-bottom:1px solid #29334c;min-height:48px}.editor-tab{display:flex;flex-shrink:0}.editor-tab button:first-child{border-radius:6px 0 0 6px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.editor-tab button:last-child{border-radius:0 6px 6px 0;border-left:0;padding:8px}.editor-tab button[aria-current=page]{background:#344679;border-color:#b4c1ff}
 
 .recovery-panel{padding:0 14px;border-bottom:1px solid #29334c;font-size:12px;flex-shrink:0}.recovery-panel button{margin:0 8px 8px 0;font-size:12px}.recovery-panel p{max-width:900px;line-height:1.5;color:#b5bfd2}
+
+.capabilities{margin:0;padding:8px 14px;color:#b5bfd2;font-size:12px;border-bottom:1px solid #29334c}

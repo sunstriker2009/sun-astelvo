@@ -6,7 +6,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import merged (#31); Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/checkpoints merged (#32–#33); automatic checkpoints/normal-close flush locally validated; formatting and Windows gates open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints merged (#32–#34); JavaScript formatter locally validated; Python/C# formatters and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `04c725d1` contains merged manual checkpoint/recovery PR #33; no implementation PR overlapped this batch.
+Main `72097bba` contains merged automatic-checkpoint PR #34; no open implementation PR overlapped this batch.
 
-Opt-in automatic draft checkpoints and normal-close/workspace-transition flushing are locally implemented/validated on `feature/m2-automatic-checkpoints` ([evidence](../operations/M2-AUTOMATIC-CHECKPOINT-VALIDATION.md), [ADR-009](../adr/0009-automatic-checkpoints.md)). Writes serialize, skip unchanged data, retain base hashes and pause without retry on failure. Existing checkpoints require review before automatic replacement. Check the new PR for CI/merge state; apply [owner-authorized auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md), with final human product review outstanding.
+Bundled JavaScript/Prettier formatting is locally implemented/validated on `feature/m2-javascript-formatting` ([evidence](../operations/M2-JAVASCRIPT-FORMAT-VALIDATION.md), [ADR-010](../adr/0010-javascript-formatting.md)). It applies explicit undoable model edits, maps the primary cursor and retains drafts/source on failure; worker-client cancellation/deadline/cleanup and real desktop save/undo/missing-asset checks passed. Check the new PR for required CI/merge state. [Owner-authorized auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md) applies; final human review stays open.
 
-Full shutdown/power-loss/Windows acceptance remains open; unacknowledged edits may be lost. Formatting, runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows organizer/editor/recovery/import/restore, clean-machine and governance follow-ups remain distinct from M0. Saved-state archives exclude recovery checkpoints; archive merges/history retention are optional later enhancements.
+Python/Ruff and C#/Roslyn formatting, all runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/packaged/editor/recovery/import/restore, full shutdown/power-loss, clean-machine, accessibility and governance gates remain distinct from M0. Saved-state archives exclude recovery checkpoints; optional archive merge/history enhancements remain outside required v1 acceptance.
 
 ## M0 foundation evidence
 
