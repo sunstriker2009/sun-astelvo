@@ -13,6 +13,7 @@ type Folder = { id: string; name: string; parentId: string | null };
 type Classification = { tags: string[]; favourite: boolean };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string; classification?: Classification };
 type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
+type SourceSearchResult = { workspaceId: string; revision: number; query: string; scriptIds: string[]; indexedCount: number; indexedBytes: number; rebuilt: boolean };
 type CollectionFilter = { nameContains: string; language: Language | null; folderId: string | null; tag: string | null; favouritesOnly: boolean };
 type SmartCollection = { id: string; name: string; filter: CollectionFilter };
 type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[]; collections: SmartCollection[] };
@@ -35,6 +36,7 @@ declare global {
         create: () => Promise<Result<Workspace>>;
         open: () => Promise<Result<Workspace>>;
         close: () => Promise<Result<null>>;
+        searchSource: (input: { query: string; expectedRevision: number; rebuild: boolean }) => Promise<Result<SourceSearchResult>>;
         createCollection: (input: { name: string; filter: CollectionFilter; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<{ workspace: Workspace; collectionId: string }>>;
         updateCollection: (input: { id: string; name: string; filter: CollectionFilter; expectedRevision: number }) => Promise<Result<Workspace>>;
         deleteCollection: (input: { id: string; expectedRevision: number }) => Promise<Result<Workspace>>;
@@ -86,6 +88,9 @@ function App() {
   const [classificationDirty, setClassificationDirty] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState('');
   const [collectionName, setCollectionName] = useState('');
+  const [sourceQuery, setSourceQuery] = useState('');
+  const [sourceSearchActive, setSourceSearchActive] = useState(false);
+  const [sourceResult, setSourceResult] = useState<SourceSearchResult | null>(null);
   const [filterText, setFilterText] = useState('');
   const [filterLanguage, setFilterLanguage] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -124,6 +129,16 @@ function App() {
     const saved = documentRef.current?.classification ?? { tags: [], favourite: false };
     const changed = text !== saved.tags.join(', ') || fav !== saved.favourite;
     classificationDirtyRef.current = changed; setClassificationDirty(changed);
+  }
+  function clearSourceSearch() { setSourceQuery(''); setSourceSearchActive(false); setSourceResult(null); }
+  function searchSource(rebuild: boolean) {
+    if (!workspace) return;
+    void run(async () => {
+      setSourceSearchActive(true); setSourceResult(null);
+      const result = unwrap(await window.astelvo.workspace.searchSource({ query: sourceQuery, expectedRevision: workspace.revision, rebuild }));
+      if (result.workspaceId !== workspace.id) throw new Error('Search workspace changed. Reopen and search again.');
+      setSourceResult(result); setStatus(`Source search matched ${result.scriptIds.length} of ${result.indexedCount} active saved scripts.${result.rebuilt ? ' Index rebuilt.' : ' Verified cached index.'}`);
+    });
   }
   function clearFilters() { setFilterText(''); setFilterLanguage(''); setFilterTag(''); setFavouritesOnly(false); }
   function display(next: Document | null, preserveClassificationDraft = false) {
@@ -183,7 +198,7 @@ function App() {
     void run(async () => {
       if (!await canLeave()) return;
       const next = unwrap(await (create ? window.astelvo.workspace.create() : window.astelvo.workspace.open()));
-      clearFilters(); setSelectedCollectionId(''); setCollectionName(''); setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
+      clearSourceSearch(); clearFilters(); setSelectedCollectionId(''); setCollectionName(''); setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
     });
   }
   function openScript(id: string, reload = false) {
@@ -241,7 +256,9 @@ function App() {
     setFilterText(collection.filter.nameContains); setFilterLanguage(collection.filter.language ?? ''); setFilterTag(collection.filter.tag ?? ''); setFavouritesOnly(collection.filter.favouritesOnly);
     setStatus('Saved collection applied. Working filters can be changed without modifying its saved definition.');
   }
-  const scripts = [...workspace?.scripts ?? []].filter(s => (selectedFolder === null || s.folderId === selectedFolder)
+  const sourceSearchStale = sourceResult !== null && sourceResult.revision !== workspace?.revision;
+  const sourceMatches = new Set(!sourceSearchStale ? sourceResult?.scriptIds ?? [] : []);
+  const scripts = [...workspace?.scripts ?? []].filter(s => (!sourceSearchActive || sourceMatches.has(s.id)) && (selectedFolder === null || s.folderId === selectedFolder)
     && s.name.toLowerCase().includes(filterText.trim().toLowerCase())
     && (!filterLanguage || s.language === filterLanguage)
     && (!filterTag || s.classification?.tags.some(tag => tag.toLowerCase() === filterTag.toLowerCase()))
@@ -285,7 +302,7 @@ function App() {
                 setSelectedCollectionId(''); setCollectionName(''); setStatus('Collection deleted. Scripts and working filters are unchanged.');
               })}>Delete collection</button>
             </form>
-            <p className="muted">Collections save the current folder/name/language/tag/favourite filters. Changing the working view only changes the saved definition when you choose Update collection. No source or recency search yet.</p>
+            <p className="muted">Collections save the current folder/name/language/tag/favourite filters. Changing the working view only changes the saved definition when you choose Update collection. Source search is a separate unsaved condition; no recency filter yet.</p>
           </details>
           {scopeUnavailable && <p role="note">This collection's folder is in the recycle bin. Restore it or select a live folder; results stay empty.</p>}
           <h2>Folders</h2>
@@ -343,12 +360,22 @@ function App() {
             });
           }}>Delete folder</button>}
           <h2>Scripts</h2>
+          <details><summary>Search saved source</summary>
+            <form onSubmit={event => { event.preventDefault(); searchSource(false); }}>
+              <label>Source words<input required maxLength={120} disabled={busy} value={sourceQuery} onChange={event => setSourceQuery(event.target.value)} /></label>
+              <button disabled={busy || !sourceQuery.trim()}>Search source</button>
+              <button type="button" disabled={busy || !sourceQuery.trim()} onClick={() => searchSource(true)}>Rebuild and search</button>
+              <button type="button" disabled={busy || !sourceSearchActive} onClick={clearSourceSearch}>Clear source search</button>
+            </form>
+            <p className="muted">Saved active source only; 1–8 whole words combined with AND, without phrases or operators. Unsaved text and recycle bins are excluded. This condition is separate from saved collections.</p>
+            {sourceSearchActive && <p className="source-search-status" role="note">{sourceSearchStale ? 'Workspace changed. Search again; previous results are hidden.' : sourceResult ? `Applied query: ${sourceResult.query}. ${sourceResult.scriptIds.length} source matches before metadata filters.` : 'Source results are hidden until a search succeeds. Rebuild cannot adopt external edits; reload/save those scripts first.'}</p>}
+          </details>
           <details><summary>Filter scripts</summary>
             <label>Search script names<input maxLength={120} value={filterText} disabled={busy} onChange={event => setFilterText(event.target.value)} /></label>
             <label>Filter language<select value={filterLanguage} disabled={busy} onChange={event => setFilterLanguage(event.target.value)}><option value="">All languages</option>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <label>Filter tag<select value={filterTag} disabled={busy} onChange={event => setFilterTag(event.target.value)}><option value="">All tags</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></label>
             <label className="check-label"><input type="checkbox" checked={favouritesOnly} disabled={busy} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
-            <p className="muted">{scripts.length} matching of {workspace.scripts.length} active scripts. Name and metadata filters only.</p>
+            <p className="muted">{scripts.length} matching of {workspace.scripts.length} active scripts. Metadata filters combine with any active saved-source search.</p>
             <button disabled={busy} onClick={clearFilters}>Clear filters</button>
           </details>
           <details><summary>New script</summary>

@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections locally validated; Windows organizer, collection extensions/indexed search and backup/import/export acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index locally validated; Windows organizer, persistent catalog/collection extensions and backup/import/export acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `425ba972` contains tags/favourites PR #27 with passing CI; earlier organizer/editor and recycle work is merged.
+Main `872422bd` contains saved collections PR #28 with passing CI; earlier organizer/editor, classification and recycle work is merged.
 
-Saved metadata collections are implemented and locally validated in `feature/m1-saved-collections` ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). Explicit v5 migration preserves all script/classification/recycle metadata. Saved folder/name/language/single-tag/favourite conditions have stable IDs and recycled scopes remain dormant. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+Initial indexed source search/rebuild is implemented and locally validated in `feature/m1-source-search` ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). The bounded in-memory index is read-only and detects changed source even on warm queries. No schema/dependency/cache files are added; persistent SQLite catalog and performance acceptance remain open. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Indexed source search/index rebuild and collection predicate extensions remain next, followed by safe import/export/full backup. New organizer Windows, interactive/clean-machine and governance enforcement follow-ups remain open and distinct from the M0 baseline. Remaining M1–M5 implementation and acceptance continue.
+Safe import/export/full backup remains unfinished, alongside persistent catalog, collection predicate extensions and remaining editor/runners/packaging. New organizer Windows, interactive/clean-machine and governance follow-ups remain open and distinct from the M0 baseline. Continue M1–M5 implementation and acceptance.
 
 ## M0 foundation evidence
 
@@ -59,3 +59,8 @@ Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migra
 ### Saved collections baseline — 2026-11-15
 
 Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.
+
+
+### Initial source-word index — 2026-11-15
+
+Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.

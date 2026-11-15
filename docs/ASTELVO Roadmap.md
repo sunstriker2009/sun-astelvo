@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor work through tags/favourites PR #27 are merged with passing CI. Saved metadata collections are implemented and locally validated in `feature/m1-saved-collections` ([evidence](operations/M1-COLLECTIONS-VALIDATION.md)): explicit v5 checkpoint/migration, stable filter definitions and dormant recycled-folder scopes. Check the new PR for CI/merge state. Indexed source search/index rebuild and collection predicate extensions remain next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
+The foundation, branding and organizer/editor work through saved collections PR #28 are merged with passing CI. Initial source-word indexed search/rebuild is implemented and locally validated in `feature/m1-source-search` ([evidence](operations/M1-SOURCE-SEARCH-VALIDATION.md)); [ADR-004](adr/0004-source-search-index.md) records the bounded read-only session index and pending persistent SQLite catalog. Check the new PR for CI/merge state. Safe import/export/full backup, persistent catalog, collection extensions and remaining M1–M5 work stay unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. New organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
 
 ## Sources
 
@@ -251,3 +251,8 @@ Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migra
 ### Saved collections baseline — 2026-11-15
 
 Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.
+
+
+### Initial source-word index — 2026-11-15
+
+Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.

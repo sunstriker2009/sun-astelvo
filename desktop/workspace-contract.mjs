@@ -7,6 +7,7 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
+  'workspace.search': ['query', 'expectedRevision', 'rebuild'],
   'host.info': [], 'workspace.open': ['path', 'create'], 'workspace.close': [],
   'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'], 'folder.move': ['id', 'parentId'],
   'folder.duplicate': ['id', 'name', 'parentId', 'expectedRevision'],
@@ -26,7 +27,8 @@ export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
     const valid = key === 'path' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
-      : key === 'create' || key === 'allowUpgrade' || key === 'favourite' ? typeof value === 'boolean'
+      : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' ? typeof value === 'boolean'
+      : key === 'query' ? typeof value === 'string' && value.trim().length > 0 && value.length <= 120 && !/[\x00-\x1f\x7f-\x9f]/.test(value)
       : key === 'filter' ? collectionFilter(value)
       : key === 'tags' ? tags(value)
       : key === 'id' ? id(value)
@@ -84,6 +86,12 @@ export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : method === 'workspace.search' ? fields(value, ['workspaceId', 'revision', 'query', 'scriptIds', 'indexedCount', 'indexedBytes', 'rebuilt'])
+      && id(value.workspaceId) && value.revision === params.expectedRevision && value.query === params.query
+      && Array.isArray(value.scriptIds) && value.scriptIds.length <= 1000 && value.scriptIds.every(id) && new Set(value.scriptIds).size === value.scriptIds.length
+      && Number.isInteger(value.indexedCount) && value.indexedCount >= value.scriptIds.length && value.indexedCount <= 1000
+      && Number.isInteger(value.indexedBytes) && value.indexedBytes >= 0 && value.indexedBytes <= 32 * 1024 * 1024
+      && typeof value.rebuilt === 'boolean' && (!params.rebuild || value.rebuilt)
     : method === 'collection.create' ? object(value) && snapshot(value.workspace) && value.workspace.schemaVersion === 5 && id(value.collectionId)
       && value.workspace.revision === params.expectedRevision + 1 && value.workspace.collections.some(c => c.id === value.collectionId && c.name === params.name && sameFilter(c.filter, params.filter))
     : method === 'collection.update' ? snapshot(value) && value.schemaVersion === 5 && value.revision === params.expectedRevision + 1

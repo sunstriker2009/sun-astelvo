@@ -21,3 +21,6 @@ Tags/favourites introduce explicitly confirmed schema v4. A required Classificat
 
 
 Saved metadata collections extend the manifest with explicit schema v5 and exact pre-upgrade checkpoints. Collections store stable IDs plus the existing folder/name/language/single-tag/favourite predicates, not copied scripts. Direct old-schema upgrades reuse classification migration across all recycle partitions. Folder references include retained deleted folders; a recycled scope is dormant rather than silently widened, and restore reactivates it. Collection writes are revision-checked manifest-only commits. Indexed source search, multi-tag/recency predicates and future purge/reference reconciliation are not established by this batch.
+
+
+[ADR-004](0004-source-search-index.md) selects a bounded host-memory inverted source-word index for the initial search implementation, with explicit rebuild, manifest binding and per-query source hash verification. It introduces no portable schema or cache files. The proposed persistent SQLite catalog, search-performance acceptance and collection predicate extensions remain open.
