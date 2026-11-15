@@ -60,6 +60,9 @@ for (const platform of ['win32', 'linux']) {
       await fixture(path.join(root, 'dist/index.html'));
       await fixture(path.join(root, 'dist/editor.worker.js'));
       await fixture(path.join(root, 'dist/formatter.worker.js'));
+      await fixture(path.join(root, 'dist/python-formatter.worker.js'));
+      await fixture(path.join(root, 'dist/licenses/ruff/LICENSE'), 'ruff-license');
+      await fixture(path.join(root, 'dist/licenses/ruff/README.md'), 'ruff-source-notice');
       await fixture(path.join(root, 'dist/licenses/prettier/LICENSE'), 'prettier-license');
       await fixture(path.join(root, 'dist/licenses/prettier/THIRD-PARTY-NOTICES.md'), 'prettier-notices');
       await fixture(path.join(root, 'node_modules/private-development-file'));
@@ -79,6 +82,9 @@ for (const platform of ['win32', 'linux']) {
       assert.equal(JSON.parse(await readFile(path.join(application, 'package.json'), 'utf8')).dependencies, undefined);
       await access(path.join(application, 'dist/editor.worker.js'));
       await access(path.join(application, 'dist/formatter.worker.js'));
+      await access(path.join(application, 'dist/python-formatter.worker.js'));
+      assert.equal(await readFile(path.join(application, 'dist/licenses/ruff/LICENSE'), 'utf8'), 'ruff-license');
+      assert.equal(await readFile(path.join(application, 'dist/licenses/ruff/README.md'), 'utf8'), 'ruff-source-notice');
       assert.equal(await readFile(path.join(application, 'dist/licenses/prettier/LICENSE'), 'utf8'), 'prettier-license');
       assert.equal(await readFile(path.join(application, 'dist/licenses/prettier/THIRD-PARTY-NOTICES.md'), 'utf8'), 'prettier-notices');
       await access(path.join(output, 'resources/host/nested/runtime-file'));

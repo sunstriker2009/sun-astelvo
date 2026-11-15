@@ -536,6 +536,7 @@ void app.whenReady().then(async () => {
       await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'close tab settled');
     }
     async function key(keyCode, shift = false) {
+      await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'keyboard editor ready');
       window.focus(); window.webContents.focus();
       await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
       const modifiers = [process.platform === 'darwin' ? 'meta' : 'control', ...(shift ? ['shift'] : [])];
@@ -785,9 +786,9 @@ void app.whenReady().then(async () => {
     await key('Z');
     await wait(`document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ') === ${JSON.stringify(invalidUndoView)}`, 'failed format preserves undo');
     await click('Reload'); await wait("!document.querySelector('.unsaved')", 'format failure explicitly reloaded');
-    await select('Language', 'Python');
+    await select('Language', 'C#');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Format').disabled"), true);
-    assert.ok(await js("document.querySelector('.capabilities').textContent.includes('Python formatter not yet available')"));
+    assert.ok(await js("document.querySelector('.capabilities').textContent.includes('C# formatter not yet available')"));
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Run').disabled"), true);
     await select('Language', 'JavaScript');
     await key('A'); await window.webContents.insertText(originalFormatSource);
@@ -807,13 +808,62 @@ void app.whenReady().then(async () => {
     } finally { await rename('dist/formatter.worker.js.held', 'dist/formatter.worker.js'); }
     await click('Format');
     await wait("document.querySelector('[role=status]').textContent.startsWith('JavaScript formatted.') && !document.querySelector('.unsaved')", 'formatter recovers after asset restored');
+    await input('New script name', 'Python formatting example'); await select('New script language', 'Python'); await click('Create script');
+    await wait("document.querySelector('[aria-label=\"Script name\"]').value === 'Python formatting example' && !Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'Python formatter fixture');
+    await key('A');
+    const pythonRaw = 'raise RuntimeError("must never execute")\nvalues={"name":"বাংলা 🌞","items":[1,2]}\n';
+    await window.webContents.insertText(pythonRaw);
+    await wait("!!document.querySelector('.unsaved')", 'Python raw source typed');
+    await click('Save'); await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'Python raw source saved');
+    const beforePythonMetadata = await readFile(path.join(nextWorkspaceRoot, 'workspace.json'));
+    const pythonScript = JSON.parse(beforePythonMetadata).scripts.find(script => script.name === 'Python formatting example');
+    const pythonSourcePath = path.join(nextWorkspaceRoot, 'scripts', pythonScript.id, pythonScript.sourceHash + '.py');
+    await input('Script tags (comma separated)', 'python label draft');
+    await click('Format');
+    await wait("document.querySelector('[role=status]').textContent.startsWith('Python formatted.')", 'real Ruff WASM worker format');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('values = {')", 'Python formatted view');
+    assert.equal(await js("!!document.querySelector('.unsaved')"), true);
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'python label draft');
+    assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), beforePythonMetadata);
+    assert.equal(await readFile(pythonSourcePath, 'utf8'), pythonRaw);
+    assert.ok(await js("document.querySelector('.capabilities').textContent.includes('bundled Ruff')"));
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Run').disabled"), true, 'Python formatter does not imply a runtime/runner');
+    await key('Z'); await wait("!document.querySelector('.unsaved')", 'Python format undo');
+    await key('Z', true); await wait("!!document.querySelector('.unsaved')", 'Python format redo');
+    await click('Save'); await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'Python formatted buffer explicitly saved');
+    const afterPythonMetadata = await readFile(path.join(nextWorkspaceRoot, 'workspace.json'));
+    assert.notDeepEqual(afterPythonMetadata, beforePythonMetadata);
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'python label draft');
+    await click('Format'); await wait("document.querySelector('[role=status]').textContent === 'Python is already formatted.'", 'Python idempotent format');
+    await key('Z'); await wait("!!document.querySelector('.unsaved')", 'Python save/no-op retains prior undo');
+    await key('Z', true); await wait("!document.querySelector('.unsaved')", 'Python redo after save');
+    await key('A'); await window.webContents.insertText('def broken(:\n    pass\n');
+    await wait("!!document.querySelector('.unsaved')", 'invalid Python buffer');
+    await click('Format'); await wait("!!document.querySelector('.error') && !Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Format').disabled", 'Python syntax error retained');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('def broken(:')", 'Python syntax failure view');
+    assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), afterPythonMetadata);
+    await click('Reload'); await wait("!document.querySelector('.unsaved')", 'Python explicit reload');
+    await key('A'); await window.webContents.insertText(pythonRaw);
+    await wait("!!document.querySelector('.unsaved')", 'Python shortcut fixture');
+    window.webContents.sendInputEvent({type: 'keyDown', keyCode: 'F', modifiers: ['alt', 'shift']});
+    window.webContents.sendInputEvent({type: 'keyUp', keyCode: 'F', modifiers: ['alt', 'shift']});
+    await wait("document.querySelector('[role=status]').textContent.startsWith('Python formatted.') && !document.querySelector('.unsaved')", 'Python formatting shortcut');
+    await key('A'); await window.webContents.insertText(pythonRaw);
+    await wait("!!document.querySelector('.unsaved')", 'missing Python worker fixture');
+    await rename('dist/python-formatter.worker.js', 'dist/python-formatter.worker.js.held');
+    try {
+      await click('Format'); await wait("document.querySelector('.error')?.textContent.includes('Python formatter unavailable')", 'missing Python worker retained buffer');
+      await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('values={')", 'Python worker failure retained view');
+      assert.deepEqual(await readFile(path.join(nextWorkspaceRoot, 'workspace.json')), afterPythonMetadata);
+    } finally { await rename('dist/python-formatter.worker.js.held', 'dist/python-formatter.worker.js'); }
+    await click('Format'); await wait("document.querySelector('[role=status]').textContent.startsWith('Python formatted.') && !document.querySelector('.unsaved') && !Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Format').disabled", 'Python worker asset restored');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true }); await rm(archiveArea, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity; manual draft checkpoints, renderer reload/recovery, stale hash/token rejection and corrupt checkpoint discard; timed automatic checkpoints, normal-close/workspace flush, failure pause and reviewed restart; bundled JavaScript formatting, undo/redo/save, label preservation, syntax/missing-worker failure and capability/keyboard controls.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity; manual draft checkpoints, renderer reload/recovery, stale hash/token rejection and corrupt checkpoint discard; timed automatic checkpoints, normal-close/workspace flush, failure pause and reviewed restart; bundled JavaScript formatting, undo/redo/save, label preservation, syntax/missing-worker failure and capability/keyboard controls; bundled Ruff WASM formatting, canonical/draft preservation, undo/save/shortcut, syntax and missing-worker recovery.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

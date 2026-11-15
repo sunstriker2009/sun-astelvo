@@ -110,7 +110,7 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints merged (#32–#34); JavaScript formatter locally validated; Python/C# formatters and Windows gates open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/JavaScript formatting merged (#32–#35); Python/Ruff locally validated; C# formatter and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, tabs, explicit recovery and automatic checkpoints through [PR #34](https://github.com/sunstriker2009/sun-astelvo/pull/34) are merged. Bundled JavaScript/Prettier formatting is locally implemented/validated on `feature/m2-javascript-formatting` ([evidence](operations/M2-JAVASCRIPT-FORMAT-VALIDATION.md), [ADR-010](adr/0010-javascript-formatting.md)); check the new PR for CI/merge state. Formatting is explicit/undoable and changes no saved file until Save. Python/Ruff, C#/Roslyn, runners, catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility, governance and final human gates stay distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Saved-state archives exclude recovery checkpoints; no script runner is implemented.
+The foundation, organizer/import/archive, editor recovery and JavaScript formatting through [PR #35](https://github.com/sunstriker2009/sun-astelvo/pull/35) are merged. Bundled Python/Ruff WebAssembly formatting is locally implemented/validated on `feature/m2-python-formatting` ([evidence](operations/M2-PYTHON-FORMAT-VALIDATION.md), [ADR-011](adr/0011-python-formatting.md)); check the new PR for CI/merge state. Formatting remains explicit/undoable with saved files changed only by Save; Python needs no interpreter for formatting, but all runners remain unimplemented. C#/Roslyn, catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge; no branding, renderer policy or portable format change is made.
 
 ## Sources
 

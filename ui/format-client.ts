@@ -1,12 +1,13 @@
 import { validFormatInput, validFormatResult } from './format-contract.ts';
 import type { FormatResult } from './format-contract.ts';
 
+export type FormatLanguage = 'javascript' | 'python';
 export class FormatClient {
   private cancelActive: (() => void) | null = null;
   private nextId = 0;
-  private readonly createWorker: () => Worker;
+  private readonly createWorker: (language: FormatLanguage) => Worker;
   private readonly timeoutMs: number;
-  constructor(createWorker: () => Worker = () => new Worker('./formatter.worker.js'), timeoutMs = 5000) {
+  constructor(createWorker: (language: FormatLanguage) => Worker = language => new Worker(language === 'python' ? './python-formatter.worker.js' : './formatter.worker.js'), timeoutMs = 5000) {
     this.createWorker = createWorker; this.timeoutMs = timeoutMs;
   }
   cancel(): boolean {
@@ -14,11 +15,13 @@ export class FormatClient {
     if (!active) return false;
     active(); return true;
   }
-  format(content: string, cursorOffset: number): Promise<FormatResult> {
+  format(content: string, cursorOffset: number, language: FormatLanguage = 'javascript'): Promise<FormatResult> {
+    if (language !== 'javascript' && language !== 'python') return Promise.reject(new Error('Formatter language is unavailable.'));
     if (this.cancelActive) return Promise.reject(new Error('Formatting is already in progress.'));
     if (!validFormatInput(content, cursorOffset)) return Promise.reject(new Error('Formatting requires a valid cursor and at most 256 KiB of UTF-8 source.'));
     return new Promise((resolve, reject) => {
-      const worker = this.createWorker();
+      const worker = this.createWorker(language);
+      const label = language === 'python' ? 'Python' : 'JavaScript';
       const id = ++this.nextId;
       let settled = false;
       const finish = (error: Error | null, result?: FormatResult) => {
@@ -29,7 +32,7 @@ export class FormatClient {
       };
       const timer = setTimeout(() => finish(new Error('Formatting timed out. Original buffer retained.')), this.timeoutMs);
       this.cancelActive = () => finish(Object.assign(new Error('Formatting cancelled.'), {code: 'cancelled'}));
-      worker.onerror = () => finish(new Error('JavaScript formatter unavailable. Original buffer retained.'));
+      worker.onerror = () => finish(new Error(`${label} formatter unavailable. Original buffer retained.`));
       worker.onmessageerror = () => finish(new Error('Invalid formatter response. Original buffer retained.'));
       worker.onmessage = event => {
         const value = event.data;
@@ -43,7 +46,7 @@ export class FormatClient {
         } else finish(new Error('Invalid formatter response. Original buffer retained.'));
       };
       try { worker.postMessage({id, content, cursorOffset}); }
-      catch { finish(new Error('JavaScript formatter could not start. Original buffer retained.')); }
+      catch { finish(new Error(`${label} formatter could not start. Original buffer retained.`)); }
     });
   }
 }

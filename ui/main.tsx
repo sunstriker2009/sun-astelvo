@@ -294,7 +294,7 @@ function App() {
     emptyModel.current = monaco.editor.createModel('', 'javascript');
     const instance = monaco.editor.create(container.current!, { model: emptyModel.current, readOnly: true, theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 15 });
     editor.current = instance;
-    const formatAction = instance.addAction({ id: 'astelvo.format', label: 'Format script', keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF], precondition: 'editorLangId == javascript && !editorReadonly', run: () => formatRef.current() });
+    const formatAction = instance.addAction({ id: 'astelvo.format', label: 'Format script', keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF], precondition: '!editorReadonly && (editorLangId == javascript || editorLangId == python)', run: () => formatRef.current() });
     const change = instance.onDidChangeModelContent(() => { if (switchingModel.current) return; contentRef.current = instance.getValue(); calculateDirty(); });
     const unsubscribeClose = window.astelvo.onPrepareClose(() => prepareCloseRef.current());
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -411,7 +411,8 @@ function App() {
     });
   }
   function formatDocument() {
-    if (!documentRef.current || busyRef.current || draftRef.current.language !== 'javascript') return;
+    const language = draftRef.current.language;
+    if (!documentRef.current || busyRef.current || (language !== 'javascript' && language !== 'python')) return;
     void run(async () => {
       const model = editor.current!.getModel()!;
       const currentId = documentRef.current!.id;
@@ -420,10 +421,10 @@ function App() {
       const cursor = model.getOffsetAt(editor.current!.getPosition()!);
       setFormatting(true);
       try {
-        const result = await formatter.current.format(content, cursor);
-        if (editor.current?.getModel() !== model || documentRef.current?.id !== currentId || model.getVersionId() !== version || draftRef.current.language !== 'javascript')
+        const result = await formatter.current.format(content, cursor, language);
+        if (editor.current?.getModel() !== model || documentRef.current?.id !== currentId || model.getVersionId() !== version || draftRef.current.language !== language)
           throw new Error('The buffer changed during formatting. Result discarded; format again.');
-        if (result.formatted === content) { setStatus('JavaScript is already formatted.'); return; }
+        if (result.formatted === content) { setStatus(`${languages[language]} is already formatted.`); return; }
         const scrollTop = editor.current.getScrollTop(), scrollLeft = editor.current.getScrollLeft();
         model.pushStackElement();
         const selections = model.pushEditOperations(editor.current.getSelections(), [{range: model.getFullModelRange(), text: result.formatted}], () => {
@@ -433,7 +434,7 @@ function App() {
         model.pushStackElement();
         if (selections) editor.current.setSelections(selections);
         editor.current.setScrollPosition({scrollTop, scrollLeft});
-        setStatus('JavaScript formatted. Review and save; Undo restores the previous text.');
+        setStatus(`${languages[language]} formatted. Review and save; Undo restores the previous text.`);
       } finally { setFormatting(false); }
     });
   }
@@ -731,11 +732,11 @@ function App() {
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'actions.find', null); }}>Find</button>
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.startFindReplaceAction', null); }}>Replace</button>
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.quickCommand', null); }}>Commands</button>
-          <button disabled={busy || !document || draft.language !== 'javascript'} onClick={formatDocument}>Format</button>
+          <button disabled={busy || !document || draft.language === 'csharp'} onClick={formatDocument}>Format</button>
           {formatting && <button onClick={() => { if (formatter.current.cancel()) setStatus('Formatting cancelled. Original buffer retained.'); }}>Cancel format</button>}
           <button disabled title="Script runners are planned">Run</button>
         </div>
-        {document && <p className="capabilities" role="note">Editing available · {draft.language === 'javascript' ? 'Format: bundled Prettier (Alt+Shift+F)' : `Format: ${languages[draft.language]} formatter not yet available`} · Run: not yet available</p>}
+        {document && <p className="capabilities" role="note">Editing available · {draft.language !== 'csharp' ? `Format: bundled ${draft.language === 'python' ? 'Ruff' : 'Prettier'} (Alt+Shift+F)` : 'Format: C# formatter not yet available'} · Run: not yet available</p>}
         {document && workspace && <details className="classification-panel"><summary>Tags and favourite{classificationDirty ? ' — unsaved' : ''}</summary>
           <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
             const current = documentRef.current!;
