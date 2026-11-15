@@ -30,8 +30,9 @@
 - [x] Script recycle bin and identity-preserving restore merged in [PR #25](https://github.com/sunstriker2009/sun-astelvo/pull/25); explicit schema upgrade and conflict/recovery checks ([evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
 - [x] Folder subtree delete/restore merged in [PR #26](https://github.com/sunstriker2009/sun-astelvo/pull/26): stable IDs, explicit v3 upgrade, preserved pre-deleted state and atomic whole-tree visibility ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
 - [x] Tags/favourites and combined folder/name/language/tag/favourite metadata filters merged in [PR #27](https://github.com/sunstriker2009/sun-astelvo/pull/27), with explicit v4 migration and preserved recycle metadata ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)); CI passed; Windows acceptance remains open.
-- [x] Saved metadata collections baseline locally implemented/validated on `feature/m1-saved-collections`, with explicit v5 migration, stable filters/identities and dormant recycled-folder scopes ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). PR/CI/merge and Windows acceptance remain separate.
-- [ ] Multiple-tag/recency collection extensions and indexed source search/index rebuild.
+- [x] Saved metadata collections baseline merged in [PR #28](https://github.com/sunstriker2009/sun-astelvo/pull/28), with explicit v5 migration, stable filters/identities and dormant recycled-folder scopes ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). CI passed; Windows acceptance remains open.
+- [x] Initial bounded in-memory source-word index/rebuild locally implemented/validated on `feature/m1-source-search`, with source/metadata integrity checks and combined filters ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [ ] Persistent SQLite catalog/index, multiple-tag/recency/source-query collection extensions and search performance acceptance.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.
 
@@ -98,3 +99,8 @@ Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migra
 ### Saved collections baseline — 2026-11-15
 
 Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.
+
+
+### Initial source-word index — 2026-11-15
+
+Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.

@@ -57,6 +57,8 @@ internal sealed class WorkspaceStore : IDisposable
     private readonly FileStream lease;
     private Manifest manifest;
     private string manifestHash;
+    private SourceSearchIndex? sourceIndex;
+    private string? sourceIndexManifestHash;
     private string ManifestPath => Path.Combine(Root, "workspace.json");
 
     private WorkspaceStore(string root, FileStream lease, Manifest manifest, string hash)
@@ -111,6 +113,46 @@ internal sealed class WorkspaceStore : IDisposable
         Validate(next);
         if (next.Id != manifest.Id) throw Error("conflict", "The workspace identity changed. Close it before opening the replacement.");
         manifest = next; manifestHash = Hash(data);
+    }
+
+    public object SearchSource(string query, long expectedRevision, bool rebuild)
+    {
+        var terms = SourceSearchIndex.QueryTerms(query);
+        CheckRevision(expectedRevision);
+        var rebuilt = rebuild || sourceIndex == null || sourceIndexManifestHash != manifestHash;
+        try
+        {
+            if (rebuilt)
+            {
+                sourceIndex = null;
+                var candidate = new SourceSearchIndex();
+                foreach (var script in manifest.Scripts)
+                {
+                    var bytes = VerifiedSearchSource(script);
+                    candidate.Add(script.Id, Utf8.GetString(bytes), bytes.Length);
+                }
+                // Recheck all source bytes and metadata before publishing a complete cache.
+                foreach (var script in manifest.Scripts) _ = VerifiedSearchSource(script);
+                CheckManifest();
+                sourceIndex = candidate; sourceIndexManifestHash = manifestHash;
+            }
+            else
+            {
+                // Application revisions are immutable, but external editors need not
+                // honour that rule. Hash every active source even on warm queries.
+                foreach (var script in manifest.Scripts) _ = VerifiedSearchSource(script);
+                CheckManifest();
+            }
+            return new { workspaceId = manifest.Id, revision = manifest.Revision, query, scriptIds = sourceIndex!.Search(terms), sourceIndex.IndexedCount, sourceIndex.IndexedBytes, rebuilt };
+        }
+        catch { sourceIndex = null; sourceIndexManifestHash = null; throw; }
+    }
+
+    private byte[] VerifiedSearchSource(Script script)
+    {
+        var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
+        if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A saved source changed outside ASTELVO. Reload and save the reviewed script before searching. No external bytes were adopted or overwritten.");
+        return bytes;
     }
 
     public object CreateFolder(string name, Guid? parentId)

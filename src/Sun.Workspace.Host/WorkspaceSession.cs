@@ -27,6 +27,9 @@ internal sealed class WorkspaceSession : IDisposable
         var active = workspace ?? throw new WorkspaceException("no_workspace", "Create or open a workspace first.");
         switch (method)
         {
+            case "workspace.search":
+                Keys(p, "query", "expectedRevision", "rebuild");
+                return active.SearchSource(Text(p, "query"), Revision(p), p.GetProperty("rebuild").GetBoolean());
             case "collection.create":
                 Keys(p, "name", "filter", "expectedRevision", "allowUpgrade");
                 return active.CreateCollection(Text(p, "name"), Filter(p), Revision(p), p.GetProperty("allowUpgrade").GetBoolean());

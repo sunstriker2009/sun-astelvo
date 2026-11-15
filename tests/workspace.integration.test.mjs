@@ -1145,3 +1145,125 @@ test('v5 rejects unknown/missing collection fields, cross-record identities, dan
   await assert.rejects(createCollection(host, state, 'Too many'), { code: 'limit_exceeded' });
   assert.deepEqual(await readFile(file), before);
 }));
+
+const searchSource = (host, state, query, rebuild = false) => host.request('workspace.search', { query, expectedRevision: state.revision, rebuild }, 30000);
+
+test('source word index supports Unicode, whole-word AND, cold/warm/rebuild and restart without metadata/source writes', async () => fixture(async (host, root) => {
+  const first = await create(host);
+  const saved = await save(host, first.document, 'console.log("বাংলা sunrise");\nconst foobar = 1;');
+  const second = await host.request('script.create', { name: 'sunrise only in name', language: 'python', folderId: null });
+  const another = await save(host, second.document, 'print("sunrise elsewhere")');
+  const state = another.workspace, file = path.join(root, 'workspace.json');
+  const before = await readFile(file), entries = await readdir(root);
+  const cold = await searchSource(host, state, 'CONSOLE বাংলা');
+  assert.equal(cold.rebuilt, true); assert.deepEqual(cold.scriptIds, [first.document.id]);
+  assert.equal(cold.indexedCount, 2); assert.equal(cold.indexedBytes, Buffer.byteLength(saved.document.content) + Buffer.byteLength(another.document.content));
+  const warm = await searchSource(host, state, 'sunrise');
+  assert.equal(warm.rebuilt, false); assert.deepEqual(new Set(warm.scriptIds), new Set([first.document.id, second.document.id]));
+  assert.deepEqual((await searchSource(host, state, 'foo')).scriptIds, [], 'No identifier substring matching');
+  assert.deepEqual((await searchSource(host, state, 'sunrise missing')).scriptIds, []);
+  assert.deepEqual((await searchSource(host, state, 'console.log')).scriptIds, [first.document.id]);
+  assert.deepEqual((await searchSource(host, state, 'sunrise OR elsewhere')).scriptIds, [], 'OR is a literal word, not an operator');
+  assert.equal((await searchSource(host, state, 'sunrise', true)).rebuilt, true);
+  assert.deepEqual(await readFile(file), before); assert.deepEqual(await readdir(root), entries);
+  assert.equal(await readFile(source(root, saved.workspace.scripts[0]), 'utf8'), saved.document.content);
+  await host.request('workspace.close');
+  const reopened = await host.request('workspace.open', { path: root, create: false });
+  assert.equal((await searchSource(host, reopened, 'sunrise')).rebuilt, true);
+}));
+
+test('search invalidates on saves/copies/metadata/recycling and excludes deleted or orphan source', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Sources', parentId: null });
+  const folderId = state.folders[0].id;
+  const first = await host.request('script.create', { name: 'Script', language: 'javascript', folderId });
+  let saved = await save(host, first.document, 'beforeword'); state = saved.workspace;
+  await searchSource(host, state, 'beforeword');
+  const previous = state;
+  saved = await save(host, saved.document, 'afterword'); state = saved.workspace;
+  await assert.rejects(searchSource(host, previous, 'beforeword'), { code: 'conflict' });
+  assert.deepEqual((await searchSource(host, state, 'beforeword')).scriptIds, []);
+  assert.deepEqual((await searchSource(host, state, 'afterword')).scriptIds, [first.document.id]);
+  const copy = await duplicate(host, saved.document, 'Copy'); state = copy.workspace;
+  assert.equal((await searchSource(host, state, 'afterword')).scriptIds.length, 2);
+  state = await classifyScript(host, state, saved.document.id, ['work'], true, true);
+  assert.equal((await searchSource(host, state, 'afterword')).rebuilt, true);
+  state = await removeScript(host, state, copy.document);
+  assert.deepEqual((await searchSource(host, state, 'afterword')).scriptIds, [first.document.id]);
+  state = await removeFolder(host, state, folderId, true);
+  assert.deepEqual((await searchSource(host, state, 'afterword')).scriptIds, []);
+  // Even invalid bytes in unreachable revisions must not be searched/adopted.
+  await writeFile(path.join(root, 'scripts', first.document.id, 'orphan.tmp'), Buffer.from([255]));
+  state = await restoreFolder(host, state, folderId, 'Restored');
+  assert.deepEqual((await searchSource(host, state, 'afterword')).scriptIds, [first.document.id]);
+  state = await restoreScript(host, state, state.deletedScripts[0]);
+  assert.equal((await searchSource(host, state, 'afterword')).scriptIds.length, 2);
+}));
+
+test('warm source searches reject external bytes even with restored timestamp, metadata conflicts, missing and linked source; failure drops cache', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const saved = await save(host, initial.document, 'oldword');
+  let state = saved.workspace;
+  const file = path.join(root, 'workspace.json'), sourceFile = source(root, state.scripts[0]);
+  const before = await readFile(file);
+  await searchSource(host, state, 'oldword');
+  const { stat, utimes } = await import('node:fs/promises');
+  const stamp = await stat(sourceFile);
+  await writeFile(sourceFile, 'newword'); await utimes(sourceFile, stamp.atime, stamp.mtime);
+  for (const rebuild of [false, true]) await assert.rejects(searchSource(host, state, 'oldword', rebuild), { code: 'conflict' });
+  assert.equal(await readFile(sourceFile, 'utf8'), 'newword'); assert.deepEqual(await readFile(file), before);
+  const external = await host.request('script.read', { id: saved.document.id });
+  const adopted = await save(host, external, external.content); state = adopted.workspace;
+  assert.deepEqual((await searchSource(host, state, 'newword')).scriptIds, [saved.document.id]);
+  const activeFile = source(root, state.scripts[0]);
+  await rm(activeFile);
+  await assert.rejects(searchSource(host, state, 'newword'), { code: 'io_error' });
+  await writeFile(activeFile, 'newword');
+  const directory = path.dirname(activeFile), moved = directory + '.retained';
+  await rename(directory, moved); await symlink(moved, directory, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(searchSource(host, state, 'newword'), { code: 'invalid_workspace' });
+  await rm(directory, { recursive: true }); await rename(moved, directory);
+  assert.equal((await searchSource(host, state, 'newword')).rebuilt, true);
+  const metadata = JSON.parse(await readFile(file, 'utf8')); metadata.name = 'External'; await writeFile(file, JSON.stringify(metadata));
+  await assert.rejects(searchSource(host, state, 'newword'), { code: 'conflict' });
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal((await searchSource(host, state, 'newword')).rebuilt, true);
+}));
+
+test('source query bounds and invalid UTF-8 fail without writes or partial results; host remains usable', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json'), before = await readFile(file);
+  for (const query of ['', ' ', '---', 'x'.repeat(65), 'one two three four five six seven eight nine', 'line\nbreak', 'x'.repeat(121)])
+    await assert.rejects(searchSource(host, initial.workspace, query));
+  assert.deepEqual(await readFile(file), before);
+  const metadata = JSON.parse(before), invalid = Buffer.from([255]);
+  metadata.scripts[0].sourceHash = hash(invalid);
+  await writeFile(source(root, metadata.scripts[0]), invalid); await writeFile(file, JSON.stringify(metadata));
+  const state = await host.request('workspace.open', { path: root, create: false });
+  await assert.rejects(searchSource(host, state, 'word'), { code: 'invalid_request' });
+  assert.deepEqual(await readFile(source(root, metadata.scripts[0])), invalid);
+  assert.equal((await host.info()).product, 'ASTELVO');
+}));
+
+test('source index enforces aggregate byte and vocabulary caps without publishing a partial cache', async () => {
+  for (const mode of ['bytes', 'words']) await fixture(async (host, root) => {
+    const initial = await create(host);
+    const file = path.join(root, 'workspace.json'), metadata = JSON.parse(await readFile(file, 'utf8'));
+    const scripts = [];
+    const count = mode === 'bytes' ? 129 : 5;
+    for (let i = 0; i < count; i++) {
+      const text = mode === 'bytes' ? 'x'.repeat(MAX_SOURCE - 7) + ' needle' : Array.from({ length: 22_000 }, (_, j) => `w${i}_${j}`).join(' ');
+      const bytes = Buffer.from(text); assert.ok(bytes.length <= MAX_SOURCE);
+      const script = { ...metadata.scripts[0], id: randomUUID(), name: `Script ${i}`, sourceHash: hash(bytes) };
+      const sourceFile = source(root, script); await mkdir(path.dirname(sourceFile)); await writeFile(sourceFile, bytes); scripts.push(script);
+    }
+    metadata.scripts = scripts; await writeFile(file, JSON.stringify(metadata));
+    let state = await host.request('workspace.open', { path: root, create: false });
+    const before = await readFile(file);
+    await assert.rejects(searchSource(host, state, 'needle'), { code: 'limit_exceeded' });
+    assert.deepEqual(await readFile(file), before);
+    metadata.scripts = scripts.slice(0, 1); await writeFile(file, JSON.stringify(metadata));
+    state = await host.request('workspace.open', { path: root, create: false });
+    const recovered = await searchSource(host, state, mode === 'bytes' ? 'needle' : 'w0_1');
+    assert.equal(recovered.rebuilt, true); assert.deepEqual(recovered.scriptIds, [scripts[0].id]);
+  });
+});

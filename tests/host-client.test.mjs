@@ -119,3 +119,16 @@ test('collection contract validates exact bounded filters and correlated create/
   assert.doesNotThrow(() => assertResult('collection.delete', { ...workspace, collections: [] }, { id, expectedRevision: 1 }));
   assert.throws(() => assertResult('collection.delete', workspace, { id, expectedRevision: 1 }));
 });
+
+test('source search contract bounds query and correlates revision/query, IDs and cache diagnostics', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const params = { query: 'saved words', expectedRevision: 3, rebuild: true };
+  const result = { workspaceId: id, revision: 3, query: params.query, scriptIds: [id], indexedCount: 1, indexedBytes: 32, rebuilt: true };
+  assert.doesNotThrow(() => assertRequest('workspace.search', params));
+  for (const changes of [{ query: '' }, { query: 'x'.repeat(121) }, { rebuild: 'yes' }, { path: '/outside' }, { expectedRevision: -1 }])
+    assert.throws(() => assertRequest('workspace.search', { ...params, ...changes }));
+  assert.doesNotThrow(() => assertResult('workspace.search', result, params));
+  for (const changes of [{ query: 'different' }, { revision: 2 }, { scriptIds: [id, id] }, { indexedBytes: 33 * 1024 * 1024 }, { indexedCount: 0 }, { rebuilt: false }])
+    assert.throws(() => assertResult('workspace.search', { ...result, ...changes }, params));
+});

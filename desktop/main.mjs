@@ -49,7 +49,7 @@ async function startDesktop() {
     return host;
   }
   async function command(method, params) {
-    try { return { ok: true, value: await getHost().request(method, params, ['folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
+    try { return { ok: true, value: await getHost().request(method, params, ['workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
   }
   function discard() {
@@ -113,7 +113,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'collection.create', 'collection.update', 'collection.delete', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
+    if (!['workspace.close', 'workspace.search', 'collection.create', 'collection.update', 'collection.delete', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });
