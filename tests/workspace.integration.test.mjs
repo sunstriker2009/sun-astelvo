@@ -1020,3 +1020,128 @@ test('v4 fails closed on missing/unknown classifications including recycle parti
     assert.equal(await readFile(file, 'utf8'), bytes);
   }
 }));
+
+const collectionFilter = changes => ({ nameContains: '', language: null, folderId: null, tag: null, favouritesOnly: false, ...changes });
+const createCollection = (host, state, name, filter = collectionFilter(), allowUpgrade = false) => host.request('collection.create', { name, filter, expectedRevision: state.revision, allowUpgrade });
+const updateCollection = (host, state, collection, changes = {}) => host.request('collection.update', { id: collection.id, name: collection.name, filter: collection.filter, expectedRevision: state.revision, ...changes });
+const deleteCollection = (host, state, id) => host.request('collection.delete', { id, expectedRevision: state.revision });
+
+test('saved collections explicitly upgrade v1–v4, retain metadata/source and persist create/update/delete across restart', async () => {
+  for (const schema of [1, 2, 3, 4]) await fixture(async (host, root) => {
+    const initial = await create(host);
+    let state = initial.workspace;
+    if (schema >= 2) {
+      const trashed = await host.request('script.create', { name: 'Trash', language: 'python', folderId: null });
+      state = await removeScript(host, trashed.workspace, trashed.document, true);
+    }
+    if (schema >= 3) {
+      state = await host.request('folder.create', { name: 'Deleted tree', parentId: null });
+      const folder = state.folders[0];
+      const inside = await host.request('script.create', { name: 'Inside tree', language: 'csharp', folderId: folder.id });
+      state = await removeFolder(host, inside.workspace, folder.id, true);
+    }
+    if (schema === 4) state = await classifyScript(host, state, initial.document.id, ['বাংলা'], true, true);
+    assert.equal(state.schemaVersion, schema);
+    const file = path.join(root, 'workspace.json'), before = await readFile(file);
+    await assert.rejects(createCollection(host, state, 'Everyday'), { code: 'upgrade_required' });
+    assert.deepEqual(await readFile(file), before);
+    const created = await createCollection(host, state, 'Everyday', collectionFilter({ nameContains: 'Hello', language: 'javascript', tag: 'বাংলা', favouritesOnly: true }), true);
+    state = created.workspace;
+    assert.equal(state.schemaVersion, 5); assert.equal(state.collections[0].id, created.collectionId);
+    assert.deepEqual(await readFile(path.join(root, `workspace.v${schema}.${hash(before)}.json`)), before);
+    assert.equal(state.scripts[0].id, initial.document.id);
+    assert.deepEqual(state.scripts[0].classification, { tags: schema === 4 ? ['বাংলা'] : [], favourite: schema === 4 });
+    assert.equal(await readFile(source(root, state.scripts[0]), 'utf8'), '');
+    const collection = state.collections[0];
+    state = await updateCollection(host, state, collection, { name: 'Renamed', filter: collectionFilter({ nameContains: 'greeting', tag: 'unmatched' }) });
+    assert.equal(state.collections[0].id, collection.id);
+    await host.request('workspace.close');
+    state = await host.request('workspace.open', { path: root, create: false });
+    assert.equal(state.collections[0].name, 'Renamed'); assert.equal(state.collections[0].filter.tag, 'unmatched');
+    state = await deleteCollection(host, state, collection.id);
+    assert.equal(state.schemaVersion, 5); assert.deepEqual(state.collections, []);
+    await host.request('workspace.close');
+    assert.deepEqual((await host.request('workspace.open', { path: root, create: false })).collections, []);
+  });
+});
+
+test('saved folder scope and tag filters survive folder/script changes and both recycle bins without widening or v5 downgrade', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Scope', parentId: null });
+  const folderId = state.folders[0].id;
+  const initial = await host.request('script.create', { name: 'Hello', language: 'javascript', folderId });
+  state = (await createCollection(host, initial.workspace, 'Scoped', collectionFilter({ folderId, tag: 'work', favouritesOnly: true }), true)).workspace;
+  const collection = state.collections[0];
+  state = await classifyScript(host, state, initial.document.id, ['work'], true);
+  assert.equal(state.schemaVersion, 5); assert.deepEqual(state.collections[0], collection);
+  const saved = await save(host, initial.document, 'retained', { name: 'Renamed' });
+  state = await host.request('folder.rename', { id: folderId, name: 'Renamed scope' });
+  state = await removeScript(host, state, saved.document);
+  state = await removeFolder(host, state, folderId);
+  assert.equal(state.schemaVersion, 5); assert.deepEqual(state.collections[0], collection);
+  assert.equal(state.folders.some(f => f.id === collection.filter.folderId), false, 'Scope stays on deleted identity rather than all folders');
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  assert.deepEqual(state.collections[0], collection);
+  state = await restoreFolder(host, state, folderId, 'Restored scope');
+  state = await restoreScript(host, state, state.deletedScripts[0]);
+  assert.deepEqual(state.collections[0], collection);
+  assert.equal(state.scripts[0].folderId, collection.filter.folderId);
+  assert.deepEqual(state.scripts[0].classification, { tags: ['work'], favourite: true });
+  assert.equal(await readFile(source(root, state.scripts[0]), 'utf8'), 'retained');
+}));
+
+test('collection conflicts, missing scope and duplicate names preserve metadata; checkpoints recover and revisions fail before upgrade', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json'), before = await readFile(file);
+  const backup = path.join(root, `workspace.v1.${hash(before)}.json`);
+  await writeFile(backup, 'unrelated');
+  await assert.rejects(createCollection(host, initial.workspace, 'Saved', collectionFilter(), true), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), before);
+  await writeFile(backup, before); await writeFile(path.join(root, 'workspace.json.collection.tmp'), '{partial');
+  await host.request('workspace.close');
+  let state = await host.request('workspace.open', { path: root, create: false });
+  state = (await createCollection(host, state, 'Saved', collectionFilter(), true)).workspace;
+  const collection = state.collections[0], committed = await readFile(file);
+  for (const action of [
+    () => createCollection(host, state, 'SAVED'),
+    () => createCollection(host, state, 'Missing scope', collectionFilter({ folderId: randomUUID() })),
+    () => updateCollection(host, { ...state, revision: 0 }, collection),
+    () => updateCollection(host, state, { ...collection, id: randomUUID() }),
+    () => deleteCollection(host, { ...state, revision: 0 }, collection.id),
+    () => deleteCollection(host, state, randomUUID())
+  ]) { await assert.rejects(action()); assert.deepEqual(await readFile(file), committed); }
+  const external = JSON.parse(committed); external.name = 'External'; await writeFile(file, JSON.stringify(external));
+  await assert.rejects(updateCollection(host, state, collection), { code: 'conflict' });
+  external.revision = Number.MAX_SAFE_INTEGER; await writeFile(file, JSON.stringify(external));
+  state = await host.request('workspace.open', { path: root, create: false });
+  const exhausted = await readFile(file);
+  for (const action of [() => createCollection(host, state, 'Next'), () => updateCollection(host, state, collection), () => deleteCollection(host, state, collection.id)]) {
+    await assert.rejects(action(), { code: 'invalid_workspace' }); assert.deepEqual(await readFile(file), exhausted);
+  }
+}));
+
+test('v5 rejects unknown/missing collection fields, cross-record identities, dangling scope and count overflow', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  let state = (await createCollection(host, initial.workspace, 'Saved', collectionFilter(), true)).workspace;
+  const file = path.join(root, 'workspace.json'), original = JSON.parse(await readFile(file, 'utf8'));
+  await host.request('workspace.close');
+  const collection = original.collections[0];
+  const cases = [
+    { ...original, collections: null }, { ...original, schemaVersion: 4 },
+    { ...original, collections: [{ ...collection, futureMetadata: 'preserve' }] },
+    { ...original, collections: [{ ...collection, id: initial.document.id }] },
+    { ...original, collections: [{ ...collection, filter: { ...collection.filter, folderId: randomUUID() } }] },
+    { ...original, collections: [{ ...collection, filter: { nameContains: '' } }] },
+    { ...original, collections: [collection, { ...collection, id: randomUUID(), name: 'SAVED' }] }
+  ];
+  const missing = structuredClone(original); delete missing.collections; cases.push(missing);
+  for (const metadata of cases) {
+    const bytes = JSON.stringify(metadata); await writeFile(file, bytes);
+    await assert.rejects(host.request('workspace.open', { path: root, create: false })); assert.equal(await readFile(file, 'utf8'), bytes);
+  }
+  const full = { ...original, collections: Array.from({ length: 100 }, (_, i) => ({ ...collection, id: randomUUID(), name: `Collection ${i}` })) };
+  await writeFile(file, JSON.stringify(full)); state = await host.request('workspace.open', { path: root, create: false });
+  const before = await readFile(file);
+  await assert.rejects(createCollection(host, state, 'Too many'), { code: 'limit_exceeded' });
+  assert.deepEqual(await readFile(file), before);
+}));

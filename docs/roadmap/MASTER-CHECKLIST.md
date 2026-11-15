@@ -29,8 +29,9 @@
 - [x] Folder subtree duplication with new identities, all-source preflight, aggregate limits and one manifest commit; merged in [PR #18](https://github.com/sunstriker2009/sun-astelvo/pull/18) ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); Windows acceptance remains open.
 - [x] Script recycle bin and identity-preserving restore merged in [PR #25](https://github.com/sunstriker2009/sun-astelvo/pull/25); explicit schema upgrade and conflict/recovery checks ([evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
 - [x] Folder subtree delete/restore merged in [PR #26](https://github.com/sunstriker2009/sun-astelvo/pull/26): stable IDs, explicit v3 upgrade, preserved pre-deleted state and atomic whole-tree visibility ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
-- [x] Tags/favourites and combined folder/name/language/tag/favourite metadata filters locally implemented/validated on `feature/m1-tags-favourites`, with explicit v4 migration and preserved recycle metadata ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
-- [ ] Saved smart collections and indexed source search/index rebuild.
+- [x] Tags/favourites and combined folder/name/language/tag/favourite metadata filters merged in [PR #27](https://github.com/sunstriker2009/sun-astelvo/pull/27), with explicit v4 migration and preserved recycle metadata ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)); CI passed; Windows acceptance remains open.
+- [x] Saved metadata collections baseline locally implemented/validated on `feature/m1-saved-collections`, with explicit v5 migration, stable filters/identities and dormant recycled-folder scopes ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). PR/CI/merge and Windows acceptance remain separate.
+- [ ] Multiple-tag/recency collection extensions and indexed source search/index rebuild.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.
 
@@ -92,3 +93,8 @@ Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subt
 ### Tags and favourites — 2026-11-15
 
 Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.
+
+
+### Saved collections baseline — 2026-11-15
+
+Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.

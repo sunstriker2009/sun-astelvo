@@ -27,6 +27,15 @@ internal sealed class WorkspaceSession : IDisposable
         var active = workspace ?? throw new WorkspaceException("no_workspace", "Create or open a workspace first.");
         switch (method)
         {
+            case "collection.create":
+                Keys(p, "name", "filter", "expectedRevision", "allowUpgrade");
+                return active.CreateCollection(Text(p, "name"), Filter(p), Revision(p), p.GetProperty("allowUpgrade").GetBoolean());
+            case "collection.update":
+                Keys(p, "id", "name", "filter", "expectedRevision");
+                return active.UpdateCollection(Id(p, "id"), Text(p, "name"), Filter(p), Revision(p));
+            case "collection.delete":
+                Keys(p, "id", "expectedRevision");
+                return active.DeleteCollection(Id(p, "id"), Revision(p));
             case "folder.create":
                 Keys(p, "name", "parentId"); return active.CreateFolder(Text(p, "name"), OptionalId(p, "parentId"));
             case "folder.rename":
@@ -72,6 +81,13 @@ internal sealed class WorkspaceSession : IDisposable
                 return active.SaveScript(Id(p, "id"), Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"), Text(p, "content"), hash);
             default: throw Invalid();
         }
+    }
+    private static CollectionFilter Filter(JsonElement p)
+    {
+        var filter = p.GetProperty("filter");
+        Keys(filter, "nameContains", "language", "folderId", "tag", "favouritesOnly");
+        return new(Text(filter, "nameContains"), filter.GetProperty("language").ValueKind == JsonValueKind.Null ? null : Text(filter, "language"),
+            OptionalId(filter, "folderId"), filter.GetProperty("tag").ValueKind == JsonValueKind.Null ? null : Text(filter, "tag"), filter.GetProperty("favouritesOnly").GetBoolean());
     }
     private static long Revision(JsonElement p)
     {

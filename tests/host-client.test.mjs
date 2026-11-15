@@ -98,3 +98,24 @@ test('classification contract enforces bounded unique labels and correlated v4 r
   for (const changes of [{ schemaVersion: 3 }, { revision: 1 }, { scripts: [] }, { scripts: [{ ...script, classification: { tags: [], favourite: false } }] }])
     assert.throws(() => assertResult('script.classify', { ...workspace, ...changes }, params));
 });
+
+test('collection contract validates exact bounded filters and correlated create/update/delete results', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const filter = { nameContains: 'Hello', language: 'python', folderId: null, tag: 'work', favouritesOnly: true };
+  const params = { name: 'Saved', filter, expectedRevision: 1, allowUpgrade: true };
+  const collection = { id, name: 'Saved', filter };
+  const workspace = { root: '/workspace', schemaVersion: 5, id, name: 'Workspace', revision: 2, folders: [], scripts: [], deletedScripts: [], deletedFolderTrees: [], collections: [collection] };
+  assert.doesNotThrow(() => assertRequest('collection.create', params));
+  for (const changes of [{ nameContains: 'x'.repeat(121) }, { language: 'sql' }, { folderId: '/outside' }, { favouritesOnly: 'yes' }, { extra: true }])
+    assert.throws(() => assertRequest('collection.create', { ...params, filter: { ...filter, ...changes } }));
+  assert.doesNotThrow(() => assertResult('collection.create', { workspace, collectionId: id }, params));
+  assert.throws(() => assertResult('collection.create', { workspace: { ...workspace, revision: 1 }, collectionId: id }, params));
+  const update = { id, name: 'Saved', filter, expectedRevision: 1 };
+  assert.doesNotThrow(() => assertRequest('collection.update', update));
+  assert.doesNotThrow(() => assertResult('collection.update', workspace, update));
+  assert.throws(() => assertResult('collection.update', { ...workspace, collections: [{ ...collection, filter: { ...filter, tag: null } }] }, update));
+  assert.doesNotThrow(() => assertRequest('collection.delete', { id, expectedRevision: 1 }));
+  assert.doesNotThrow(() => assertResult('collection.delete', { ...workspace, collections: [] }, { id, expectedRevision: 1 }));
+  assert.throws(() => assertResult('collection.delete', workspace, { id, expectedRevision: 1 }));
+});

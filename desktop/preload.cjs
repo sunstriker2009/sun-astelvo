@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('astelvo', Object.freeze({
   hostInfo: () => ipcRenderer.invoke('astelvo:host-info'),
   confirmClassificationUpgrade: () => ipcRenderer.invoke('astelvo:confirm-classification-upgrade'),
+  confirmCollectionsUpgrade: () => ipcRenderer.invoke('astelvo:confirm-collections-upgrade'),
+  confirmDeleteCollection: () => ipcRenderer.invoke('astelvo:confirm-delete-collection'),
   confirmDiscard: () => ipcRenderer.invoke('astelvo:confirm-discard'),
   confirmDeleteFolder: upgrade => ipcRenderer.invoke('astelvo:confirm-delete-folder', upgrade),
   confirmDeleteScript: upgrade => ipcRenderer.invoke('astelvo:confirm-delete-script', upgrade),
@@ -9,6 +11,9 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
     create: () => ipcRenderer.invoke('astelvo:choose-workspace', true),
     open: () => ipcRenderer.invoke('astelvo:choose-workspace', false),
     close: () => ipcRenderer.invoke('astelvo:workspace-command', 'workspace.close', {}),
+    createCollection: input => ipcRenderer.invoke('astelvo:workspace-command', 'collection.create', input),
+    updateCollection: input => ipcRenderer.invoke('astelvo:workspace-command', 'collection.update', input),
+    deleteCollection: input => ipcRenderer.invoke('astelvo:workspace-command', 'collection.delete', input),
     createFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.create', input),
     renameFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.rename', input),
     moveFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.move', input),

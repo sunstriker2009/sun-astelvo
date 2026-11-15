@@ -14,6 +14,9 @@ const shapes = {
   'script.duplicate': ['id', 'name', 'folderId', 'expectedHash'],
   'folder.delete': ['id', 'expectedRevision', 'allowUpgrade'],
   'folder.restore': ['id', 'name', 'parentId', 'expectedRevision'],
+  'collection.create': ['name', 'filter', 'expectedRevision', 'allowUpgrade'],
+  'collection.update': ['id', 'name', 'filter', 'expectedRevision'],
+  'collection.delete': ['id', 'expectedRevision'],
   'script.classify': ['id', 'tags', 'favourite', 'expectedRevision', 'allowUpgrade'],
   'script.delete': ['id', 'expectedHash', 'expectedRevision', 'allowUpgrade'],
   'script.restore': ['id', 'name', 'folderId', 'expectedRevision'],
@@ -24,6 +27,7 @@ export function assertRequest(method, params) {
   for (const [key, value] of Object.entries(params)) {
     const valid = key === 'path' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
       : key === 'create' || key === 'allowUpgrade' || key === 'favourite' ? typeof value === 'boolean'
+      : key === 'filter' ? collectionFilter(value)
       : key === 'tags' ? tags(value)
       : key === 'id' ? id(value)
       : key === 'folderId' || key === 'parentId' ? optionalId(value)
@@ -49,8 +53,16 @@ function tree(value) {
     && value.folders.some(f => f.id === value.rootId) && Array.isArray(value.scripts) && value.scripts.every(script)
     && Array.isArray(value.deletedScripts) && value.deletedScripts.every(script);
 }
+function collectionFilter(value) {
+  return fields(value, ['nameContains', 'language', 'folderId', 'tag', 'favouritesOnly'])
+    && typeof value.nameContains === 'string' && value.nameContains.length <= 120 && value.nameContains.trim() === value.nameContains && !/[\x00-\x1f\x7f-\x9f]/.test(value.nameContains)
+    && (value.language === null || language(value.language)) && optionalId(value.folderId)
+    && (value.tag === null || tags([value.tag])) && typeof value.favouritesOnly === 'boolean';
+}
+function collection(value) { return fields(value, ['id', 'name', 'filter']) && id(value.id) && name(value.name) && collectionFilter(value.filter); }
+function sameFilter(a, b) { return ['nameContains', 'language', 'folderId', 'tag', 'favouritesOnly'].every(key => a[key] === b[key]); }
 function snapshot(value) {
-  return object(value) && typeof value.root === 'string' && [1, 2, 3, 4].includes(value.schemaVersion) && id(value.id) && name(value.name)
+  return object(value) && typeof value.root === 'string' && [1, 2, 3, 4, 5].includes(value.schemaVersion) && id(value.id) && name(value.name)
     && Number.isSafeInteger(value.revision) && value.revision >= 0
     && Array.isArray(value.folders) && value.folders.length <= 200 && value.folders.every(folder)
     && Array.isArray(value.scripts) && value.scripts.length <= 1000 && value.scripts.every(script)
@@ -60,7 +72,9 @@ function snapshot(value) {
       : Array.isArray(value.deletedFolderTrees) && value.deletedFolderTrees.every(tree)
         && value.folders.length + value.deletedFolderTrees.reduce((n, t) => n + t.folders.length, 0) <= 200
         && value.scripts.length + value.deletedScripts.length + value.deletedFolderTrees.reduce((n, t) => n + t.scripts.length + t.deletedScripts.length, 0) <= 1000)
-    && (value.schemaVersion < 4 || [...value.scripts, ...value.deletedScripts, ...value.deletedFolderTrees.flatMap(t => [...t.scripts, ...t.deletedScripts])].every(s => classification(s.classification)));
+    && (value.schemaVersion < 4 || [...value.scripts, ...value.deletedScripts, ...value.deletedFolderTrees.flatMap(t => [...t.scripts, ...t.deletedScripts])].every(s => classification(s.classification)))
+    && (value.schemaVersion < 5 ? value.collections === undefined || Array.isArray(value.collections) && value.collections.length === 0
+      : Array.isArray(value.collections) && value.collections.length <= 100 && value.collections.every(collection));
 }
 function document(value) {
   return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId)
@@ -70,6 +84,11 @@ export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : method === 'collection.create' ? object(value) && snapshot(value.workspace) && value.workspace.schemaVersion === 5 && id(value.collectionId)
+      && value.workspace.revision === params.expectedRevision + 1 && value.workspace.collections.some(c => c.id === value.collectionId && c.name === params.name && sameFilter(c.filter, params.filter))
+    : method === 'collection.update' ? snapshot(value) && value.schemaVersion === 5 && value.revision === params.expectedRevision + 1
+      && value.collections.some(c => c.id === params.id && c.name === params.name && sameFilter(c.filter, params.filter))
+    : method === 'collection.delete' ? snapshot(value) && value.schemaVersion === 5 && value.revision === params.expectedRevision + 1 && !value.collections.some(c => c.id === params.id)
     : method === 'folder.duplicate' ? object(value) && snapshot(value.workspace) && id(value.folderId) && value.folderId !== params.id
       && value.workspace.revision === params.expectedRevision + 1
       && value.workspace.folders.some(f => f.id === value.folderId && f.name === params.name && f.parentId === params.parentId)
@@ -77,7 +96,7 @@ export function assertResult(method, value, params) {
       && !value.folders.some(f => f.id === params.id) && value.deletedFolderTrees.some(t => t.rootId === params.id)
     : method === 'folder.restore' ? snapshot(value) && value.schemaVersion >= 3 && value.revision === params.expectedRevision + 1
       && !value.deletedFolderTrees.some(t => t.rootId === params.id) && value.folders.some(f => f.id === params.id && f.name === params.name && f.parentId === params.parentId)
-    : method === 'script.classify' ? snapshot(value) && value.schemaVersion === 4 && value.revision === params.expectedRevision + 1
+    : method === 'script.classify' ? snapshot(value) && value.schemaVersion >= 4 && value.revision === params.expectedRevision + 1
       && value.scripts.some(s => s.id === params.id && s.classification.favourite === params.favourite && JSON.stringify(s.classification.tags) === JSON.stringify(params.tags))
     : method === 'script.delete' ? snapshot(value) && value.schemaVersion >= 2 && value.revision === params.expectedRevision + 1
       && !value.scripts.some(s => s.id === params.id) && value.deletedScripts.some(s => s.id === params.id && s.sourceHash === params.expectedHash)
