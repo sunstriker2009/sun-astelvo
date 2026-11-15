@@ -562,3 +562,137 @@ test('exhausted workspace revision rejects script writes before staging any sour
     assert.deepEqual(await readdir(path.join(root, 'scripts', initial.document.id)), revisions);
   }
 }));
+
+const removeScript = (host, state, document, allowUpgrade = false) => host.request('script.delete', {
+  id: document.id, expectedHash: document.hash, expectedRevision: state.revision, allowUpgrade
+});
+const restoreScript = (host, state, script, changes = {}) => host.request('script.restore', {
+  id: script.id, name: script.name, folderId: script.folderId, expectedRevision: state.revision, ...changes
+});
+
+test('script recycle bin explicitly upgrades v1, retains exact metadata/source and restores original identities after restart', async () => fixture(async (host, root) => {
+  const folderState = await host.request('folder.create', { name: 'বাংলা', parentId: null });
+  const first = await host.request('script.create', { name: 'Greeting', language: 'python', folderId: folderState.folders[0].id });
+  const saved = await save(host, first.document, 'print("🌞")\n');
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file);
+  const sourceBefore = await readFile(source(root, saved.workspace.scripts[0]));
+  await assert.rejects(removeScript(host, saved.workspace, saved.document), { code: 'upgrade_required' });
+  assert.deepEqual(await readFile(file), before);
+  assert.equal((await readdir(root)).some(f => f.startsWith('workspace.v1.')), false);
+  let state = await removeScript(host, saved.workspace, saved.document, true);
+  assert.equal(state.schemaVersion, 2); assert.equal(state.scripts.length, 0);
+  assert.deepEqual(state.deletedScripts, saved.workspace.scripts);
+  assert.deepEqual(await readFile(path.join(root, `workspace.v1.${hash(before)}.json`)), before);
+  assert.deepEqual(await readFile(source(root, state.deletedScripts[0])), sourceBefore);
+  await assert.rejects(host.request('script.read', { id: saved.document.id }), { code: 'not_found' });
+  await assert.rejects(save(host, saved.document, 'must not resurrect'), { code: 'not_found' });
+  await assert.rejects(duplicate(host, saved.document, 'must not copy'), { code: 'not_found' });
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  const restored = await restoreScript(host, state, state.deletedScripts[0]);
+  assert.equal(restored.schemaVersion, 2); assert.equal(restored.deletedScripts.length, 0);
+  assert.deepEqual(restored.scripts, saved.workspace.scripts);
+  assert.deepEqual(restored.folders, saved.workspace.folders);
+  assert.equal(restored.id, saved.workspace.id);
+  assert.equal((await host.request('script.read', { id: saved.document.id })).content, saved.document.content);
+  // Subsequent normal operations retain the schema and every trash entry.
+  state = await removeScript(host, restored, saved.document);
+  const created = await create(host);
+  assert.deepEqual(created.workspace.deletedScripts, state.deletedScripts);
+  assert.equal((await host.request('folder.create', { name: 'Other', parentId: null })).deletedScripts.length, 1);
+}));
+
+test('delete and restore conflicts never rewrite metadata or sources and restore can resolve name collisions', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file);
+  for (const [document, state, code] of [
+    [{ ...initial.document, hash: 'a'.repeat(64) }, initial.workspace, 'conflict'],
+    [initial.document, { ...initial.workspace, revision: initial.workspace.revision - 1 }, 'conflict'],
+    [{ ...initial.document, id: randomUUID() }, initial.workspace, 'not_found']
+  ]) {
+    await assert.rejects(removeScript(host, state, document, true), { code });
+    assert.deepEqual(await readFile(file), before);
+  }
+  const originalSource = source(root, initial.workspace.scripts[0]);
+  await writeFile(originalSource, 'external');
+  await assert.rejects(removeScript(host, initial.workspace, initial.document, true), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), before);
+  await writeFile(originalSource, '');
+  let state = await removeScript(host, initial.workspace, initial.document, true);
+  const deleted = state.deletedScripts[0];
+  state = (await create(host)).workspace;
+  const removedBytes = await readFile(file);
+  for (const changes of [{}, { folderId: randomUUID() }, { expectedRevision: state.revision - 1 }]) {
+    await assert.rejects(restoreScript(host, state, deleted, changes));
+    assert.deepEqual(await readFile(file), removedBytes);
+  }
+  await writeFile(originalSource, 'external trash');
+  await assert.rejects(restoreScript(host, state, deleted, { name: 'Recovered' }), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), removedBytes);
+  assert.equal(await readFile(originalSource, 'utf8'), 'external trash');
+  await writeFile(originalSource, '');
+  state = await restoreScript(host, state, deleted, { name: 'Recovered' });
+  assert.equal(state.scripts.find(s => s.id === deleted.id).name, 'Recovered');
+  assert.equal(state.scripts.length, 2);
+  await assert.rejects(restoreScript(host, state, deleted), { code: 'not_found' });
+}));
+
+test('v2 rejects malformed trash and counts deleted scripts toward limits; v1 writes stay v1 until consent', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const v1 = JSON.parse(await readFile(file, 'utf8'));
+  assert.equal(Object.hasOwn(v1, 'deletedScripts'), false);
+  await host.request('workspace.close');
+  const deleted = { ...v1.scripts[0], id: randomUUID() };
+  for (const malformed of [
+    { ...v1, deletedScripts: [] }, { ...v1, deletedScripts: null },
+    { ...v1, schemaVersion: 2 }, { ...v1, schemaVersion: 2, deletedScripts: null },
+    { ...v1, schemaVersion: 2, deletedScripts: v1.scripts },
+    { ...v1, schemaVersion: 2, deletedScripts: [{ ...deleted, futureMetadata: 'keep' }] },
+    { ...v1, schemaVersion: 2, deletedScripts: [{ ...deleted, folderId: randomUUID() }] }
+  ]) {
+    const bytes = JSON.stringify(malformed); await writeFile(file, bytes);
+    await assert.rejects(host.request('workspace.open', { path: root, create: false }));
+    assert.equal(await readFile(file, 'utf8'), bytes);
+  }
+  const full = { ...v1, schemaVersion: 2, deletedScripts: Array.from({ length: 999 }, () => ({ ...deleted, id: randomUUID() })) };
+  await writeFile(file, JSON.stringify(full));
+  let state = await host.request('workspace.open', { path: root, create: false });
+  const before = await readFile(file);
+  await assert.rejects(host.request('script.create', { name: 'Too many', language: 'javascript', folderId: null }), { code: 'limit_exceeded' });
+  assert.deepEqual(await readFile(file), before);
+  // Delete does not reduce the combined cap, while restore adds no identities.
+  state = await removeScript(host, state, initial.document);
+  assert.equal(state.deletedScripts.length, 1000);
+  state = await restoreScript(host, state, state.deletedScripts.find(s => s.id === initial.document.id));
+  assert.equal(state.scripts.length + state.deletedScripts.length, 1000);
+}));
+
+test('upgrade backup conflict and exhausted revisions fail before committing; an interrupted backup is recoverable', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json');
+  const before = await readFile(file);
+  const backup = path.join(root, `workspace.v1.${hash(before)}.json`);
+  await writeFile(backup, 'unrelated file');
+  await assert.rejects(removeScript(host, initial.workspace, initial.document, true), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), before);
+  assert.equal(await readFile(backup, 'utf8'), 'unrelated file');
+  // Simulate termination after the backup flush but before manifest commit.
+  await writeFile(backup, before);
+  await writeFile(path.join(root, 'workspace.json.interrupted-upgrade.tmp'), '{partial');
+  await host.request('workspace.close');
+  let state = await host.request('workspace.open', { path: root, create: false });
+  assert.equal(state.schemaVersion, 1);
+  assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
+  state = await removeScript(host, state, initial.document, true);
+  assert.equal(state.deletedScripts[0].id, initial.document.id);
+  assert.deepEqual(await readFile(backup), before);
+  const metadata = JSON.parse(await readFile(file, 'utf8')); metadata.revision = Number.MAX_SAFE_INTEGER;
+  await writeFile(file, JSON.stringify(metadata));
+  state = await host.request('workspace.open', { path: root, create: false });
+  const exhausted = await readFile(file);
+  await assert.rejects(restoreScript(host, state, state.deletedScripts[0]), { code: 'invalid_workspace' });
+  assert.deepEqual(await readFile(file), exhausted);
+}));

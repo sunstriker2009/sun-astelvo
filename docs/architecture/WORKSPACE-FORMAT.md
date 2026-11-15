@@ -1,4 +1,4 @@
-# Workspace format v1
+# Workspace formats v1 and v2
 
 Status: implemented for the first M1 slice; full organizer acceptance remains open.
 
@@ -15,7 +15,7 @@ A workspace is an existing local directory selected through the native folder pi
 
 Folders are logical metadata with stable GUID identities, not user-named filesystem paths. Rename/move operations update metadata without changing a script's identity. The editor's root view shows all scripts; selecting a folder filters its direct children.
 
-Manifest fields are `format="astelvo-workspace"`, `schemaVersion=1`, nonempty GUID `id`, `name`, nonnegative `revision`, `folders` and `scripts`. Folder records contain `id`, `name`, nullable `parentId`. Script records contain `id`, `name`, `language`, nullable `folderId`, and lower-case SHA-256 `sourceHash`. Required fields, unknown fields, unsupported versions, duplicate identities/names, dangling folders and cycles are rejected. There is no silent migration or repair.
+Manifest fields are `format="astelvo-workspace"`, `schemaVersion=1`, nonempty GUID `id`, `name`, nonnegative `revision`, `folders` and `scripts`. Folder records contain `id`, `name`, nullable `parentId`. Script records contain `id`, `name`, `language`, nullable `folderId`, and lower-case SHA-256 `sourceHash`. Required fields, unknown fields, unsupported versions, duplicate identities/names, dangling folders and cycles are rejected. There is no silent migration or repair. Version 2 adds the required `deletedScripts` array, using the same complete Script record shape; v1 rejects that field even when null. Unknown fields in either version remain errors.
 
 Names contain 1–120 UTF-16 code units, without controls, slashes, surrounding whitespace, or the special labels dot/dot-dot. Names must be unique ignoring case among scripts in the same folder or folders under the same parent. Folder and script names use separate namespaces.
 
@@ -63,15 +63,26 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 ## Limits and bridge
 
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
-- 200 folders and 1,000 scripts in this preview.
+- 200 folders and 1,000 scripts including deleted scripts in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename/move/duplicate, script create/read/save/duplicate. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move/duplicate, script create/read/save/duplicate/delete/restore. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, tags, favourites, collections, delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, tags, favourites, collections, folder delete/restore, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 
 Real-host tests cover UTF-8 persistence, language/rename/move identity, folder rename, second-writer rejection, lease release after close and abrupt death, maximum-size JSON-escaped source, external source/manifest conflicts, unsupported schema, orphan/temp files, symlink/junction rejection and request bounds.
 
 A real Electron editor acceptance entry creates an isolated temporary workspace through the normal renderer/native-picker bridge, creates a folder/script, types/saves, cancels a dirty quit, reloads, closes/reopens and renames the script. It is excluded from production bundles; dialog overrides exist only in that test entry. A wrapper requires an explicit success marker so an early exit-zero quit cannot pass acceptance.
+
+
+## Script recycle bin and explicit v2 upgrade
+
+Opening or ordinarily editing v1 keeps the serialized manifest at v1. The first `script.delete` requires `allowUpgrade=true`, after the desktop confirmation explains that older builds cannot open v2. Before replacing the manifest, the host retains its exact v1 bytes in `workspace.v1.<manifest-sha256>.json`. It never overwrites a mismatched existing backup. The backup is a pre-upgrade metadata checkpoint, not a current full-workspace backup or an automatic downgrade; manually restoring it would discard later organization changes. All source revisions are retained.
+
+Delete takes ID, expected source hash and expected workspace revision. It verifies committed UTF-8 source bytes and metadata freshness, then moves the complete Script record from `scripts` to `deletedScripts` in one manifest replacement. No source path is moved or erased, IDs and folder/language/hash metadata survive, and active read/save/duplicate cannot address deleted scripts. The UI disables delete for unsaved or unadopted external edits. Cancelling confirmation leaves the editor and workspace unchanged.
+
+Restore takes the deleted identity, explicit destination/name and expected workspace revision. It verifies source presence, hash, UTF-8 and path containment, validates active sibling-name uniqueness, then moves the same identity back in one manifest replacement. An explicit name/destination resolves collisions without overwriting another script. Deleted names may repeat; IDs remain globally unique across folders, active scripts and deleted scripts. The combined active/deleted count remains limited to 1,000. All other mutations preserve the deleted records, and v2 remains v2 even after the bin empties. Permanent purge and folder subtree delete/restore are not implemented.
+
+Preflight rejection does not alter source files or the manifest. Upgrade can leave an unused v1 backup after a later failure; restart still uses only `workspace.json` and ignores partial temp files. A lost response can still have committed: reopen/inspect before retrying. Existing atomic-rename and power-loss limitations apply. Changed/missing deleted source blocks restore without replacing external bytes; manual source recovery may be needed. The recycle bin is not a backup of externally mutable source files.

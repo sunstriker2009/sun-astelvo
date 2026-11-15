@@ -21,6 +21,8 @@ internal sealed record Manifest
     public required long Revision { get; init; }
     public required List<Folder> Folders { get; init; }
     public required List<Script> Scripts { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<Script>? DeletedScripts { get; init; }
 }
 
 internal sealed class WorkspaceStore : IDisposable
@@ -88,7 +90,7 @@ internal sealed class WorkspaceStore : IDisposable
         catch { lease.Dispose(); throw; }
     }
 
-    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts };
+    public object Snapshot() => new { root = Root, manifest.SchemaVersion, manifest.Id, manifest.Name, manifest.Revision, manifest.Folders, manifest.Scripts, deletedScripts = manifest.DeletedScripts ?? [] };
 
     public void Refresh()
     {
@@ -236,6 +238,70 @@ internal sealed class WorkspaceStore : IDisposable
         return new { workspace = Snapshot(), document = ReadScript(id) };
     }
 
+    public object DeleteScript(Guid id, string expectedHash, long expectedRevision, bool allowUpgrade)
+    {
+        CheckRevision(expectedRevision);
+        var original = Find(id);
+        VerifyCommittedSource(original, expectedHash);
+        if (manifest.SchemaVersion == 1 && !allowUpgrade)
+            throw Error("upgrade_required", "Script deletion requires workspace format v2. Confirm the upgrade; older ASTELVO builds cannot open v2 workspaces.");
+        var next = manifest with
+        {
+            SchemaVersion = 2,
+            Scripts = manifest.Scripts.Where(s => s.Id != id).ToList(),
+            DeletedScripts = [.. manifest.DeletedScripts ?? [], original]
+        };
+        PreflightCommit(next);
+        if (manifest.SchemaVersion == 1)
+        {
+            // Preserve exact v1 metadata before the first v2 commit. The hash in
+            // the name makes retries after a failed commit safe without overwrite.
+            var bytes = ReadBytes(ManifestPath, MaxManifestBytes);
+            if (Hash(bytes) != manifestHash) throw Error("conflict", "Workspace metadata changed before upgrade.");
+            var backup = Path.Combine(Root, "workspace.v1." + manifestHash + ".json");
+            PlainPath(backup);
+            if (File.Exists(backup))
+            {
+                if (!ReadBytes(backup, MaxManifestBytes).AsSpan().SequenceEqual(bytes))
+                    throw Error("conflict", "The workspace upgrade backup already exists with different bytes.");
+            }
+            else AtomicWrite(backup, bytes, false);
+        }
+        VerifyCommittedSource(original, expectedHash);
+        Commit(next);
+        return Snapshot();
+    }
+
+    public object RestoreScript(Guid id, string name, Guid? folderId, long expectedRevision)
+    {
+        CheckRevision(expectedRevision);
+        var deleted = manifest.DeletedScripts?.FirstOrDefault(s => s.Id == id) ?? throw Error("not_found", "Deleted script not found.");
+        var restored = deleted with { Name = Name(name), FolderId = folderId };
+        var next = manifest with
+        {
+            Scripts = [.. manifest.Scripts, restored],
+            DeletedScripts = manifest.DeletedScripts!.Where(s => s.Id != id).ToList()
+        };
+        PreflightCommit(next);
+        VerifyCommittedSource(deleted, deleted.SourceHash);
+        Commit(next);
+        return Snapshot();
+    }
+
+    private void CheckRevision(long expectedRevision)
+    {
+        CheckManifest();
+        if (manifest.Revision != expectedRevision) throw Error("conflict", "Workspace organization changed. Reopen it before deleting or restoring a script.");
+    }
+
+    private void VerifyCommittedSource(Script script, string expectedHash)
+    {
+        var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
+        if (script.SourceHash != expectedHash || Hash(bytes) != expectedHash)
+            throw Error("conflict", "The source changed outside ASTELVO. Review it before deleting or restoring; no source was overwritten.");
+        _ = Utf8.GetString(bytes);
+    }
+
     private Script Find(Guid id) => manifest.Scripts.FirstOrDefault(s => s.Id == id) ?? throw Error("not_found", "Script not found.");
     private string SourcePath(Script script) => Path.Combine(Root, "scripts", script.Id.ToString("D"), script.SourceHash + Extensions[script.Language]);
 
@@ -318,10 +384,10 @@ internal sealed class WorkspaceStore : IDisposable
 
     private static void Validate(Manifest value)
     {
-        if (value.Format != "astelvo-workspace" || value.SchemaVersion != 1 || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
+        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2) || (value.SchemaVersion == 1 ? value.DeletedScripts != null : value.DeletedScripts == null) || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
             throw Error("invalid_workspace", "Unsupported or invalid workspace manifest.");
         Name(value.Name);
-        if (value.Folders.Count > 200 || value.Scripts.Count > 1000) throw Error("limit_exceeded", "Preview limit: 200 folders and 1,000 scripts.");
+        if (value.Folders.Count > 200 || value.Scripts.Count + (value.DeletedScripts?.Count ?? 0) > 1000) throw Error("limit_exceeded", "Preview limit: 200 folders and 1,000 scripts including the recycle bin.");
         var ids = new HashSet<Guid>();
         var folders = new Dictionary<Guid, Folder>();
         foreach (var f in value.Folders)
@@ -339,7 +405,7 @@ internal sealed class WorkspaceStore : IDisposable
                 parent = ancestor.ParentId;
             }
         }
-        foreach (var s in value.Scripts)
+        foreach (var s in value.Scripts.Concat(value.DeletedScripts ?? []))
         {
             if (s == null || s.Id == Guid.Empty || !ids.Add(s.Id) || s.FolderId != null && !folders.ContainsKey(s.FolderId.Value) || !ValidHash(s.SourceHash))
                 throw Error("invalid_workspace", "Invalid script identity, folder or content reference.");
@@ -367,6 +433,8 @@ internal sealed class WorkspaceStore : IDisposable
                 foreach (var item in value.EnumerateArray()) UniqueProperties(item);
         }
         UniqueProperties(document.RootElement);
+        if (document.RootElement.TryGetProperty("schemaVersion", out var schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out var version) && version == 1 && document.RootElement.TryGetProperty("deletedScripts", out _))
+            throw Error("invalid_workspace", "Recycle-bin metadata requires workspace schema v2.");
         return JsonSerializer.Deserialize<Manifest>(bytes, Json) ?? throw Error("invalid_workspace", "Workspace manifest is missing.");
     }
 
