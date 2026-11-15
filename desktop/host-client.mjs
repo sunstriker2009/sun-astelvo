@@ -53,6 +53,14 @@ export class HostClient {
       this.#child.stdin.write(frame);
     });
   }
+  async terminate() {
+    this.#stopped = true;
+    this.#child.kill('SIGKILL');
+    let timer;
+    try {
+      await Promise.race([this.#exit, new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(new Error('Formatter process cleanup could not be verified. Restart the app before formatting again.'), {code: 'cleanup_failed'})), 2000); })]);
+    } finally { clearTimeout(timer); }
+  }
   async close() {
     this.#stopped = true;
     this.#child.stdin.end();

@@ -1,0 +1,15 @@
+# ADR-012: isolated bundled Roslyn C# formatting
+
+Status: selected for the local v1 formatter; Windows and full acceptance remain open.
+
+Pin Microsoft.CodeAnalysis.CSharp.Workspaces 5.0.0, retain its resolved NuGet dependency hashes in packages.lock.json, and ship its assemblies with the existing self-contained .NET 10 host. The [upstream package](https://www.nuget.org/packages/Microsoft.CodeAnalysis.CSharp.Workspaces/5.0.0) identifies Roslyn source commit `6c4a46a31302167b425d5e0a31ea83c9a9aa1d09`. Retain that commit's MIT License.txt and the package's ThirdPartyNotices.rtf in host output/publish notices/roslyn. Complete compiled/transitive dependency review remains an M5 gate.
+
+Launch a separate host instance with exactly `--format-csharp`. It accepts one framed format.csharp request, returns one response and exits; it never creates a WorkspaceSession or acquires the portable workspace lease. The normal workspace host rejects formatting. The renderer has only fixed format/cancel IPC methods; it cannot choose executables, paths, formatter configuration or arbitrary host methods. Packaging includes the supervisor and formatter assemblies, so formatting needs no installed SDK or runtime.
+
+Parse C# 14 regular source and reject syntax errors with a bounded diagnostic. Use Roslyn Formatter.GetFormattedTextChanges with an AdhocWorkspace, four spaces, no tabs and the source newline convention. Preserve a leading BOM, comments and source literals; Roslyn's stable defaults preserve some single-line blocks. Do not load projects, .editorconfig, MSBuild, analyzers, user assemblies or dependency directives. Formatting parses source data without compiling or executing it. There is no semantic compilation/IntelliSense claim.
+
+Input/output retain the portable 256 KiB UTF-8 bound and a valid primary UTF-16 cursor offset. Map the cursor through ordered whitespace edits (bounded approximation within changed whitespace). Reuse Monaco's model/version/language guard and undo boundaries, preserving independent metadata/label drafts. No-op formatting creates no edit; only explicit Save persists canonical source.
+
+The main process owns a single formatter slot with a five-second request deadline; Roslyn also receives a cancellation token. Success, error, cancellation, renderer disappearance/navigation and deadline terminate the process. The supervisor waits for observed exit (at most two additional seconds) before reporting completion or releasing its slot. If cleanup cannot be verified, report cleanup_failed and block reuse until restart. Cancellation during response cleanup suppresses the result. The portable workspace host remains separate and usable. A formatter process is never a sandbox for future scripts; execution will use the user's OS permissions.
+
+Windows cold start, actual Windows process termination, clean-machine packaging, cursor/scroll/multicursor/accessibility and compiled dependency inventory remain acceptance work. Formatting capability is independent from execution; all runners remain unavailable in this slice. Portable workspace schemas, branding and renderer isolation/CSP are unchanged.

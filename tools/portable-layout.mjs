@@ -2,7 +2,7 @@ import path from 'node:path';
 import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 
 // Copy an explicit application allowlist, complete Electron and complete .NET runtime.
-const desktopFiles = ['main.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs', 'workspace-contract.mjs'];
+const desktopFiles = ['main.mjs', 'csharp-formatter.mjs', 'preload.cjs', 'protocol.mjs', 'host-client.mjs', 'launch-config.mjs', 'smoke-check.mjs', 'workspace-contract.mjs'];
 
 export async function stagePortable({ root, runtimeDirectory, hostDirectory, destination, platform }) {
   if (!['win32', 'linux'].includes(platform)) throw new Error('Unsupported portable platform');

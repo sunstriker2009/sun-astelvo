@@ -45,8 +45,9 @@
 - [x] In-session Monaco tabs, independent source/metadata/label drafts, language selection, shortcuts and per-model undo merged in [PR #32](https://github.com/sunstriker2009/sun-astelvo/pull/32) ([evidence](../operations/M2-TABS-VALIDATION.md)); Windows acceptance remains open.
 - [ ] Full editor keyboard/focus/accessibility and Windows acceptance.
 - [x] Bundled JavaScript/Prettier formatting, model undo and worker failure/cancel/deadline handling merged in [PR #35](https://github.com/sunstriker2009/sun-astelvo/pull/35) ([evidence](../operations/M2-JAVASCRIPT-FORMAT-VALIDATION.md)); Windows acceptance remains open.
-- [x] Bundled Python/Ruff WASM formatting with shared model undo/worker lifecycle locally implemented/validated on `feature/m2-python-formatting` ([evidence](../operations/M2-PYTHON-FORMAT-VALIDATION.md)). Check PR for CI/merge state.
-- [ ] C#/Roslyn adapter; full three-formatter/Windows and compiled-dependency acceptance.
+- [x] Bundled Python/Ruff WASM formatting merged in [PR #36](https://github.com/sunstriker2009/sun-astelvo/pull/36) ([evidence](../operations/M2-PYTHON-FORMAT-VALIDATION.md)); Windows acceptance remains open.
+- [x] Bundled C#/Roslyn adapter locally implemented/validated on `feature/m2-csharp-formatting` ([evidence](../operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](../adr/0012-csharp-formatting.md)); check PR for CI/merge state.
+- [ ] Full three-formatter/Windows and compiled-dependency acceptance.
 - [x] Explicit durable draft checkpoint/recovery merged in [PR #33](https://github.com/sunstriker2009/sun-astelvo/pull/33), with retained base hashes and preserved canonical data ([evidence](../operations/M2-RECOVERY-VALIDATION.md)); Windows acceptance remains open.
 - [x] Opt-in timed draft checkpoints, serialized acknowledgements and normal-close/workspace-transition flush merged in [PR #34](https://github.com/sunstriker2009/sun-astelvo/pull/34) ([evidence](../operations/M2-AUTOMATIC-CHECKPOINT-VALIDATION.md)); Windows acceptance remains open.
 - [ ] Full shutdown/power-loss, recovery/external-conflict and Windows acceptance.

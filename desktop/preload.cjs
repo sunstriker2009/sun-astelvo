@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
     ipcRenderer.on('astelvo:prepare-close', listener);
     return () => ipcRenderer.removeListener('astelvo:prepare-close', listener);
   },
+  formatCsharp: input => ipcRenderer.invoke('astelvo:format-csharp', input),
+  cancelCsharpFormat: () => ipcRenderer.invoke('astelvo:cancel-csharp-format'),
   hostInfo: () => ipcRenderer.invoke('astelvo:host-info'),
   confirmClassificationUpgrade: () => ipcRenderer.invoke('astelvo:confirm-classification-upgrade'),
   confirmCollectionsUpgrade: () => ipcRenderer.invoke('astelvo:confirm-collections-upgrade'),

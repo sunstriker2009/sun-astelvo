@@ -7,6 +7,7 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
+  'format.csharp': ['content', 'cursorOffset'],
   'recovery.read': [], 'recovery.write': ['expectedToken', 'snapshot'], 'recovery.clear': ['expectedToken'],
   'workspace.import': ['paths', 'folderId', 'expectedRevision', 'renameConflicts'],
   'workspace.export': ['archivePath', 'expectedRevision'],
@@ -30,7 +31,8 @@ const shapes = {
 export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
-    const valid = key === 'expectedToken' ? value === null || hash(value)
+    const valid = key === 'cursorOffset' ? Number.isSafeInteger(value) && value >= 0 && typeof params.content === 'string' && value <= params.content.length
+      : key === 'expectedToken' ? value === null || hash(value)
       : key === 'snapshot' ? recoverySnapshot(value)
       : key === 'path' || key === 'archivePath' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
       : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' || key === 'renameConflicts' ? typeof value === 'boolean'
@@ -44,7 +46,7 @@ export function assertRequest(method, params) {
       : key === 'language' ? language(value)
       : key === 'expectedHash' ? hash(value)
       : key === 'expectedRevision' ? Number.isSafeInteger(value) && value >= 0
-      : key === 'content' ? typeof value === 'string' && Buffer.byteLength(value, 'utf8') <= MAX_SOURCE : false;
+      : key === 'content' ? typeof value === 'string' && (method !== 'format.csharp' || value.isWellFormed()) && Buffer.byteLength(value, 'utf8') <= MAX_SOURCE : false;
     if (!valid) throw new Error(`Invalid ${key}`);
   }
 }
@@ -102,6 +104,8 @@ export function recoverySnapshot(value) {
 }
 export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
+    : method === 'format.csharp' ? fields(value, ['formatted', 'cursorOffset']) && typeof value.formatted === 'string' && value.formatted.isWellFormed() && Buffer.byteLength(value.formatted, 'utf8') <= MAX_SOURCE
+      && Number.isSafeInteger(value.cursorOffset) && value.cursorOffset >= 0 && value.cursorOffset <= value.formatted.length
     : method === 'recovery.read' ? fields(value, ['workspaceId', 'token', 'snapshot', 'problem']) && id(value.workspaceId)
       && (value.token === null ? value.snapshot === null && value.problem === null : hash(value.token)
         && (value.problem === null ? recoverySnapshot(value.snapshot) && value.snapshot.workspaceId === value.workspaceId
