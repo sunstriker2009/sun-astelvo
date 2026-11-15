@@ -87,12 +87,17 @@ function App() {
     calculateDirty();
   }
   function display(next: Document | null) {
+    const previousId = documentRef.current?.id;
     setDuplicateName(''); setDuplicateFolder(next?.folderId ?? null);
     documentRef.current = next; setDocument(next);
     draftRef.current = next ? { name: next.name, language: next.language, folderId: next.folderId } : emptyDraft;
     setDraft(draftRef.current);
     contentRef.current = next?.content ?? '';
-    editor.current?.setValue(contentRef.current);
+    // Saving the same document must retain Monaco's undo stack, selection and scroll.
+    // Switching documents or explicitly reloading still replaces the buffer.
+    if (!next || next.id !== previousId || editor.current?.getValue() !== contentRef.current) {
+      editor.current?.setValue(contentRef.current);
+    }
     const model = editor.current?.getModel();
     if (model) monaco.editor.setModelLanguage(model, next?.language ?? 'javascript');
     editor.current?.updateOptions({ readOnly: !next || busyRef.current });

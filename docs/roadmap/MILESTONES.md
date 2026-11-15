@@ -34,3 +34,8 @@ Folder duplication merged in PR #18. Script create/save/duplicate now validate t
 ## Editor commands slice — 2026-11-14
 
 Find/replace and command palette contributions are now registered explicitly in the modular Monaco build, with Find, Replace and Commands toolbar buttons disabled when no script is open or work is pending. Monaco supplies its normal editor keybindings. TypeScript and renderer builds passed; the real headless Electron workspace acceptance opened all three widgets and dismissed them with Escape while retaining existing workspace/save/copy checks. This validates activation, not exhaustive search-option or replacement/undo acceptance. No new Windows or packaged-desktop run occurred. Tabs, formatting, recovery, full editor acceptance and organizer delete/restore remain open.
+
+
+### Save buffer preservation — 2026-11-14
+
+Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.

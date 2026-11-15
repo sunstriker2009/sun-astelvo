@@ -226,3 +226,8 @@ The foundation and branding are merged. M0 automated Windows portable acceptance
 - [.NET file-based apps](https://learn.microsoft.com/en-us/dotnet/core/sdk/file-based-apps)
 
 Validate dependency versions, formatter packaging and platform behaviour during implementation; this roadmap does not claim integrations already work.
+
+
+### Save buffer preservation — 2026-11-14
+
+Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
