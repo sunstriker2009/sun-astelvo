@@ -3,3 +3,5 @@
 details{margin:10px 0}summary{color:#b4c1ff;font-size:13px;cursor:pointer;padding:8px 0}summary:focus-visible{outline:2px solid #879bff;outline-offset:2px}
 
 .check-label{display:flex;align-items:center;gap:8px;margin:10px 0}.check-label input{width:auto}.classification-panel{margin:0;padding:0 14px;border-bottom:1px solid #29334c}.classification-panel form{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding-bottom:10px}.classification-panel form>label:first-child{flex:1;min-width:200px}.classification-panel p{font-size:12px;margin:0;color:#9ca8bc}
+
+.editor-tabs{display:flex;gap:6px;overflow-x:auto;flex-shrink:0;padding:8px 14px;border-bottom:1px solid #29334c;min-height:48px}.editor-tab{display:flex;flex-shrink:0}.editor-tab button:first-child{border-radius:6px 0 0 6px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.editor-tab button:last-child{border-radius:0 6px 6px 0;border-left:0;padding:8px}.editor-tab button[aria-current=page]{background:#344679;border-color:#b4c1ff}

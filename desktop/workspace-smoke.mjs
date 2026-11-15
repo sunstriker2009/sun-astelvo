@@ -246,7 +246,7 @@ void app.whenReady().then(async () => {
     allowDiscard = true;
     await click('Delete folder');
     await wait("document.querySelector('[role=status]').textContent.includes('Folder moved to recycle bin')", 'folder delete committed');
-    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value"), '', 'Deleted subtree editor must close only after commit');
+    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value") === 'Renamed greeting', false, 'Deleted subtree tab must close after commit; unrelated tabs remain');
     const folderDeleted = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
     assert.equal(folderDeleted.schemaVersion, 3);
     assert.equal(folderDeleted.deletedFolderTrees[0].folders.length, 3);
@@ -509,13 +509,124 @@ void app.whenReady().then(async () => {
     await wait("!!Array.from(document.querySelectorAll('.script')).find(b => b.textContent.includes('Imported (2)'))", 'reopened imported metadata');
     const importedPython = importState.scripts.find(s => s.name === 'Imported (2)');
     assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(importedPython.id)})`)).value.content, importedContent[1]);
+    // Tab acceptance uses real Monaco models and keyboard undo, with saved fixtures
+    // created through the same validated bridge. No test hooks enter production.
+    const tabFixtures = [];
+    for (let i = 1; i <= 18; i++) {
+      const result = await js(`window.astelvo.workspace.createScript({name:${JSON.stringify('Tab' + i)},language:'javascript',folderId:null})`);
+      assert.equal(result.ok, true); tabFixtures.push(result.value.document);
+    }
+    await click('Close workspace'); await click('Open workspace');
+    await wait("document.querySelectorAll('.editor-tab').length === 0 && document.querySelectorAll('.script').length >= 18", 'tab fixtures reopened');
+    async function openTab(name) {
+      await js(`Array.from(document.querySelectorAll('.script')).find(b => b.querySelector('span').textContent === ${JSON.stringify(name)}).click()`);
+      await wait(`document.querySelector('[aria-label="Script name"]').value === ${JSON.stringify(name)}`, 'open ' + name);
+    }
+    async function tabButton(name) {
+      await js(`Array.from(document.querySelectorAll('.editor-tab button:first-child')).find(b => b.textContent.startsWith(${JSON.stringify(name)})).click()`);
+      await wait(`document.querySelector('[aria-label="Script name"]').value === ${JSON.stringify(name)}`, 'switch ' + name);
+    }
+    async function closeEditorTab(name) {
+      await js(`Array.from(document.querySelectorAll('.editor-tab button:last-child')).find(b => b.getAttribute('aria-label') === ${JSON.stringify('Close tab ' + name)}).click()`);
+      await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'close tab settled');
+    }
+    async function key(keyCode, shift = false) {
+      window.focus(); window.webContents.focus();
+      await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+      const modifiers = [process.platform === 'darwin' ? 'meta' : 'control', ...(shift ? ['shift'] : [])];
+      window.webContents.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
+      window.webContents.sendInputEvent({ type: 'keyUp', keyCode, modifiers });
+    }
+    await openTab('Tab1');
+    await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+    await window.webContents.insertText('// first tab draft');
+    await wait("!!document.querySelector('.unsaved')", 'first tab edit');
+    await input('Script name', 'Tab1 draft'); await select('Language', 'Python');
+    await input('Script tags (comma separated)', 'tab draft');
+    const switchPrompts = prompts;
+    await openTab('Tab2');
+    assert.equal(prompts, switchPrompts, 'Opening another tab never discards the first draft');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 2);
+    assert.equal(await js("!!document.querySelector('.unsaved')"), false, 'Active clean tab is independent');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Export workspace').disabled"), true, 'Inactive draft blocks export');
+    await click('Reload');
+    assert.equal(prompts, switchPrompts, 'Reload guards the active tab only');
+    allowDiscard = false;
+    await closeEditorTab('Tab1 draft');
+    assert.ok(prompts > switchPrompts, 'Closing an inactive dirty tab prompts');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 2, 'Cancelled tab close retains both');
+    const workspaceClosePrompts = prompts;
+    await click('Close workspace');
+    assert.ok(prompts > workspaceClosePrompts, 'Workspace close sees inactive dirty tabs');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 2);
+    const inactiveQuitPrompts = prompts;
+    app.quit();
+    await wait("!!document.querySelector('.workspace-title')", 'cancelled quit with inactive draft');
+    const quitEnd = Date.now() + 1000;
+    while (prompts === inactiveQuitPrompts && Date.now() < quitEnd) await new Promise(resolve => setTimeout(resolve, 25));
+    assert.ok(prompts > inactiveQuitPrompts, 'Quit sees inactive drafts');
+    assert.equal(window.isDestroyed(), false);
+    await tabButton('Tab1 draft');
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Language')).querySelector('select').value"), 'python');
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'tab draft');
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('first tab draft')"));
+    await input('Script name', 'Tab1'); await select('Language', 'JavaScript');
+    await click('Save');
+    await wait("!document.querySelector('.unsaved')", 'tab source saved');
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'tab draft', 'Saving source preserves labels');
+    await input('Script tags (comma separated)', '');
+    await key('Z'); await wait("!!document.querySelector('.unsaved')", 'undo after tab save');
+    await tabButton('Tab2'); await tabButton('Tab1');
+    assert.equal(await js("!!document.querySelector('.unsaved')"), true, 'Undo dirty state survives switching');
+    await key('Z', true); await wait("!document.querySelector('.unsaved')", 'redo after switch');
+    // Native picker cancellation after discard consent must leave every model intact.
+    allowDiscard = true; cancelRestoreArchive = true;
+    await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+    await window.webContents.insertText('// retained on cancel');
+    await click('Restore archive');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Restore archive').disabled", 'restore picker cancelled with tabs');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 2);
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('retained on cancel')"));
+    cancelRestoreArchive = false;
+    await closeEditorTab('Tab1'); await openTab('Tab1');
+    assert.equal(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('retained on cancel')"), false, 'Explicit close discards only the chosen draft');
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('first tab draft')"));
+    const tab2 = tabFixtures[1];
+    await writeFile(path.join(restoreTarget, 'scripts', tab2.id, tab2.hash + '.js'), '// changed externally');
+    await tabButton('Tab2');
+    assert.equal(await js("document.querySelector('.view-lines').textContent.includes('externally')"), false, 'Switching uses held snapshot instead of adopting external content');
+    await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+    await window.webContents.insertText('// local conflicting draft');
+    await click('Save'); await wait("!!document.querySelector('.error')", 'stale tab save rejected');
+    await tabButton('Tab1'); await tabButton('Tab2');
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('local conflicting draft')"), 'Rejected save retains tab draft');
+    allowDiscard = false; await click('Reload');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Reload').disabled", 'reload declined');
+    assert.equal(await js("!!document.querySelector('.unsaved')"), true);
+    allowDiscard = true; await click('Reload');
+    await wait("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('changed externally')", 'tab external content reviewed');
+    await click('Save'); await wait("document.querySelector('[role=status]').textContent === 'Saved.'", 'tab external content adopted');
+    for (let i = 3; i <= 16; i++) await openTab('Tab' + i);
+    const atTabLimit = await readFile(path.join(restoreTarget, 'workspace.json'));
+    await js("Array.from(document.querySelectorAll('.script')).find(b => b.querySelector('span').textContent === 'Tab17').click()");
+    await wait("document.querySelector('.error')?.textContent.includes('maximum 16')", 'tab limit rejects opening');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 16);
+    await input('New script name', 'Blocked by tab limit'); await click('Create script');
+    await wait("document.querySelector('.error')?.textContent.includes('maximum 16')", 'tab limit preflights creation');
+    assert.deepEqual(await readFile(path.join(restoreTarget, 'workspace.json')), atTabLimit, 'Tab capacity rejection must precede persistent creation');
+    await tabButton('Tab1');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 16, 'Existing tabs remain selectable at capacity');
+    await closeEditorTab('Tab16'); await openTab('Tab17');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 16);
+    await key('W');
+    await wait("document.querySelectorAll('.editor-tab').length === 15", 'keyboard close current tab');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true }); await rm(archiveArea, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

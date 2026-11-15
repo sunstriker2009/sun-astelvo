@@ -34,7 +34,7 @@
 - [x] Initial bounded in-memory source-word index/rebuild merged in [PR #29](https://github.com/sunstriker2009/sun-astelvo/pull/29), with source/metadata integrity checks and combined filters ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)); CI passed; Windows acceptance remains open.
 - [ ] Persistent SQLite catalog/index, multiple-tag/recency/source-query collection extensions and search performance acceptance.
 - [x] Current-state workspace archive export and fresh-folder restore merged in [PR #30](https://github.com/sunstriker2009/sun-astelvo/pull/30), with strict preflight, verified publication and manifest-last recovery ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)); CI passed; Windows acceptance remains open.
-- [x] Loose UTF-8 JavaScript/Python/C# import with explicit copy conflicts and atomic batch commit locally implemented/validated on `feature/m1-loose-script-import` ([evidence](../operations/M1-IMPORT-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [x] Loose UTF-8 JavaScript/Python/C# import with explicit copy conflicts and atomic batch commit merged in [PR #31](https://github.com/sunstriker2009/sun-astelvo/pull/31) ([evidence](../operations/M1-IMPORT-VALIDATION.md)); CI passed; Windows acceptance remains open.
 - [ ] Windows/clean-machine import and archive restore acceptance. Archive merges/history retention remain optional future enhancements.
 - [ ] Useful standard-library examples requiring no packages/network.
 
@@ -42,7 +42,8 @@
 
 - [x] Register Monaco find/replace and command palette with explicit toolbar access; TypeScript/build and real headless widget activation checks passed (2026-11-14). Full editor/Windows acceptance remains open.
 
-- [ ] Monaco tabs, language selection, shortcuts, find/replace and command palette.
+- [x] In-session Monaco tabs, independent source/metadata/label drafts, language selection, shortcuts and per-model undo locally implemented/validated on `feature/m2-editor-tabs` ([evidence](../operations/M2-TABS-VALIDATION.md)). PR/CI/merge and Windows acceptance remain separate.
+- [ ] Full editor keyboard/focus/accessibility and Windows acceptance.
 - [ ] Three formatter adapters with undo and failure handling.
 - [ ] Autosave/recovery and external-change conflict handling.
 - [ ] Separate edit/format/run capabilities and runtime setup view.
