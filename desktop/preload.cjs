@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('astelvo', Object.freeze({
   hostInfo: () => ipcRenderer.invoke('astelvo:host-info'),
   confirmDiscard: () => ipcRenderer.invoke('astelvo:confirm-discard'),
+  confirmDeleteFolder: upgrade => ipcRenderer.invoke('astelvo:confirm-delete-folder', upgrade),
   confirmDeleteScript: upgrade => ipcRenderer.invoke('astelvo:confirm-delete-script', upgrade),
   workspace: Object.freeze({
     create: () => ipcRenderer.invoke('astelvo:choose-workspace', true),
@@ -11,6 +12,8 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
     renameFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.rename', input),
     moveFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.move', input),
     duplicateFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.duplicate', input),
+    deleteFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.delete', input),
+    restoreFolder: input => ipcRenderer.invoke('astelvo:workspace-command', 'folder.restore', input),
     createScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.create', input),
     readScript: id => ipcRenderer.invoke('astelvo:workspace-command', 'script.read', { id }),
     duplicateScript: input => ipcRenderer.invoke('astelvo:workspace-command', 'script.duplicate', input),

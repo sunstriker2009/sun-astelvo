@@ -65,3 +65,22 @@ test('recycle contract bounds consent/revisions and rejects misplaced delete/res
   for (const changes of [{ deletedScripts: [script] }, { scripts: [script] }, { revision: 4 }])
     assert.throws(() => assertResult('script.restore', { ...restored, ...changes }, restore));
 });
+
+test('folder recycle contract validates upgrade/revision and complete tree result placement', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const folder = { id, name: 'Original', parentId: null };
+  const params = { id, expectedRevision: 1, allowUpgrade: true };
+  const workspace = { root: '/workspace', schemaVersion: 3, id, name: 'Workspace', revision: 2, folders: [], scripts: [], deletedScripts: [], deletedFolderTrees: [{ rootId: id, folders: [folder], scripts: [], deletedScripts: [] }] };
+  assert.doesNotThrow(() => assertRequest('folder.delete', params));
+  for (const extra of [{ path: '/outside' }, { allowUpgrade: 'yes' }, { expectedRevision: -1 }])
+    assert.throws(() => assertRequest('folder.delete', { ...params, ...extra }));
+  assert.doesNotThrow(() => assertResult('folder.delete', workspace, params));
+  for (const extra of [{ schemaVersion: 2 }, { revision: 1 }, { folders: [folder] }, { deletedFolderTrees: [] }])
+    assert.throws(() => assertResult('folder.delete', { ...workspace, ...extra }, params));
+  const restore = { id, name: 'Restored', parentId: null, expectedRevision: 2 };
+  const restored = { ...workspace, revision: 3, folders: [{ ...folder, name: restore.name }], deletedFolderTrees: [] };
+  assert.doesNotThrow(() => assertRequest('folder.restore', restore));
+  assert.doesNotThrow(() => assertResult('folder.restore', restored, restore));
+  assert.throws(() => assertResult('folder.restore', { ...restored, deletedFolderTrees: workspace.deletedFolderTrees }, restore));
+});

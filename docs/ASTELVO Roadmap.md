@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor improvements through PR #24 are merged. Folder subtree duplication (#18), script write preflight (#19), Monaco commands (#20) and save buffer preservation (#21) extend the original persistence/move/script-copy slices. Script recycle bin is implemented and locally validated in `feature/m1-script-recycle-bin` ([evidence](operations/M1-SCRIPT-RECYCLE-VALIDATION.md)), with an explicitly confirmed v2 upgrade and identity-preserving restore. Check the PR for required CI and merge state. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Folder subtree delete/restore is next; remaining M1–M5 work, new organizer Windows, interactive/clean-machine and governance enforcement acceptance remain open. No script runner is implemented. The M0 Windows baseline remains distinct.
+The foundation, branding and organizer/editor improvements through PR #25 are merged, including script recycle bin. Folder subtree deletion/restoration is implemented and locally validated in `feature/m1-folder-recycle` ([evidence](operations/M1-FOLDER-RECYCLE-VALIDATION.md)): explicit v3 upgrade, retained pre-upgrade metadata, stable subtree/script identities and preservation of independently deleted script state. Check the new PR for CI/merge state. Tags/favourites/collections/search is next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5 work, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
 
 ## Sources
 
@@ -236,3 +236,8 @@ Saving the current document no longer calls Monaco setValue when its content alr
 ### Script recycle bin — 2026-11-15
 
 Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.
+
+
+### Folder subtree recycle bin — 2026-11-15
+
+Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.

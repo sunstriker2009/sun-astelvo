@@ -12,3 +12,6 @@ See [Workspace format v1](../architecture/WORKSPACE-FORMAT.md) for schema, paths
 
 
 Script recycle bin extends this decision with explicit schema v2, retaining complete Script records and source revisions. V1 ordinary operations remain v1; first deletion requires explicit upgrade consent and an exact pre-upgrade manifest backup before the v2 commit. Identity-preserving restore validates hash, destination/name and revision; unknown fields are still rejected. See the workspace format for migration/recovery limits. This does not implement folder deletion, full workspace backup or automatic downgrade.
+
+
+Folder subtree recycling extends the same commit model with explicit schema v3 and an exact pre-upgrade v1/v2 checkpoint. `deletedFolderTrees` partitions preserve complete folders, active scripts and independently deleted scripts; restoration keeps each script's prior deleted state. Validation enforces connected trees, global identity uniqueness and combined live/trash limits. Historical root parents may be unavailable; restore explicitly selects a live destination. Scripts and folders retain IDs/source bytes, and source verification precedes the single manifest commit. No permanent purge or full workspace backup is introduced. The format document records timeout, recovery and compatibility limits.
