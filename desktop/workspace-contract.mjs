@@ -7,6 +7,8 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
+  'workspace.export': ['archivePath', 'expectedRevision'],
+  'workspace.restore': ['archivePath', 'path'],
   'workspace.search': ['query', 'expectedRevision', 'rebuild'],
   'host.info': [], 'workspace.open': ['path', 'create'], 'workspace.close': [],
   'folder.create': ['name', 'parentId'], 'folder.rename': ['id', 'name'], 'folder.move': ['id', 'parentId'],
@@ -26,7 +28,7 @@ const shapes = {
 export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
-    const valid = key === 'path' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
+    const valid = key === 'path' || key === 'archivePath' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
       : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' ? typeof value === 'boolean'
       : key === 'query' ? typeof value === 'string' && value.trim().length > 0 && value.length <= 120 && !/[\x00-\x1f\x7f-\x9f]/.test(value)
       : key === 'filter' ? collectionFilter(value)
@@ -85,7 +87,11 @@ function document(value) {
 export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'workspace.close' ? value === null
-    : ['workspace.open', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : ['workspace.open', 'workspace.restore', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
+    : method === 'workspace.export' ? fields(value, ['archivePath', 'workspaceId', 'revision', 'schemaVersion', 'scriptCount', 'sourceBytes'])
+      && typeof value.archivePath === 'string' && id(value.workspaceId) && value.revision === params.expectedRevision && [1, 2, 3, 4, 5].includes(value.schemaVersion)
+      && Number.isInteger(value.scriptCount) && value.scriptCount >= 0 && value.scriptCount <= 1000
+      && Number.isInteger(value.sourceBytes) && value.sourceBytes >= 0 && value.sourceBytes <= 64 * 1024 * 1024
     : method === 'workspace.search' ? fields(value, ['workspaceId', 'revision', 'query', 'scriptIds', 'indexedCount', 'indexedBytes', 'rebuilt'])
       && id(value.workspaceId) && value.revision === params.expectedRevision && value.query === params.query
       && Array.isArray(value.scriptIds) && value.scriptIds.length <= 1000 && value.scriptIds.every(id) && new Set(value.scriptIds).size === value.scriptIds.length

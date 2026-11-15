@@ -132,3 +132,15 @@ test('source search contract bounds query and correlates revision/query, IDs and
   for (const changes of [{ query: 'different' }, { revision: 2 }, { scriptIds: [id, id] }, { indexedBytes: 33 * 1024 * 1024 }, { indexedCount: 0 }, { rebuilt: false }])
     assert.throws(() => assertResult('workspace.search', { ...result, ...changes }, params));
 });
+
+test('archive contracts accept only native host paths/bounded results and correlate export revision', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const params = { archivePath: '/selected/snapshot.zip', expectedRevision: 3 };
+  assert.doesNotThrow(() => assertRequest('workspace.export', params));
+  assert.doesNotThrow(() => assertRequest('workspace.restore', { archivePath: params.archivePath, path: '/selected/empty' }));
+  for (const extra of [{ archivePath: '' }, { expectedRevision: -1 }, { overwrite: true }]) assert.throws(() => assertRequest('workspace.export', { ...params, ...extra }));
+  const result = { archivePath: params.archivePath, workspaceId: id, revision: 3, schemaVersion: 5, scriptCount: 3, sourceBytes: 200 };
+  assert.doesNotThrow(() => assertResult('workspace.export', result, params));
+  for (const extra of [{ revision: 2 }, { scriptCount: 1001 }, { sourceBytes: 65 * 1024 * 1024 }, { schemaVersion: 99 }]) assert.throws(() => assertResult('workspace.export', { ...result, ...extra }, params));
+});

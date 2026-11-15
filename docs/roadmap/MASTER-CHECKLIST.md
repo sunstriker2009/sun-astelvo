@@ -31,9 +31,10 @@
 - [x] Folder subtree delete/restore merged in [PR #26](https://github.com/sunstriker2009/sun-astelvo/pull/26): stable IDs, explicit v3 upgrade, preserved pre-deleted state and atomic whole-tree visibility ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
 - [x] Tags/favourites and combined folder/name/language/tag/favourite metadata filters merged in [PR #27](https://github.com/sunstriker2009/sun-astelvo/pull/27), with explicit v4 migration and preserved recycle metadata ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)); CI passed; Windows acceptance remains open.
 - [x] Saved metadata collections baseline merged in [PR #28](https://github.com/sunstriker2009/sun-astelvo/pull/28), with explicit v5 migration, stable filters/identities and dormant recycled-folder scopes ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). CI passed; Windows acceptance remains open.
-- [x] Initial bounded in-memory source-word index/rebuild locally implemented/validated on `feature/m1-source-search`, with source/metadata integrity checks and combined filters ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [x] Initial bounded in-memory source-word index/rebuild merged in [PR #29](https://github.com/sunstriker2009/sun-astelvo/pull/29), with source/metadata integrity checks and combined filters ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)); CI passed; Windows acceptance remains open.
 - [ ] Persistent SQLite catalog/index, multiple-tag/recency/source-query collection extensions and search performance acceptance.
-- [ ] Safe import/export, index rebuild and backup/restore.
+- [x] Current-state workspace archive export and fresh-folder restore locally implemented/validated on `feature/m1-workspace-archives`, with strict preflight, verified publication and manifest-last recovery ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [ ] Loose script import/merge conflict handling, historical/retention backup design and Windows/clean-machine restore acceptance.
 - [ ] Useful standard-library examples requiring no packages/network.
 
 ### M2 — Editor
@@ -104,3 +105,8 @@ Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 mig
 ### Initial source-word index — 2026-11-15
 
 Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.
+
+
+### Workspace snapshot archives — 2026-11-15
+
+Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.

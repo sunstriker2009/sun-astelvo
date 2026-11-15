@@ -23,10 +23,20 @@ internal sealed class WorkspaceSession : IDisposable
             workspace?.Dispose(); workspace = next;
             return workspace.Snapshot();
         }
+        if (method == "workspace.restore")
+        {
+            Keys(p, "archivePath", "path");
+            var next = WorkspaceStore.RestoreArchive(Text(p, "archivePath"), Text(p, "path"));
+            workspace?.Dispose(); workspace = next;
+            return workspace.Snapshot();
+        }
         if (method == "workspace.close") { Keys(p); workspace?.Dispose(); workspace = null; return null; }
         var active = workspace ?? throw new WorkspaceException("no_workspace", "Create or open a workspace first.");
         switch (method)
         {
+            case "workspace.export":
+                Keys(p, "archivePath", "expectedRevision");
+                return active.ExportArchive(Text(p, "archivePath"), Revision(p));
             case "workspace.search":
                 Keys(p, "query", "expectedRevision", "rebuild");
                 return active.SearchSource(Text(p, "query"), Revision(p), p.GetProperty("rebuild").GetBoolean());

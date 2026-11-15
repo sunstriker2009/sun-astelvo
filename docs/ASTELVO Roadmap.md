@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor work through saved collections PR #28 are merged with passing CI. Initial source-word indexed search/rebuild is implemented and locally validated in `feature/m1-source-search` ([evidence](operations/M1-SOURCE-SEARCH-VALIDATION.md)); [ADR-004](adr/0004-source-search-index.md) records the bounded read-only session index and pending persistent SQLite catalog. Check the new PR for CI/merge state. Safe import/export/full backup, persistent catalog, collection extensions and remaining M1–M5 work stay unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. New organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
+The foundation, branding and organizer/editor work through source-search PR #29 are merged with passing CI. Verified current-state archive export and fresh-folder restore are locally implemented/validated in `feature/m1-workspace-archives` ([evidence](operations/M1-ARCHIVES-VALIDATION.md)); [ADR-005](adr/0005-workspace-archives.md) records exact snapshot scope, preflight/limits and manifest-last recovery. Check the new PR for CI/merge state. Loose imports/merge, backup history/retention, persistent catalog, collection extensions and remaining M1–M5 work stay unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final product review. New organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
 
 ## Sources
 
@@ -256,3 +256,8 @@ Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 mig
 ### Initial source-word index — 2026-11-15
 
 Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.
+
+
+### Workspace snapshot archives — 2026-11-15
+
+Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.

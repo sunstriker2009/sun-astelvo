@@ -37,7 +37,7 @@ internal sealed record Manifest
     public List<SmartCollection>? Collections { get; init; }
 }
 
-internal sealed class WorkspaceStore : IDisposable
+internal sealed partial class WorkspaceStore : IDisposable
 {
     public const int MaxSourceBytes = 256 * 1024;
     private const int MaxManifestBytes = 1024 * 1024;
