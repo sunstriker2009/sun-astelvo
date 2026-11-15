@@ -12,8 +12,8 @@ On 2026-11-14 the owner returned to this direction after the A-shaped experiment
 
 | Path relative to `branding/assets/` | Purpose |
 | --- | --- |
-| `readme-banner-v1.png` | Original approved 2172 × 724 panoramic banner, unchanged |
-| `symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol (versioned source) |
+| `readme-banner.png` | Original approved 2172 × 724 panoramic banner, unchanged |
+| `refs/symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol (versioned source) |
 | `symbol.png` | Byte-identical canonical alias for SUN ecosystem registry synchronization |
 | `icons/icon-{size}.png` | Transparent PNG exports: 16, 24, 32, 48, 64, 128, 256, 512, 1024 px |
 | `icons/app.ico` | Windows ICO with 16, 24, 32, 48, 64, 128, 256 px frames |
@@ -27,7 +27,7 @@ Use the transparent color symbol on both light and dark surfaces. It is the same
 ## Source provenance
 
 - The original banner and its exact archive copy share Git blob SHA `6abd707eefaf79659047346311083937bdec5ad1`.
-- The approved transparent symbol is preserved byte-for-byte in both `assets/symbol-canonical-v1.png` and `archive/originals/symbol-canonical-v1.png`.
+- The approved transparent symbol is preserved byte-for-byte in both `assets/refs/symbol-canonical-v1.png` and `archive/originals/symbol-canonical-v1.png`.
 - The symbol was produced by image-assisted background extraction from the approved banner and then explicitly approved. It preserves the three files, blue gradients, play triangle and blue-white arc; it is not claimed to preserve every source pixel.
 - PNG icons and the ICO are deterministic exports of that approved symbol, without geometry changes, recoloring or fresh image generation.
 - No editable layered source or original font file for the raster wordmark is available. Do not infer one from the archived geometric reconstruction.
@@ -60,8 +60,8 @@ The transparent symbol has been reviewed on white and navy, and all PNG sizes at
 
 ## Rebuild
 
-Run `bash scripts/brand/build_brand.sh`, or the compatible `python3 scripts/brand/build_brand.py` entry point. Requires ImageMagick 7 and Bash. The script reads the approved transparent PNG, resizes with Lanczos, and exports RGBA PNGs and a multi-frame ICO. It does not overwrite either approved master or generate vectors. Different ImageMagick versions may encode different bytes; record tool version when replacing exports.
+Run `bash scripts/brand/build_brand.sh`, or the compatible `python3 scripts/brand/build_brand.py` entry point. Requires ImageMagick 7 and Bash. The script reads the approved canonical `branding/assets/symbol.png`, resizes with Lanczos, and exports RGBA PNGs and a multi-frame ICO. It does not overwrite either approved master or generate vectors. Different ImageMagick versions may encode different bytes; record tool version when replacing exports.
 
-Review sheets belong in `archive/intermediate/`, never in application asset paths. New symbol revisions require approval and a versioned source filename. New README artwork requires a new versioned banner filename and an updated README reference.
+Review sheets belong in `archive/intermediate/`, never in application asset paths. Active banner and symbol paths remain stable as `assets/readme-banner.png` and `assets/symbol.png`. Retain versioned reference masters under `assets/refs/`; changes to artwork follow the normal branding PR approval process.
 
 See [archive history](archive/README.md), [migration mapping](archive/MIGRATION-NOTES.md), and the [SUN standard](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/PRODUCT-BRANDING.md). This branding update does not complete any application milestone or establish commercial naming clearance.

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="branding/assets/readme-banner-v1.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
+  <img src="branding/assets/readme-banner.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%">
 </p>
 
 # ASTELVO by Sun

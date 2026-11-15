@@ -2,7 +2,7 @@
 # Export raster icons from the owner-approved transparent source. Requires ImageMagick 7.
 set -euo pipefail
 task_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-task_source="$task_root/branding/assets/symbol-canonical-v1.png"
+task_source="$task_root/branding/assets/symbol.png"
 task_icons="$task_root/branding/assets/icons"
 command -v magick >/dev/null || { echo 'ImageMagick 7 (magick) is required.' >&2; exit 1; }
 test -f "$task_source"
