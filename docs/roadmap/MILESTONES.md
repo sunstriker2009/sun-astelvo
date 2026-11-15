@@ -5,8 +5,8 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import locally validated; Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import merged (#31); Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — in-session tabs locally validated; formatting/recovery and Windows gates open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `f97f1624` contains archive export/fresh-folder restore PR #30 with passing CI; earlier organizer/editor/search/collection/recycle work is merged.
+Main `1e3d5706` contains merged loose-source import PR #31; no open implementation PR overlapped this batch.
 
-Loose UTF-8 JavaScript/Python/C# source import is locally implemented/validated in `feature/m1-loose-script-import` ([evidence](../operations/M1-IMPORT-VALIDATION.md)). Explicit numbered copies resolve collisions without overwrite, and one commit exposes the whole bounded batch while retaining unsaved editor drafts. Check the new PR for CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+M2 in-session editor tabs are locally implemented/validated in `feature/m2-editor-tabs` ([evidence](../operations/M2-TABS-VALIDATION.md), [ADR-007](../adr/0007-editor-tabs.md)). Each tab retains source/metadata/label drafts and undo; inactive drafts participate in workspace/quit and export/bulk-folder guards. Capacity is checked before persistent creation. Check the new PR for CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Persistent catalog, collection extensions, useful standard-library examples and remaining M2–M5 editor/recovery/formatter/runner/packaging work remain unfinished. Windows organizer/import/restore, clean-machine and governance follow-ups stay distinct from the M0 baseline. Archive merges/history retention are optional future enhancements; current-state archive restore remains the v1 backup path.
+Persistent catalog, collection extensions, examples and remaining M2–M5 formatting/recovery/runner/packaging work remain unfinished. Tabs are memory-only; unsaved crash recovery is not delivered. Windows organizer/editor/import/restore, clean-machine and governance follow-ups stay distinct from M0. Archive merges/history retention remain optional future enhancements.
 
 ## M0 foundation evidence
 

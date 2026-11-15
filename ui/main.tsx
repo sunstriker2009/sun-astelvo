@@ -21,6 +21,8 @@ type SmartCollection = { id: string; name: string; filter: CollectionFilter };
 type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[]; collections: SmartCollection[] };
 type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean; classification: Classification };
 type Draft = Pick<Document, 'name' | 'language' | 'folderId'>;
+type EditorTab = { saved: Document; draft: Draft; model: monaco.editor.ITextModel; view: monaco.editor.ICodeEditorViewState | null; tagText: string; favourite: boolean; dirty: boolean; classificationDirty: boolean };
+const maxTabs = 16;
 type Result<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
 type WriteResult = { workspace: Workspace; document: Document };
 type HostResponse = { ok: true; info: { product: string; protocol: number; runtime: string } } | { ok: false; message: string };
@@ -81,6 +83,13 @@ function App() {
   const classificationDirtyRef = useRef(false);
   const busyRef = useRef(false);
   const saveRef = useRef<() => void>(() => {});
+  const closeTabRef = useRef<() => void>(() => {});
+  const cycleTabRef = useRef<(direction: number) => void>(() => {});
+  const tabs = useRef(new Map<string, EditorTab>());
+  const classificationRef = useRef({ tagText: '', favourite: false });
+  const switchingModel = useRef(false);
+  const emptyModel = useRef<monaco.editor.ITextModel | null>(null);
+  const [tabList, setTabList] = useState<{ id: string; name: string; dirty: boolean; external: boolean }[]>([]);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [document, setDocument] = useState<Document | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -122,7 +131,7 @@ function App() {
     const saved = documentRef.current;
     const fields = draftRef.current;
     const value = saved !== null && (saved.content !== contentRef.current || saved.name !== fields.name || saved.language !== fields.language || saved.folderId !== fields.folderId);
-    dirtyRef.current = value; setDirty(value);
+    dirtyRef.current = value; setDirty(value); syncTab();
   }
   function changeDraft(next: Draft) {
     draftRef.current = next; setDraft(next);
@@ -131,10 +140,10 @@ function App() {
     calculateDirty();
   }
   function changeClassification(text: string, fav: boolean) {
-    setTagText(text); setFavourite(fav);
+    setTagText(text); setFavourite(fav); classificationRef.current = { tagText: text, favourite: fav };
     const saved = documentRef.current?.classification ?? { tags: [], favourite: false };
     const changed = text !== saved.tags.join(', ') || fav !== saved.favourite;
-    classificationDirtyRef.current = changed; setClassificationDirty(changed);
+    classificationDirtyRef.current = changed; setClassificationDirty(changed); syncTab();
   }
   function clearSourceSearch() { setSourceQuery(''); setSourceSearchActive(false); setSourceResult(null); }
   function searchSource(rebuild: boolean) {
@@ -147,43 +156,113 @@ function App() {
     });
   }
   function clearFilters() { setFilterText(''); setFilterLanguage(''); setFilterTag(''); setFavouritesOnly(false); }
-  function display(next: Document | null, preserveClassificationDraft = false) {
-    const previousId = documentRef.current?.id;
-    if (!preserveClassificationDraft || next?.id !== previousId) {
-      setTagText(next?.classification.tags.join(', ') ?? ''); setFavourite(next?.classification.favourite ?? false);
-      classificationDirtyRef.current = false; setClassificationDirty(false);
-    }
-    setDuplicateName(''); setDuplicateFolder(next?.folderId ?? null);
-    documentRef.current = next; setDocument(next);
-    draftRef.current = next ? { name: next.name, language: next.language, folderId: next.folderId } : emptyDraft;
-    setDraft(draftRef.current);
-    contentRef.current = next?.content ?? '';
-    // Saving the same document must retain Monaco's undo stack, selection and scroll.
-    // Switching documents or explicitly reloading still replaces the buffer.
-    if (!next || next.id !== previousId || editor.current?.getValue() !== contentRef.current) {
-      editor.current?.setValue(contentRef.current);
-    }
-    const model = editor.current?.getModel();
-    if (model) monaco.editor.setModelLanguage(model, next?.language ?? 'javascript');
-    editor.current?.updateOptions({ readOnly: !next || busyRef.current });
-    dirtyRef.current = false; setDirty(false);
-    if (next) editor.current?.focus();
+  function refreshTabs() {
+    setTabList([...tabs.current].map(([id, tab]) => ({ id, name: tab.draft.name, dirty: tab.dirty || tab.classificationDirty, external: tab.saved.externalChanged })));
   }
+  function syncTab() {
+    const id = documentRef.current?.id;
+    const tab = id ? tabs.current.get(id) : undefined;
+    if (!tab) return;
+    tab.saved = documentRef.current!; tab.draft = { ...draftRef.current };
+    tab.view = editor.current?.saveViewState() ?? null;
+    tab.tagText = classificationRef.current.tagText; tab.favourite = classificationRef.current.favourite;
+    tab.dirty = dirtyRef.current; tab.classificationDirty = classificationDirtyRef.current;
+    refreshTabs();
+  }
+  function hasPendingTabs(includeExternal = false) {
+    syncTab();
+    return [...tabs.current.values()].some(tab => tab.dirty || tab.classificationDirty || (includeExternal && tab.saved.externalChanged));
+  }
+  function activateTab(id: string) {
+    syncTab();
+    const tab = tabs.current.get(id)!;
+    documentRef.current = tab.saved; setDocument(tab.saved);
+    draftRef.current = { ...tab.draft }; setDraft(draftRef.current);
+    classificationRef.current = { tagText: tab.tagText, favourite: tab.favourite };
+    setTagText(tab.tagText); setFavourite(tab.favourite);
+    classificationDirtyRef.current = tab.classificationDirty; setClassificationDirty(tab.classificationDirty);
+    dirtyRef.current = tab.dirty; setDirty(tab.dirty);
+    contentRef.current = tab.model.getValue();
+    switchingModel.current = true;
+    editor.current?.setModel(tab.model);
+    switchingModel.current = false;
+    if (tab.view) editor.current?.restoreViewState(tab.view);
+    editor.current?.updateOptions({ readOnly: busyRef.current });
+    setDuplicateName(''); setDuplicateFolder(tab.saved.folderId);
+    refreshTabs(); editor.current?.focus();
+  }
+  function display(next: Document | null, preserveClassificationDraft = false) {
+    if (!next) { clearTabs(); return; }
+    syncTab();
+    let tab = tabs.current.get(next.id);
+    if (!tab) {
+      tab = { saved: next, draft: { name: next.name, language: next.language, folderId: next.folderId },
+        model: monaco.editor.createModel(next.content, next.language), view: null,
+        tagText: next.classification.tags.join(', '), favourite: next.classification.favourite, dirty: false, classificationDirty: false };
+      tabs.current.set(next.id, tab);
+    } else {
+      tab.saved = next; tab.draft = { name: next.name, language: next.language, folderId: next.folderId }; tab.dirty = false;
+      // A successful save preserves this model's undo history, cursor and scroll.
+      switchingModel.current = true;
+      if (tab.model.getValue() !== next.content) { tab.model.setValue(next.content); tab.view = null; }
+      monaco.editor.setModelLanguage(tab.model, next.language);
+      switchingModel.current = false;
+      if (!preserveClassificationDraft) { tab.tagText = next.classification.tags.join(', '); tab.favourite = next.classification.favourite; tab.classificationDirty = false; }
+    }
+    // Do not let activation stash the old active state over the new saved state.
+    documentRef.current = null; activateTab(next.id);
+  }
+  function removeTabs(ids: string[]) {
+    syncTab();
+    const activeId = documentRef.current?.id;
+    const removedActive = !!activeId && ids.includes(activeId);
+    if (removedActive) {
+      switchingModel.current = true; editor.current?.setModel(emptyModel.current); switchingModel.current = false;
+      documentRef.current = null; setDocument(null); draftRef.current = emptyDraft; setDraft(emptyDraft);
+      contentRef.current = ''; dirtyRef.current = false; setDirty(false);
+      classificationDirtyRef.current = false; setClassificationDirty(false);
+      classificationRef.current = { tagText: '', favourite: false }; setTagText(''); setFavourite(false);
+      editor.current?.updateOptions({ readOnly: true });
+    }
+    for (const id of ids) { tabs.current.get(id)?.model.dispose(); tabs.current.delete(id); }
+    if (removedActive && tabs.current.size) activateTab([...tabs.current.keys()].at(-1)!);
+    refreshTabs();
+  }
+  function clearTabs() { removeTabs([...tabs.current.keys()]); }
+  function ensureTabCapacity() {
+    if (tabs.current.size >= maxTabs) throw new Error(`Close an editor tab before opening another (maximum ${maxTabs}).`);
+  }
+  function closeTab(id: string) {
+    void run(async () => {
+      syncTab(); const tab = tabs.current.get(id);
+      if (!tab || ((tab.dirty || tab.classificationDirty) && !await window.astelvo.confirmDiscard())) return;
+      removeTabs([id]); setStatus('Editor tab closed. Saved script remains in the workspace.');
+    });
+  }
+  closeTabRef.current = () => { if (documentRef.current) closeTab(documentRef.current.id); };
+  cycleTabRef.current = direction => {
+    if (busyRef.current || tabs.current.size < 2) return;
+    const ids = [...tabs.current.keys()]; const index = ids.indexOf(documentRef.current!.id);
+    activateTab(ids[(index + direction + ids.length) % ids.length]);
+  };
   useEffect(() => {
-    const instance = monaco.editor.create(container.current!, { value: '', language: 'javascript', readOnly: true, theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 15 });
+    emptyModel.current = monaco.editor.createModel('', 'javascript');
+    const instance = monaco.editor.create(container.current!, { model: emptyModel.current, readOnly: true, theme: 'vs-dark', automaticLayout: true, minimap: { enabled: false }, fontSize: 15 });
     editor.current = instance;
-    const change = instance.onDidChangeModelContent(() => { contentRef.current = instance.getValue(); calculateDirty(); });
+    const change = instance.onDidChangeModelContent(() => { if (switchingModel.current) return; contentRef.current = instance.getValue(); calculateDirty(); });
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current || classificationDirtyRef.current) { event.preventDefault(); event.returnValue = ''; }
+      if ([...tabs.current.values()].some(tab => tab.dirty || tab.classificationDirty)) { event.preventDefault(); event.returnValue = ''; }
     };
     const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'w') { event.preventDefault(); closeTabRef.current(); return; }
+      if (event.ctrlKey && event.key === 'Tab') { event.preventDefault(); cycleTabRef.current(event.shiftKey ? -1 : 1); return; }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveRef.current(); }
     };
     window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('keydown', shortcut, true);
     return () => {
       change.dispose(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('keydown', shortcut, true);
-      const model = instance.getModel(); instance.dispose(); model?.dispose(); editor.current = null;
+      instance.dispose(); for (const tab of tabs.current.values()) tab.model.dispose(); tabs.current.clear(); emptyModel.current?.dispose(); emptyModel.current = null; editor.current = null;
     };
   }, []);
 
@@ -199,7 +278,7 @@ function App() {
       editor.current?.updateOptions({ readOnly: documentRef.current === null });
     }
   }
-  async function canLeave() { return !(dirtyRef.current || classificationDirtyRef.current) || await window.astelvo.confirmDiscard(); }
+  async function canLeave() { return !hasPendingTabs() || await window.astelvo.confirmDiscard(); }
   function chooseWorkspace(create: boolean) {
     void run(async () => {
       if (!await canLeave()) return;
@@ -210,7 +289,9 @@ function App() {
   function openScript(id: string, reload = false) {
     if (!reload && documentRef.current?.id === id) { editor.current?.focus(); return; }
     void run(async () => {
-      if (!await canLeave()) return;
+      if (!reload && tabs.current.has(id)) { activateTab(id); return; }
+      if (reload && (dirtyRef.current || classificationDirtyRef.current) && !await window.astelvo.confirmDiscard()) return;
+      if (!tabs.current.has(id)) ensureTabCapacity();
       const next = unwrap(await window.astelvo.workspace.readScript(id));
       display(next); setStatus(next.externalChanged ? 'External edits loaded. Saving will create a new revision.' : 'Script opened.');
     });
@@ -275,8 +356,8 @@ function App() {
     <div className="workspace-actions">
       <button disabled={busy} onClick={() => chooseWorkspace(true)}>New workspace</button>
       <button disabled={busy} onClick={() => chooseWorkspace(false)}>Open workspace</button>
-      <button disabled={busy || !workspace || dirty || classificationDirty || document?.externalChanged} onClick={() => {
-        if (!workspace || dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return;
+      <button disabled={busy || !workspace || tabList.some(t => t.dirty || t.external)} onClick={() => {
+        if (!workspace || hasPendingTabs(true)) return;
         void run(async () => {
           const result = unwrap(await window.astelvo.workspace.exportArchive(workspace.revision));
           if (result.workspaceId !== workspace.id) throw new Error('Export workspace changed. Reopen it before continuing.');
@@ -356,26 +437,26 @@ function App() {
           </details>}
           {selected && <details><summary>Duplicate selected folder</summary>
             <p className="muted">Copy saved scripts and nested folders. Save open edits first. Originals remain unchanged.</p>
-            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+            <form onSubmit={event => { event.preventDefault(); if (hasPendingTabs(true)) return; void run(async () => {
               const next = unwrap(await window.astelvo.workspace.duplicateFolder({ id: selected.id, name: folderCopyName.trim(), parentId: folderCopyParent, expectedRevision: workspace!.revision }));
               const copied = next.workspace.folders.find(f => f.id === next.folderId)!;
               setWorkspace(next.workspace); setSelectedFolder(copied.id); setRenameName(copied.name); setMoveParent(copied.parentId);
               setFolderCopyName(''); setFolderCopyParent(copied.parentId); setStatus('Folder copied. Originals and the open editor are unchanged.');
             }); }}>
-              <label>Folder copy name<input required maxLength={120} disabled={busy || dirty || classificationDirty || document?.externalChanged} value={folderCopyName} onChange={event => setFolderCopyName(event.target.value)} /></label>
-              <label>Folder copy destination<select disabled={busy || dirty || classificationDirty || document?.externalChanged} value={folderCopyParent ?? ''} onChange={event => setFolderCopyParent(event.target.value || null)}>
+              <label>Folder copy name<input required maxLength={120} disabled={busy || tabList.some(t => t.dirty || t.external)} value={folderCopyName} onChange={event => setFolderCopyName(event.target.value)} /></label>
+              <label>Folder copy destination<select disabled={busy || tabList.some(t => t.dirty || t.external)} value={folderCopyParent ?? ''} onChange={event => setFolderCopyParent(event.target.value || null)}>
                 <option value="">Workspace root</option>{moveTargets.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
               </select></label>
-              <button disabled={busy || dirty || classificationDirty || document?.externalChanged}>Duplicate folder</button>
+              <button disabled={busy || tabList.some(t => t.dirty || t.external)}>Duplicate folder</button>
             </form>
           </details>}
-          {selected && <button disabled={busy || dirty || classificationDirty || document?.externalChanged} onClick={() => {
-            if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return;
+          {selected && <button disabled={busy || tabList.some(t => t.dirty || t.external)} onClick={() => {
+            if (hasPendingTabs(true)) return;
             void run(async () => {
               const upgrade = workspace.schemaVersion < 3;
               if (!await window.astelvo.confirmDeleteFolder(upgrade)) return;
               const next = unwrap(await window.astelvo.workspace.deleteFolder({ id: selected.id, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
-              if (documentRef.current && !next.scripts.some(s => s.id === documentRef.current!.id)) display(null);
+              removeTabs([...tabs.current.keys()].filter(id => !next.scripts.some(s => s.id === id)));
               setWorkspace(next); if (currentCollection?.filter.folderId !== selectedFolder) selectFolder(null); setRestoreId(''); setStatus('Folder moved to recycle bin. Source files retained.');
             });
           }}>Delete folder</button>}
@@ -408,7 +489,7 @@ function App() {
           </details>
           <details><summary>New script</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {
-            if (!await canLeave()) return;
+            ensureTabCapacity();
             const next = unwrap(await window.astelvo.workspace.createScript({ name: scriptName.trim(), language: newLanguage, folderId: selectedFolder }));
             setWorkspace(next.workspace); display(next.document); setScriptName(''); setStatus('Script created. Edit and press Ctrl/Cmd+S to save.');
           }); }}>
@@ -420,6 +501,7 @@ function App() {
             <p className="muted">Copy the saved revision of {document.name}. Save any changes and resolve external edits first.</p>
             <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
               const current = documentRef.current!;
+              ensureTabCapacity();
               const next = unwrap(await window.astelvo.workspace.duplicateScript({ id: current.id, name: duplicateName.trim(), folderId: duplicateFolder, expectedHash: current.hash }));
               setWorkspace(next.workspace); selectFolder(next.document.folderId); display(next.document); setStatus('Script duplicated. The original is unchanged.');
             }); }}>
@@ -439,7 +521,7 @@ function App() {
               if (!await window.astelvo.confirmDeleteScript(upgrade)) return;
               const current = documentRef.current!;
               const next = unwrap(await window.astelvo.workspace.deleteScript({ id: current.id, expectedHash: current.hash, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
-              setWorkspace(next); display(null); setStatus('Script moved to recycle bin. Source files retained.');
+              setWorkspace(next); removeTabs([current.id]); setStatus('Script moved to recycle bin. Source files retained.');
             });
           }}>Delete script</button>}
           <details><summary>Deleted folders ({workspace.deletedFolderTrees.length})</summary>
@@ -481,6 +563,12 @@ function App() {
         </>}
       </aside>
       <section className="content">
+        <nav className="editor-tabs" aria-label="Open editor tabs">
+          {tabList.map(tab => <div className="editor-tab" key={tab.id}>
+            <button disabled={busy} aria-current={document?.id === tab.id ? 'page' : undefined} onClick={() => openScript(tab.id)} title="Switch tab; drafts and undo history are retained">{tab.name || '(unnamed)'}{tab.dirty ? ' ●' : ''}{tab.external ? ' ⚠' : ''}</button>
+            <button disabled={busy} aria-label={`Close tab ${tab.name}`} onClick={() => closeTab(tab.id)}>×</button>
+          </div>)}
+        </nav>
         <div className="toolbar">
           <label className="script-name">Script name<input aria-label="Script name" value={draft.name} maxLength={120} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, name: e.target.value })} /></label>
           <label>Language<select value={draft.language} disabled={busy || !document} onChange={e => changeDraft({ ...draftRef.current, language: e.target.value as Language })}>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
