@@ -28,8 +28,9 @@
 - [x] Script duplication with explicit name/destination, new identity, reviewed committed content and independent source storage; merged [PR #16](https://github.com/sunstriker2009/sun-astelvo/pull/16) ([evidence](../operations/M1-SCRIPT-DUPLICATE-VALIDATION.md)). Windows acceptance remains open.
 - [x] Folder subtree duplication with new identities, all-source preflight, aggregate limits and one manifest commit; merged in [PR #18](https://github.com/sunstriker2009/sun-astelvo/pull/18) ([evidence](../operations/M1-FOLDER-DUPLICATE-VALIDATION.md)); Windows acceptance remains open.
 - [x] Script recycle bin and identity-preserving restore merged in [PR #25](https://github.com/sunstriker2009/sun-astelvo/pull/25); explicit schema upgrade and conflict/recovery checks ([evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
-- [x] Folder subtree delete/restore locally implemented/validated on `feature/m1-folder-recycle`: stable IDs, explicit v3 upgrade, preserved pre-deleted state and atomic whole-tree visibility ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). PR/CI/merge and Windows acceptance remain separate.
-- [ ] Tags, favourites, smart collection filters and indexed search.
+- [x] Folder subtree delete/restore merged in [PR #26](https://github.com/sunstriker2009/sun-astelvo/pull/26): stable IDs, explicit v3 upgrade, preserved pre-deleted state and atomic whole-tree visibility ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). CI passed; Windows acceptance remains open.
+- [x] Tags/favourites and combined folder/name/language/tag/favourite metadata filters locally implemented/validated on `feature/m1-tags-favourites`, with explicit v4 migration and preserved recycle metadata ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [ ] Saved smart collections and indexed source search/index rebuild.
 - [ ] Safe import/export, index rebuild and backup/restore.
 - [ ] Useful standard-library examples requiring no packages/network.
 
@@ -86,3 +87,8 @@ Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, exp
 ### Folder subtree recycle bin — 2026-11-15
 
 Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.
+
+
+### Tags and favourites — 2026-11-15
+
+Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.

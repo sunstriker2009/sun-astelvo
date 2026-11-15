@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor improvements through PR #25 are merged, including script recycle bin. Folder subtree deletion/restoration is implemented and locally validated in `feature/m1-folder-recycle` ([evidence](operations/M1-FOLDER-RECYCLE-VALIDATION.md)): explicit v3 upgrade, retained pre-upgrade metadata, stable subtree/script identities and preservation of independently deleted script state. Check the new PR for CI/merge state. Tags/favourites/collections/search is next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5 work, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
+The foundation, branding and organizer/editor work through folder recycle PR #26 are merged with passing CI. Tags/favourites and combined folder/name/language/tag/favourite metadata filters are implemented and locally validated in `feature/m1-tags-favourites` ([evidence](operations/M1-TAGS-FAVOURITES-VALIDATION.md)): explicit v4 upgrade/checkpoint and preserved source/identity/recycle metadata. Check the new PR for CI/merge state. Saved collections and indexed source search are next. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final manual product review. Remaining M1–M5, new organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
 
 ## Sources
 
@@ -241,3 +241,8 @@ Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, exp
 ### Folder subtree recycle bin — 2026-11-15
 
 Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.
+
+
+### Tags and favourites — 2026-11-15
+
+Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.

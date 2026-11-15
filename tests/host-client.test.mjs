@@ -84,3 +84,17 @@ test('folder recycle contract validates upgrade/revision and complete tree resul
   assert.doesNotThrow(() => assertResult('folder.restore', restored, restore));
   assert.throws(() => assertResult('folder.restore', { ...restored, deletedFolderTrees: workspace.deletedFolderTrees }, restore));
 });
+
+test('classification contract enforces bounded unique labels and correlated v4 results', async () => {
+  const { assertRequest, assertResult } = await import('../desktop/workspace-contract.mjs');
+  const id = '10000000-0000-0000-0000-000000000001';
+  const params = { id, tags: ['work', 'বাংলা'], favourite: true, expectedRevision: 1, allowUpgrade: true };
+  const script = { id, name: 'Hello', language: 'python', folderId: null, sourceHash: 'a'.repeat(64), classification: { tags: params.tags, favourite: true } };
+  const workspace = { root: '/workspace', schemaVersion: 4, id, name: 'Workspace', revision: 2, folders: [], scripts: [script], deletedScripts: [], deletedFolderTrees: [] };
+  assert.doesNotThrow(() => assertRequest('script.classify', params));
+  for (const changes of [{ tags: ['a', 'A'] }, { tags: [' x'] }, { tags: ['x'.repeat(41)] }, { favourite: 'yes' }, { path: '/outside' }])
+    assert.throws(() => assertRequest('script.classify', { ...params, ...changes }));
+  assert.doesNotThrow(() => assertResult('script.classify', workspace, params));
+  for (const changes of [{ schemaVersion: 3 }, { revision: 1 }, { scripts: [] }, { scripts: [{ ...script, classification: { tags: [], favourite: false } }] }])
+    assert.throws(() => assertResult('script.classify', { ...workspace, ...changes }, params));
+});

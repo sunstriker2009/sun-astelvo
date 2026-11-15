@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore locally validated; Windows organizer, tags/search and backup/import/export acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites locally validated; Windows organizer, saved collections/indexed search and backup/import/export acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `4ae4d079` contains script recycle PR #25; required CI passed. Earlier organizer/editor work through #24 is merged.
+Main `30651e8a` contains folder recycle PR #26 with passing CI; earlier script recycle and organizer/editor work are merged.
 
-Folder subtree delete/restore is implemented and locally validated in `feature/m1-folder-recycle` ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Explicit v3 migration retains pre-upgrade metadata, stable subtree/script IDs and independently deleted state. The new PR/required CI must still be checked for merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+Tags/favourites and combined metadata filters are implemented and locally validated in `feature/m1-tags-favourites` ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Explicit v4 migration preserves source/identity and every recycle partition. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Tags/favourites/collections/search is the next organizer batch, followed by safe import/export/full backup. New organizer Windows, interactive/clean-machine and governance enforcement follow-ups remain open and distinct from the M0 baseline. Remaining M1–M5 implementation and acceptance continue.
+Saved collections and indexed source search are next, followed by safe import/export/full backup. New organizer Windows, interactive/clean-machine and governance enforcement follow-ups remain open and distinct from the M0 baseline. Remaining M1–M5 implementation and acceptance continue.
 
 ## M0 foundation evidence
 
@@ -49,3 +49,8 @@ Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, exp
 ### Folder subtree recycle bin — 2026-11-15
 
 Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.
+
+
+### Tags and favourites — 2026-11-15
+
+Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.

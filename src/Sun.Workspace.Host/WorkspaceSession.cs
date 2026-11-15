@@ -44,6 +44,10 @@ internal sealed class WorkspaceSession : IDisposable
             case "folder.restore":
                 Keys(p, "id", "name", "parentId", "expectedRevision");
                 return active.RestoreFolder(Id(p, "id"), Text(p, "name"), OptionalId(p, "parentId"), Revision(p));
+            case "script.classify":
+                Keys(p, "id", "tags", "favourite", "expectedRevision", "allowUpgrade");
+                var tags = p.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString() ?? throw Invalid()).ToList();
+                return active.ClassifyScript(Id(p, "id"), tags, p.GetProperty("favourite").GetBoolean(), Revision(p), p.GetProperty("allowUpgrade").GetBoolean());
             case "script.create":
                 Keys(p, "name", "language", "folderId"); return active.CreateScript(Text(p, "name"), Text(p, "language"), OptionalId(p, "folderId"));
             case "script.read":

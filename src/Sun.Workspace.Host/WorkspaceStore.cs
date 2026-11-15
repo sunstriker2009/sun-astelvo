@@ -11,7 +11,12 @@ internal sealed class WorkspaceException(string code, string message) : Exceptio
 }
 
 internal sealed record Folder(Guid Id, string Name, Guid? ParentId);
-internal sealed record Script(Guid Id, string Name, string Language, Guid? FolderId, string SourceHash);
+internal sealed record Classification(List<string> Tags, bool Favourite);
+internal sealed record Script(Guid Id, string Name, string Language, Guid? FolderId, string SourceHash)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Classification? Classification { get; init; }
+}
 internal sealed record DeletedFolderTree(Guid RootId, List<Folder> Folders, List<Script> Scripts, List<Script> DeletedScripts);
 internal sealed record Manifest
 {
@@ -133,7 +138,7 @@ internal sealed class WorkspaceStore : IDisposable
 
     public object CreateScript(string name, string language, Guid? folderId)
     {
-        var script = new Script(Guid.NewGuid(), Name(name), Language(language), folderId, Hash([]));
+        var script = new Script(Guid.NewGuid(), Name(name), Language(language), folderId, Hash([])) { Classification = manifest.SchemaVersion >= 4 ? new([], false) : null };
         var next = manifest with { Scripts = [.. manifest.Scripts, script] };
         PreflightCommit(next);
         CheckManifest();
@@ -198,7 +203,7 @@ internal sealed class WorkspaceStore : IDisposable
         var script = Find(id);
         var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
         var hash = Hash(bytes);
-        return new { script.Id, script.Name, script.Language, script.FolderId, content = Utf8.GetString(bytes), hash, externalChanged = hash != script.SourceHash };
+        return new { script.Id, script.Name, script.Language, script.FolderId, content = Utf8.GetString(bytes), hash, externalChanged = hash != script.SourceHash, classification = script.Classification ?? new([], false) };
     }
 
     public object DuplicateScript(Guid id, string name, Guid? folderId, string expectedHash)
@@ -293,7 +298,7 @@ internal sealed class WorkspaceStore : IDisposable
             manifest.Scripts.Where(InSubtree).ToList(), (manifest.DeletedScripts ?? []).Where(InSubtree).ToList());
         var next = manifest with
         {
-            SchemaVersion = 3,
+            SchemaVersion = Math.Max(3, manifest.SchemaVersion),
             Folders = manifest.Folders.Where(f => !subtree.Contains(f.Id)).ToList(),
             Scripts = manifest.Scripts.Where(s => !InSubtree(s)).ToList(),
             DeletedScripts = (manifest.DeletedScripts ?? []).Where(s => !InSubtree(s)).ToList(),
@@ -324,6 +329,38 @@ internal sealed class WorkspaceStore : IDisposable
         VerifyTreeSources(tree);
         Commit(next);
         return Snapshot();
+    }
+
+    public object ClassifyScript(Guid id, List<string> tags, bool favourite, long expectedRevision, bool allowUpgrade)
+    {
+        CheckRevision(expectedRevision);
+        _ = Find(id);
+        var classification = new Classification(tags, favourite);
+        ValidateClassification(classification);
+        if (manifest.SchemaVersion < 4 && !allowUpgrade)
+            throw Error("upgrade_required", "Tags and favourites require workspace format v4. Confirm the upgrade; older ASTELVO builds cannot open v4 workspaces.");
+        Script Upgrade(Script script) => script with { Classification = script.Classification ?? new([], false) };
+        var next = manifest with
+        {
+            SchemaVersion = 4,
+            Scripts = manifest.Scripts.Select(script => script.Id == id ? script with { Classification = classification } : Upgrade(script)).ToList(),
+            DeletedScripts = (manifest.DeletedScripts ?? []).Select(Upgrade).ToList(),
+            DeletedFolderTrees = (manifest.DeletedFolderTrees ?? []).Select(tree => tree with
+            {
+                Scripts = tree.Scripts.Select(Upgrade).ToList(), DeletedScripts = tree.DeletedScripts.Select(Upgrade).ToList()
+            }).ToList()
+        };
+        PreflightCommit(next);
+        BackupBeforeUpgrade(4);
+        Commit(next);
+        return Snapshot();
+    }
+
+    private static void ValidateClassification(Classification value)
+    {
+        if (value.Tags == null || value.Tags.Count > 16 || value.Tags.Distinct(StringComparer.OrdinalIgnoreCase).Count() != value.Tags.Count
+            || value.Tags.Any(tag => string.IsNullOrWhiteSpace(tag) || tag != tag.Trim() || tag.Length > 40 || tag.Any(c => char.IsControl(c) || c == ',')))
+            throw Error("invalid_request", "Use up to 16 distinct tags, each 1–40 characters without commas, controls or surrounding whitespace.");
     }
 
     private void VerifyTreeSources(DeletedFolderTree tree)
@@ -443,7 +480,7 @@ internal sealed class WorkspaceStore : IDisposable
 
     private static void Validate(Manifest value)
     {
-        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2 or 3)
+        if (value.Format != "astelvo-workspace" || value.SchemaVersion is not (1 or 2 or 3 or 4)
             || (value.SchemaVersion == 1 ? value.DeletedScripts != null : value.DeletedScripts == null)
             || (value.SchemaVersion < 3 ? value.DeletedFolderTrees != null : value.DeletedFolderTrees == null)
             || value.Id == Guid.Empty || value.Revision is < 0 or > 9_007_199_254_740_991 || value.Folders == null || value.Scripts == null)
@@ -455,6 +492,13 @@ internal sealed class WorkspaceStore : IDisposable
         if (value.Folders.Count + trees.Sum(t => t.Folders.Count) > 200
             || value.Scripts.Count + (value.DeletedScripts?.Count ?? 0) + trees.Sum(t => t.Scripts.Count + t.DeletedScripts.Count) > 1000)
             throw Error("limit_exceeded", "Preview limit: 200 folders and 1,000 scripts including the recycle bin.");
+        var allScripts = value.Scripts.Concat(value.DeletedScripts ?? []).Concat(trees.SelectMany(t => t.Scripts.Concat(t.DeletedScripts)));
+        foreach (var script in allScripts)
+        {
+            if (script == null || (value.SchemaVersion < 4 ? script.Classification != null : script.Classification == null))
+                throw Error("invalid_workspace", "Classification metadata requires workspace schema v4 and is mandatory for every v4 script.");
+            if (script.Classification != null) ValidateClassification(script.Classification);
+        }
         var ids = new HashSet<Guid>();
         ValidatePartition(value.Folders, value.Scripts, value.DeletedScripts ?? [], ids);
         foreach (var tree in trees)
@@ -524,6 +568,13 @@ internal sealed class WorkspaceStore : IDisposable
             throw Error("invalid_workspace", "Recycle-bin metadata requires workspace schema v2.");
         if (document.RootElement.TryGetProperty("schemaVersion", out schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out version) && version < 3 && document.RootElement.TryGetProperty("deletedFolderTrees", out _))
             throw Error("invalid_workspace", "Folder recycle-bin metadata requires workspace schema v3.");
+        if (document.RootElement.TryGetProperty("schemaVersion", out schema) && schema.ValueKind == JsonValueKind.Number && schema.TryGetInt32(out version) && version < 4)
+        {
+            static bool HasClassification(JsonElement value) => value.ValueKind == JsonValueKind.Object
+                ? value.EnumerateObject().Any(property => property.Name == "classification" || HasClassification(property.Value))
+                : value.ValueKind == JsonValueKind.Array && value.EnumerateArray().Any(HasClassification);
+            if (HasClassification(document.RootElement)) throw Error("invalid_workspace", "Classification metadata requires workspace schema v4.");
+        }
         return JsonSerializer.Deserialize<Manifest>(bytes, Json) ?? throw Error("invalid_workspace", "Workspace manifest is missing.");
     }
 
