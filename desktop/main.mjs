@@ -75,6 +75,14 @@ async function startDesktop() {
       buttons: [upgrade ? 'Upgrade and move folder to bin' : 'Move folder to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
+  ipcMain.handle('astelvo:confirm-classification-upgrade', event => {
+    trusted(event);
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Enable tags and favourites?', message: 'Upgrade this workspace to format v4 for tags and favourites?',
+      detail: 'Older ASTELVO builds cannot open format v4. Exact pre-upgrade metadata is retained beside workspace.json. Script identities, source files and recycle-bin contents are preserved.',
+      buttons: ['Upgrade and save', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
   let choosing = false;
   ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
     trusted(event);
@@ -89,7 +97,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
+    if (!['workspace.close', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });

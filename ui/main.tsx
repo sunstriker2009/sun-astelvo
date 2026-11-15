@@ -10,10 +10,11 @@ import './style.css';
 
 type Language = 'javascript' | 'python' | 'csharp';
 type Folder = { id: string; name: string; parentId: string | null };
-type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string };
+type Classification = { tags: string[]; favourite: boolean };
+type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string; classification?: Classification };
 type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
 type Workspace = { root: string; schemaVersion: number; id: string; name: string; revision: number; folders: Folder[]; scripts: Script[]; deletedScripts: Script[]; deletedFolderTrees: DeletedFolderTree[] };
-type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean };
+type Document = Omit<Script, 'sourceHash'> & { content: string; hash: string; externalChanged: boolean; classification: Classification };
 type Draft = Pick<Document, 'name' | 'language' | 'folderId'>;
 type Result<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
 type WriteResult = { workspace: Workspace; document: Document };
@@ -24,6 +25,7 @@ declare global {
       hostInfo: () => Promise<HostResponse>;
       confirmDeleteFolder: (upgrade: boolean) => Promise<boolean>;
       confirmDeleteScript: (upgrade: boolean) => Promise<boolean>;
+      confirmClassificationUpgrade: () => Promise<boolean>;
       confirmDiscard: () => Promise<boolean>;
       workspace: {
         create: () => Promise<Result<Workspace>>;
@@ -35,6 +37,7 @@ declare global {
         duplicateFolder: (input: { id: string; name: string; parentId: string | null; expectedRevision: number }) => Promise<Result<{ workspace: Workspace; folderId: string }>>;
         deleteFolder: (input: { id: string; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<Workspace>>;
         restoreFolder: (input: { id: string; name: string; parentId: string | null; expectedRevision: number }) => Promise<Result<Workspace>>;
+        classifyScript: (input: { id: string; tags: string[]; favourite: boolean; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<Workspace>>;
         createScript: (input: Draft) => Promise<Result<WriteResult>>;
         readScript: (id: string) => Promise<Result<Document>>;
         duplicateScript: (input: { id: string; name: string; folderId: string | null; expectedHash: string }) => Promise<Result<WriteResult>>;
@@ -61,6 +64,7 @@ function App() {
   const draftRef = useRef<Draft>(emptyDraft);
   const contentRef = useRef('');
   const dirtyRef = useRef(false);
+  const classificationDirtyRef = useRef(false);
   const busyRef = useRef(false);
   const saveRef = useRef<() => void>(() => {});
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -70,6 +74,13 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('Create or open a workspace to get started.');
   const [error, setError] = useState('');
+  const [tagText, setTagText] = useState('');
+  const [favourite, setFavourite] = useState(false);
+  const [classificationDirty, setClassificationDirty] = useState(false);
+  const [filterText, setFilterText] = useState('');
+  const [filterLanguage, setFilterLanguage] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [folderName, setFolderName] = useState('');
   const [renameName, setRenameName] = useState('');
@@ -99,8 +110,19 @@ function App() {
     if (model) monaco.editor.setModelLanguage(model, next.language);
     calculateDirty();
   }
-  function display(next: Document | null) {
+  function changeClassification(text: string, fav: boolean) {
+    setTagText(text); setFavourite(fav);
+    const saved = documentRef.current?.classification ?? { tags: [], favourite: false };
+    const changed = text !== saved.tags.join(', ') || fav !== saved.favourite;
+    classificationDirtyRef.current = changed; setClassificationDirty(changed);
+  }
+  function clearFilters() { setFilterText(''); setFilterLanguage(''); setFilterTag(''); setFavouritesOnly(false); }
+  function display(next: Document | null, preserveClassificationDraft = false) {
     const previousId = documentRef.current?.id;
+    if (!preserveClassificationDraft || next?.id !== previousId) {
+      setTagText(next?.classification.tags.join(', ') ?? ''); setFavourite(next?.classification.favourite ?? false);
+      classificationDirtyRef.current = false; setClassificationDirty(false);
+    }
     setDuplicateName(''); setDuplicateFolder(next?.folderId ?? null);
     documentRef.current = next; setDocument(next);
     draftRef.current = next ? { name: next.name, language: next.language, folderId: next.folderId } : emptyDraft;
@@ -122,7 +144,7 @@ function App() {
     editor.current = instance;
     const change = instance.onDidChangeModelContent(() => { contentRef.current = instance.getValue(); calculateDirty(); });
     const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirtyRef.current) { event.preventDefault(); event.returnValue = ''; }
+      if (dirtyRef.current || classificationDirtyRef.current) { event.preventDefault(); event.returnValue = ''; }
     };
     const shortcut = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') { event.preventDefault(); saveRef.current(); }
@@ -147,12 +169,12 @@ function App() {
       editor.current?.updateOptions({ readOnly: documentRef.current === null });
     }
   }
-  async function canLeave() { return !dirtyRef.current || await window.astelvo.confirmDiscard(); }
+  async function canLeave() { return !(dirtyRef.current || classificationDirtyRef.current) || await window.astelvo.confirmDiscard(); }
   function chooseWorkspace(create: boolean) {
     void run(async () => {
       if (!await canLeave()) return;
       const next = unwrap(await (create ? window.astelvo.workspace.create() : window.astelvo.workspace.open()));
-      setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
+      clearFilters(); setWorkspace(next); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId(''); display(null); setStatus('Workspace opened. Select or create a script.');
     });
   }
   function openScript(id: string, reload = false) {
@@ -168,7 +190,7 @@ function App() {
     void run(async () => {
       const current = documentRef.current!;
       const next = unwrap(await window.astelvo.workspace.saveScript({ ...draftRef.current, id: current.id, content: contentRef.current, expectedHash: current.hash }));
-      setWorkspace(next.workspace); display(next.document); setStatus('Saved.');
+      setWorkspace(next.workspace); display(next.document, true); setStatus('Saved.');
     });
   }
   saveRef.current = save;
@@ -201,7 +223,12 @@ function App() {
     }
     return true;
   });
-  const scripts = [...workspace?.scripts ?? []].filter(s => selectedFolder === null || s.folderId === selectedFolder).sort((a, b) => a.name.localeCompare(b.name));
+  const availableTags = [...new Set((workspace?.scripts ?? []).flatMap(s => s.classification?.tags ?? []))].sort((a, b) => a.localeCompare(b));
+  const scripts = [...workspace?.scripts ?? []].filter(s => (selectedFolder === null || s.folderId === selectedFolder)
+    && s.name.toLowerCase().includes(filterText.trim().toLowerCase())
+    && (!filterLanguage || s.language === filterLanguage)
+    && (!filterTag || s.classification?.tags.some(tag => tag.toLowerCase() === filterTag.toLowerCase()))
+    && (!favouritesOnly || s.classification?.favourite)).sort((a, b) => a.name.localeCompare(b.name));
 
   return <main>
     <header><div className="brand"><img src="icon.png" alt="" /><div><strong>ASTELVO <small>by Sun</small></strong><p>Organize. Script. Explore.</p></div></div><span className="badge">Organizer preview</span></header>
@@ -248,21 +275,21 @@ function App() {
           </details>}
           {selected && <details><summary>Duplicate selected folder</summary>
             <p className="muted">Copy saved scripts and nested folders. Save open edits first. Originals remain unchanged.</p>
-            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
               const next = unwrap(await window.astelvo.workspace.duplicateFolder({ id: selected.id, name: folderCopyName.trim(), parentId: folderCopyParent, expectedRevision: workspace!.revision }));
               const copied = next.workspace.folders.find(f => f.id === next.folderId)!;
               setWorkspace(next.workspace); setSelectedFolder(copied.id); setRenameName(copied.name); setMoveParent(copied.parentId);
               setFolderCopyName(''); setFolderCopyParent(copied.parentId); setStatus('Folder copied. Originals and the open editor are unchanged.');
             }); }}>
-              <label>Folder copy name<input required maxLength={120} disabled={busy || dirty || document?.externalChanged} value={folderCopyName} onChange={event => setFolderCopyName(event.target.value)} /></label>
-              <label>Folder copy destination<select disabled={busy || dirty || document?.externalChanged} value={folderCopyParent ?? ''} onChange={event => setFolderCopyParent(event.target.value || null)}>
+              <label>Folder copy name<input required maxLength={120} disabled={busy || dirty || classificationDirty || document?.externalChanged} value={folderCopyName} onChange={event => setFolderCopyName(event.target.value)} /></label>
+              <label>Folder copy destination<select disabled={busy || dirty || classificationDirty || document?.externalChanged} value={folderCopyParent ?? ''} onChange={event => setFolderCopyParent(event.target.value || null)}>
                 <option value="">Workspace root</option>{moveTargets.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
               </select></label>
-              <button disabled={busy || dirty || document?.externalChanged}>Duplicate folder</button>
+              <button disabled={busy || dirty || classificationDirty || document?.externalChanged}>Duplicate folder</button>
             </form>
           </details>}
-          {selected && <button disabled={busy || dirty || document?.externalChanged} onClick={() => {
-            if (dirtyRef.current || documentRef.current?.externalChanged) return;
+          {selected && <button disabled={busy || dirty || classificationDirty || document?.externalChanged} onClick={() => {
+            if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return;
             void run(async () => {
               const upgrade = workspace.schemaVersion < 3;
               if (!await window.astelvo.confirmDeleteFolder(upgrade)) return;
@@ -272,6 +299,14 @@ function App() {
             });
           }}>Delete folder</button>}
           <h2>Scripts</h2>
+          <details><summary>Filter scripts</summary>
+            <label>Search script names<input maxLength={120} value={filterText} disabled={busy} onChange={event => setFilterText(event.target.value)} /></label>
+            <label>Filter language<select value={filterLanguage} disabled={busy} onChange={event => setFilterLanguage(event.target.value)}><option value="">All languages</option>{Object.entries(languages).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label>Filter tag<select value={filterTag} disabled={busy} onChange={event => setFilterTag(event.target.value)}><option value="">All tags</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></label>
+            <label className="check-label"><input type="checkbox" checked={favouritesOnly} disabled={busy} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
+            <p className="muted">{scripts.length} matching of {workspace.scripts.length} active scripts. Name and metadata filters only.</p>
+            <button disabled={busy} onClick={clearFilters}>Clear filters</button>
+          </details>
           <details><summary>New script</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {
             if (!await canLeave()) return;
@@ -284,22 +319,22 @@ function App() {
           </form></details>
           {document && <details><summary>Duplicate current script</summary>
             <p className="muted">Copy the saved revision of {document.name}. Save any changes and resolve external edits first.</p>
-            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+            <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
               const current = documentRef.current!;
               const next = unwrap(await window.astelvo.workspace.duplicateScript({ id: current.id, name: duplicateName.trim(), folderId: duplicateFolder, expectedHash: current.hash }));
               setWorkspace(next.workspace); selectFolder(next.document.folderId); display(next.document); setStatus('Script duplicated. The original is unchanged.');
             }); }}>
-              <label>Copy name<input required maxLength={120} disabled={busy || dirty || document.externalChanged} value={duplicateName} onChange={event => setDuplicateName(event.target.value)} /></label>
-              <label>Copy destination<select disabled={busy || dirty || document.externalChanged} value={duplicateFolder ?? ''} onChange={event => setDuplicateFolder(event.target.value || null)}>
+              <label>Copy name<input required maxLength={120} disabled={busy || dirty || classificationDirty || document.externalChanged} value={duplicateName} onChange={event => setDuplicateName(event.target.value)} /></label>
+              <label>Copy destination<select disabled={busy || dirty || classificationDirty || document.externalChanged} value={duplicateFolder ?? ''} onChange={event => setDuplicateFolder(event.target.value || null)}>
                 <option value="">Workspace root</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folderLabel(folder.id)}</option>)}
               </select></label>
-              <button disabled={busy || dirty || document.externalChanged}>Duplicate script</button>
+              <button disabled={busy || dirty || classificationDirty || document.externalChanged}>Duplicate script</button>
             </form>
           </details>}
-          <nav aria-label="Saved scripts">{scripts.map(script => <button className="script" aria-pressed={document?.id === script.id} key={script.id} disabled={busy} onClick={() => openScript(script.id)}><span>{script.name}</span><small>{languages[script.language]}{script.folderId ? ' · ' + folderLabel(script.folderId) : ''}</small></button>)}</nav>
-          {scripts.length === 0 && <p className="muted">No scripts here yet.</p>}
-          {document && <button disabled={busy || dirty || document.externalChanged} onClick={() => {
-            if (dirtyRef.current || documentRef.current?.externalChanged) return;
+          <nav aria-label="Saved scripts">{scripts.map(script => <button className="script" aria-pressed={document?.id === script.id} key={script.id} disabled={busy} onClick={() => openScript(script.id)}><span>{script.name}</span><small>{script.classification?.favourite ? '★ · ' : ''}{languages[script.language]}{script.classification?.tags.length ? ' · ' + script.classification.tags.join(', ') : ''}{script.folderId ? ' · ' + folderLabel(script.folderId) : ''}</small></button>)}</nav>
+          {scripts.length === 0 && <p className="muted">No scripts match the current folder and filters.</p>}
+          {document && <button disabled={busy || dirty || classificationDirty || document.externalChanged} onClick={() => {
+            if (dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return;
             void run(async () => {
               const upgrade = workspace.schemaVersion === 1;
               if (!await window.astelvo.confirmDeleteScript(upgrade)) return;
@@ -358,6 +393,22 @@ function App() {
           <button disabled={busy || !document} onClick={() => { editor.current?.focus(); editor.current?.trigger('toolbar', 'editor.action.quickCommand', null); }}>Commands</button>
           <button disabled title="Script runners are planned">Run</button>
         </div>
+        {document && workspace && <details className="classification-panel"><summary>Tags and favourite{classificationDirty ? ' — unsaved' : ''}</summary>
+          <form onSubmit={event => { event.preventDefault(); if (dirtyRef.current || documentRef.current?.externalChanged) return; void run(async () => {
+            const current = documentRef.current!;
+            const upgrade = workspace.schemaVersion < 4;
+            if (upgrade && !await window.astelvo.confirmClassificationUpgrade()) return;
+            const tags = tagText.split(',').map(tag => tag.trim()).filter(Boolean);
+            const next = unwrap(await window.astelvo.workspace.classifyScript({ id: current.id, tags, favourite, expectedRevision: workspace.revision, allowUpgrade: upgrade }));
+            const saved = next.scripts.find(s => s.id === current.id)!;
+            setWorkspace(next); display({ ...current, classification: saved.classification! }); setStatus('Tags and favourite saved. Source content unchanged.');
+          }); }}>
+            <label>Script tags (comma separated)<input maxLength={656} value={tagText} disabled={busy} onChange={event => changeClassification(event.target.value, favourite)} /></label>
+            <label className="check-label"><input type="checkbox" checked={favourite} disabled={busy} onChange={event => changeClassification(tagText, event.target.checked)} />Favourite script</label>
+            <button disabled={busy || dirty || document.externalChanged || !classificationDirty}>Save tags and favourite</button>
+            <p className="muted">Up to 16 distinct tags, 40 characters each. Save script edits first. {classificationDirty ? 'Tags/favourite changes are unsaved.' : ''}</p>
+          </form>
+        </details>}
         <div className="editor" ref={container} aria-label="Script editor" />
         {error && <div className="error" role="alert">{error}</div>}
         <footer><span className={dirty ? 'unsaved' : ''}>{document ? dirty ? 'Unsaved changes' : 'Saved' : 'Select a script'}</span><span role="status">{busy ? 'Working…' : status}</span><button disabled={busy} onClick={() => void run(async () => {

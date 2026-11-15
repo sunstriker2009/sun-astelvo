@@ -899,3 +899,124 @@ test('abrupt death around folder upgrade leaves either complete active or comple
     for (const script of state.scripts) assert.equal(await readFile(source(root, script), 'utf8'), 'retained source 🌞');
   } finally { watcher?.close(); clearTimeout(deadline); writer.kill(); await closed; }
 }));
+
+const classifyScript = (host, state, id, tags, favourite, allowUpgrade = false) => host.request('script.classify', {
+  id, tags, favourite, expectedRevision: state.revision, allowUpgrade
+});
+
+test('tags/favourites migrate every script partition explicitly from v1/v2/v3 with exact checkpoints and no source writes', async () => {
+  for (const schema of [1, 2, 3]) await fixture(async (host, root) => {
+    const active = await create(host);
+    let state = active.workspace;
+    if (schema >= 2) {
+      const deleted = await host.request('script.create', { name: 'Deleted', language: 'python', folderId: null });
+      state = await removeScript(host, deleted.workspace, deleted.document, true);
+    }
+    if (schema === 3) {
+      state = await host.request('folder.create', { name: 'Trash tree', parentId: null });
+      const folderId = state.folders[0].id;
+      const inside = await host.request('script.create', { name: 'Inside', language: 'csharp', folderId });
+      const alreadyDeleted = await host.request('script.create', { name: 'Already deleted', language: 'python', folderId });
+      state = await removeScript(host, alreadyDeleted.workspace, alreadyDeleted.document);
+      state = await removeFolder(host, state, folderId, true);
+      assert.equal(state.deletedFolderTrees[0].scripts[0].id, inside.document.id);
+    }
+    assert.equal(state.schemaVersion, schema);
+    const file = path.join(root, 'workspace.json'), before = await readFile(file);
+    const sourceBefore = await readFile(source(root, state.scripts[0]));
+    await assert.rejects(classifyScript(host, state, active.document.id, ['Utilities', 'বাংলা'], true), { code: 'upgrade_required' });
+    assert.deepEqual(await readFile(file), before);
+    state = await classifyScript(host, state, active.document.id, ['Utilities', 'বাংলা'], true, true);
+    assert.equal(state.schemaVersion, 4);
+    assert.deepEqual(await readFile(path.join(root, `workspace.v${schema}.${hash(before)}.json`)), before);
+    assert.deepEqual(await readFile(source(root, state.scripts[0])), sourceBefore);
+    assert.deepEqual(state.scripts[0].classification, { tags: ['Utilities', 'বাংলা'], favourite: true });
+    const others = [...state.deletedScripts, ...state.deletedFolderTrees.flatMap(t => [...t.scripts, ...t.deletedScripts])];
+    for (const script of others) assert.deepEqual(script.classification, { tags: [], favourite: false });
+    await host.request('workspace.close');
+    state = await host.request('workspace.open', { path: root, create: false });
+    assert.deepEqual((await host.request('script.read', { id: active.document.id })).classification, state.scripts[0].classification);
+  });
+});
+
+test('classification survives content saves, independent script/folder copies and script/folder recycle/restore without downgrading v4', async () => fixture(async (host, root) => {
+  let state = await host.request('folder.create', { name: 'Original', parentId: null });
+  const folderId = state.folders[0].id;
+  const initial = await host.request('script.create', { name: 'Labelled', language: 'javascript', folderId });
+  state = await classifyScript(host, initial.workspace, initial.document.id, ['shared', 'work'], true, true);
+  const expected = state.scripts[0].classification;
+  const saved = await save(host, initial.document, 'source preserved', { name: 'Renamed', language: 'python' });
+  assert.deepEqual(saved.document.classification, expected);
+  const copy = await duplicate(host, saved.document, 'Copy');
+  assert.deepEqual(copy.document.classification, expected);
+  state = await classifyScript(host, copy.workspace, copy.document.id, ['independent'], false);
+  assert.deepEqual(state.scripts.find(s => s.id === initial.document.id).classification, expected);
+  const folderCopy = await duplicateFolder(host, state, folderId, 'Folder copy');
+  const copiedLabelled = folderCopy.workspace.scripts.find(s => s.folderId === folderCopy.folderId && s.name === 'Renamed');
+  assert.deepEqual(copiedLabelled.classification, expected);
+  state = await removeScript(host, folderCopy.workspace, saved.document);
+  assert.equal(state.schemaVersion, 4); assert.deepEqual(state.deletedScripts[0].classification, expected);
+  state = await removeFolder(host, state, folderId);
+  assert.equal(state.schemaVersion, 4);
+  assert.deepEqual(state.deletedFolderTrees[0].deletedScripts[0].classification, expected);
+  await host.request('workspace.close');
+  state = await host.request('workspace.open', { path: root, create: false });
+  state = await restoreFolder(host, state, folderId, 'Restored');
+  assert.equal(state.schemaVersion, 4);
+  state = await restoreScript(host, state, state.deletedScripts[0]);
+  assert.deepEqual(state.scripts.find(s => s.id === saved.document.id).classification, expected);
+  const newScript = await host.request('script.create', { name: 'Default labels', language: 'csharp', folderId: null });
+  assert.deepEqual(newScript.document.classification, { tags: [], favourite: false });
+  assert.equal(await readFile(source(root, state.scripts.find(s => s.id === saved.document.id)), 'utf8'), 'source preserved');
+}));
+
+test('classification rejects invalid tags, stale metadata, backup conflict and exhausted revisions without changing source/manifest', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const file = path.join(root, 'workspace.json'), before = await readFile(file);
+  for (const tags of [['a', 'A'], [''], [' padded'], ['a,b'], ['x'.repeat(41)], Array.from({ length: 17 }, (_, i) => `tag${i}`)]) {
+    await assert.rejects(classifyScript(host, initial.workspace, initial.document.id, tags, true, true));
+    assert.deepEqual(await readFile(file), before);
+  }
+  await assert.rejects(classifyScript(host, { ...initial.workspace, revision: 0 }, initial.document.id, ['valid'], true, true), { code: 'conflict' });
+  const backup = path.join(root, `workspace.v1.${hash(before)}.json`);
+  await writeFile(backup, 'unrelated');
+  await assert.rejects(classifyScript(host, initial.workspace, initial.document.id, ['valid'], true, true), { code: 'conflict' });
+  assert.deepEqual(await readFile(file), before); assert.equal(await readFile(backup, 'utf8'), 'unrelated');
+  // A flushed checkpoint and partial temp from an interrupted upgrade are safe to reopen.
+  await writeFile(backup, before); await writeFile(path.join(root, 'workspace.json.tags.tmp'), '{partial');
+  await host.request('workspace.close');
+  let state = await host.request('workspace.open', { path: root, create: false });
+  const sourceFile = source(root, state.scripts[0]); await writeFile(sourceFile, 'external source');
+  state = await classifyScript(host, state, initial.document.id, ['valid'], true, true);
+  assert.equal(await readFile(sourceFile, 'utf8'), 'external source', 'Metadata classification must never overwrite external source');
+  const metadata = JSON.parse(await readFile(file, 'utf8')); metadata.name = 'External metadata';
+  await writeFile(file, JSON.stringify(metadata));
+  await assert.rejects(classifyScript(host, state, initial.document.id, [], false), { code: 'conflict' });
+  metadata.revision = Number.MAX_SAFE_INTEGER; await writeFile(file, JSON.stringify(metadata));
+  state = await host.request('workspace.open', { path: root, create: false });
+  const exhausted = await readFile(file);
+  await assert.rejects(classifyScript(host, state, initial.document.id, [], false), { code: 'invalid_workspace' });
+  assert.deepEqual(await readFile(file), exhausted);
+}));
+
+test('v4 fails closed on missing/unknown classifications including recycle partitions; old schema cannot silently drop classification fields', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  let state = await classifyScript(host, initial.workspace, initial.document.id, ['tag'], true, true);
+  const file = path.join(root, 'workspace.json'), original = JSON.parse(await readFile(file, 'utf8'));
+  await host.request('workspace.close');
+  const script = original.scripts[0];
+  const cases = [
+    { ...original, schemaVersion: 3 },
+    { ...original, scripts: [{ ...script, classification: null }] },
+    { ...original, scripts: [{ ...script, classification: { tags: ['tag'] } }] },
+    { ...original, scripts: [{ ...script, classification: { tags: ['tag'], favourite: true, future: 'keep' } }] },
+    { ...original, scripts: [], deletedScripts: [{ ...script, classification: null }] },
+    { ...original, schemaVersion: 3, scripts: [{ ...script, classification: null }] }
+  ];
+  const missing = structuredClone(original); delete missing.scripts[0].classification; cases.push(missing);
+  for (const metadata of cases) {
+    const bytes = JSON.stringify(metadata); await writeFile(file, bytes);
+    await assert.rejects(host.request('workspace.open', { path: root, create: false }));
+    assert.equal(await readFile(file, 'utf8'), bytes);
+  }
+}));

@@ -1,4 +1,4 @@
-# Workspace formats v1, v2 and v3
+# Workspace formats v1–v4
 
 Status: implemented for the first M1 slice; full organizer acceptance remains open.
 
@@ -65,10 +65,10 @@ Existing symlinks/junctions on managed paths are rejected. Windows UNC roots are
 - 256 KiB UTF-8 per script; 1 MiB serialized manifest.
 - 200 folders and 1,000 scripts including all recycle-bin records in this preview.
 - Bounded 4 MiB length-prefixed JSON frames, eight pending client requests, five-second default request deadline. Larger frames accommodate JSON-escaped source text; they do not increase the script size limit.
-- Host methods: information, workspace open/close, folder create/rename/move/duplicate/delete/restore, script create/read/save/duplicate/delete/restore. Script save also renames, changes language and moves between folders.
+- Host methods: information, workspace open/close, folder create/rename/move/duplicate/delete/restore, script create/read/save/duplicate/delete/restore/classify. Script save also renames, changes language and moves between folders.
 - Native folder selection supplies the open/create path. The renderer bridge exposes explicit methods with validated inputs and correlated, validated results.
 
-SQLite/search indexing, tags, favourites, collections, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
+SQLite/search indexing, saved collections, import/export, autosave and formatting/runners are not implemented by this slice. Save is explicit (button or Ctrl/Cmd+S). Switching/reloading dirty scripts asks before discarding. Normal window/app quit asks before losing dirty edits; cancelling quit keeps the host/lease usable. OS termination or a crash can still lose an unsaved editor buffer.
 
 ## Evidence
 
@@ -103,3 +103,16 @@ Delete and restore preflight the full candidate manifest before source verificat
 The UI disables folder delete while any open buffer is dirty or has unadopted external edits. Native confirmation defaults to Cancel and explains the upgrade and retained source files. Cancellation/failure preserves the editor. Successful deletion clears the current document only when it belonged to the deleted subtree; an unrelated editor is retained. Restore leaves the current editor unchanged. Deleted folders have a separate selector showing root name, subtree counts and identity. Permanent purge, retention cleanup and full workspace backup/restore remain unfinished.
 
 Local host tests include abrupt process termination observed during upgrade backup activity, validating complete active-or-deleted visibility and intact source bytes after reopening. A separate test constructs checkpoint/temp leftovers to validate a pre-commit restart. Neither establishes power-loss durability or Windows acceptance.
+
+
+## Tags, favourites and explicit v4 upgrade
+
+The first `script.classify` explicitly confirms workspace format v4 and writes an exact pre-upgrade v1/v2/v3 metadata checkpoint using the existing hash-named backup mechanism. Opening and ordinary operations on old workspaces keep the old schema. Migration populates every active/deleted script and every script in a deleted folder tree with a `classification` object: `tags=[]`, `favourite=false`, except the explicitly edited script. All identities, source references, folder hierarchies and prior deleted states are retained. V4 requires classification on every script in every partition; classification fields on older schemas, missing/unknown fields, null metadata and invalid tags fail closed. Existing metadata caps still apply to the larger serialized manifest.
+
+Classification contains a required `tags` string array and required boolean `favourite`. Tags preserve spelling/order, permit Unicode, and are limited to 16 distinct labels per script, each 1–40 UTF-16 code units without commas, controls or surrounding whitespace. Host duplicate checks ignore case using ordinal comparison. The comma-separated desktop input trims labels and ignores empty separators before submitting; invalid duplicate/oversized labels are rejected. Tags are labels, not filesystem paths or executable content.
+
+`script.classify` takes an active script ID, tags, favourite, expected workspace revision and upgrade-consent boolean. It checks the loaded manifest hash/revision, validates the full candidate, retains the checkpoint when needed, and atomically commits metadata. It never rewrites source files or executes anything; an external source edit remains untouched and is reviewed separately through Reload/Save. A stale or invalid request preserves committed metadata. Copy/save/move/recycle/restore operations retain classification; copies initially inherit it and can subsequently be changed independently. New v4 scripts start with empty tags and favourite false. Ordinary v4 script/folder deletes never downgrade the schema.
+
+The UI provides explicit Save tags and favourite. Label edits have their own unsaved indicator and navigation/quit guard. Saving source text retains an unsaved label draft; saving labels requires a clean saved source buffer and keeps source content/Monaco undo state. Script/folder duplication and deletion require saved label drafts as well. OS termination can still lose unsaved labels or source: autosave/recovery is unfinished.
+
+The script list combines direct selected-folder scope, case-insensitive name substring, language, case-insensitive exact tag and favourites-only filters with AND. The all-scripts view spans active folders. Only active scripts appear in the list/tag vocabulary. Clearing filters restores all active scripts in the current folder scope. Filters are local UI state and reset when selecting/opening a workspace. This is bounded metadata filtering, not indexed full-text/source search; saved collections, persistent search/index rebuild, recency filters and Windows performance acceptance remain unfinished.
