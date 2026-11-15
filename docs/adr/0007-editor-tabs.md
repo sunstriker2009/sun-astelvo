@@ -11,3 +11,5 @@ Closing a dirty source/metadata/label tab requires discard consent, including in
 A tab switch intentionally retains the reviewed snapshot. It does not silently reload external edits. Save still supplies the tab's expected source hash, so conflicting changes reject while retaining the draft. Explicit Reload guards only the current tab and replaces its reviewed content after consent; externally changed source still needs explicit Save adoption. No filesystem watcher, merge editor or crash recovery is established.
 
 Tab state is memory-only. Closing a tab/workspace or quitting after consent discards its drafts and undo history; crashes can lose unsaved edits. Autosave/recovery, session restoration, tab reordering, formatting, runners and Windows accessibility/performance acceptance remain separate work. Renderer isolation is unchanged and does not sandbox future script execution.
+
+[ADR-008](0008-draft-checkpoints.md) subsequently adds explicit durable draft checkpoints and reviewed recovery. Tab models/undo remain in memory; no timed autosave or automatic session restoration is established by that batch.

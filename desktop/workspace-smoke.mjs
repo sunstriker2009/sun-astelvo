@@ -378,15 +378,15 @@ void app.whenReady().then(async () => {
     await select('Saved collection', 'Renamed collection');
     await click('Delete folder');
     await wait("document.querySelector('[role=status]').textContent.includes('Folder moved to recycle bin')", 'collection scope recycled');
-    await wait("document.querySelectorAll('.script').length === 0 && !!document.querySelector('[role=note]')", 'dormant collection scope immediately after delete');
+    await wait("document.querySelectorAll('.script').length === 0 && !!document.querySelector('aside [role=note]')", 'dormant collection scope immediately after delete');
     await click('Reload collection');
-    await wait("document.querySelectorAll('.script').length === 0 && !!document.querySelector('[role=note]')", 'reloaded dormant collection scope');
+    await wait("document.querySelectorAll('.script').length === 0 && !!document.querySelector('aside [role=note]')", 'reloaded dormant collection scope');
     const collectionTrash = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
     assert.equal(collectionTrash.collections[0].filter.folderId, source.folderId);
     await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Deleted folders (1)').click()");
     await select('Deleted folder', `Utilities · 1 folders · 1 scripts · ${source.folderId}`);
     await click('Restore folder');
-    await wait("document.querySelectorAll('.script').length === 1 && !document.querySelector('[role=note]')", 'restored collection scope reactivated');
+    await wait("document.querySelectorAll('.script').length === 1 && !document.querySelector('aside [role=note]')", 'restored collection scope reactivated');
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'close collections workspace');
     await click('Open workspace');
@@ -521,12 +521,17 @@ void app.whenReady().then(async () => {
     async function openTab(name) {
       await js(`Array.from(document.querySelectorAll('.script')).find(b => b.querySelector('span').textContent === ${JSON.stringify(name)}).click()`);
       await wait(`document.querySelector('[aria-label="Script name"]').value === ${JSON.stringify(name)}`, 'open ' + name);
+      await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'open tab settled');
+      await js("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
     }
     async function tabButton(name) {
       await js(`Array.from(document.querySelectorAll('.editor-tab button:first-child')).find(b => b.textContent.startsWith(${JSON.stringify(name)})).click()`);
       await wait(`document.querySelector('[aria-label="Script name"]').value === ${JSON.stringify(name)}`, 'switch ' + name);
+      await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'switch tab settled');
+      await js("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
     }
     async function closeEditorTab(name) {
+      await wait(`Array.from(document.querySelectorAll('.editor-tab button:last-child')).some(b => b.getAttribute('aria-label') === ${JSON.stringify('Close tab ' + name)} && !b.disabled)`, 'tab close enabled');
       await js(`Array.from(document.querySelectorAll('.editor-tab button:last-child')).find(b => b.getAttribute('aria-label') === ${JSON.stringify('Close tab ' + name)}).click()`);
       await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Close workspace').disabled", 'close tab settled');
     }
@@ -620,13 +625,67 @@ void app.whenReady().then(async () => {
     assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 16);
     await key('W');
     await wait("document.querySelectorAll('.editor-tab').length === 15", 'keyboard close current tab');
+    await tabButton('Tab1');
+    await input('Script name', 'Checkpoint draft'); await select('Language', 'Python');
+    await input('Script tags (comma separated)', 'recovered, unfinished');
+    await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+    await window.webContents.insertText('// checkpoint one');
+    await tabButton('Tab2');
+    await js("document.querySelector('.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea').focus()");
+    await window.webContents.insertText('// checkpoint two');
+    const checkpointManifest = await readFile(path.join(restoreTarget, 'workspace.json'));
+    await click('Checkpoint open drafts');
+    await wait("document.querySelector('.recovery-panel')?.textContent.includes('Checkpoint saved: 2 drafts')", 'manual draft checkpoint');
+    const checkpointFile = path.join(restoreTarget, '.astelvo-recovery.json');
+    const checkpointBytes = await readFile(checkpointFile);
+    assert.deepEqual(await readFile(path.join(restoreTarget, 'workspace.json')), checkpointManifest, 'Checkpoint cannot commit source or metadata');
+    // Reload destroys renderer models and undo state. Disk recovery is reviewed
+    // explicitly after reopening; it never silently populates saved scripts.
+    stage = 'renderer reload after checkpoint';
+    window.webContents.reload();
+    await wait("!!document.querySelector('.monaco-editor') && document.querySelector('.workspace-title').textContent === 'No workspace open'", 'renderer restarted');
+    await click('Open workspace');
+    await wait("document.querySelector('.recovery-panel')?.textContent.includes('2 checkpointed drafts available')", 'checkpoint rediscovered after renderer reload');
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 0, 'Checkpoint recovery requires an explicit action');
+    await click('Recover checkpoint');
+    await wait("document.querySelectorAll('.editor-tab').length === 2", 'two draft tabs recovered');
+    await tabButton('Checkpoint draft');
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Language')).querySelector('select').value"), 'python');
+    assert.equal(await js("Array.from(document.querySelectorAll('label')).find(l => l.textContent.startsWith('Script tags')).querySelector('input').value"), 'recovered, unfinished');
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('checkpoint one')"));
+    assert.deepEqual(await readFile(path.join(restoreTarget, 'workspace.json')), checkpointManifest);
+    assert.deepEqual(await readFile(checkpointFile), checkpointBytes, 'Recovery leaves the checkpoint for review');
+    // A stale reviewed checkpoint must not overwrite an externally changed source.
+    const firstSaved = JSON.parse(checkpointBytes).tabs.find(tab => tab.draft.name === 'Checkpoint draft').saved;
+    const firstScript = JSON.parse(checkpointManifest).scripts.find(script => script.id === firstSaved.id);
+    const firstSource = path.join(restoreTarget, 'scripts', firstSaved.id, firstScript.sourceHash + '.js');
+    await writeFile(firstSource, '// external after checkpoint');
+    await click('Save'); await wait("!!document.querySelector('.error')", 'recovered stale save rejected');
+    assert.equal(await readFile(firstSource, 'utf8'), '// external after checkpoint');
+    assert.ok(await js("document.querySelector('.view-lines').textContent.replaceAll(String.fromCharCode(160), ' ').includes('checkpoint one')"));
+    // Lost-response/concurrent checkpoint changes cannot be replaced with a stale token.
+    await writeFile(checkpointFile, '{ invalid checkpoint');
+    await click('Replace checkpoint with open drafts');
+    await wait("document.querySelector('.error')?.textContent.includes('Recovery checkpoint changed')", 'stale checkpoint replacement rejected');
+    assert.equal(await readFile(checkpointFile, 'utf8'), '{ invalid checkpoint');
+    await click('Read checkpoint');
+    await wait("document.querySelector('.recovery-panel')?.textContent.includes('checkpoint is invalid')", 'corrupt checkpoint reported');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Recover checkpoint').disabled"), true);
+    allowDiscard = false; await click('Discard checkpoint');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Read checkpoint').disabled", 'checkpoint discard cancelled');
+    assert.equal(await readFile(checkpointFile, 'utf8'), '{ invalid checkpoint');
+    allowDiscard = true; await click('Discard checkpoint');
+    await wait("document.querySelector('.recovery-panel')?.textContent.includes('Checkpoint discarded')", 'checkpoint explicitly discarded');
+    await assert.rejects(readFile(checkpointFile), { code: 'ENOENT' });
+    assert.equal(await js("document.querySelectorAll('.editor-tab').length"), 2, 'Discarding disk checkpoint preserves open drafts');
+    assert.deepEqual(await readFile(path.join(restoreTarget, 'workspace.json')), checkpointManifest);
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
     await rm(root, { recursive: true, force: true }); await rm(archiveArea, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export/fresh restore, native import cancellation/conflicts and dirty-editor preservation; independent editor tabs, draft/undo retention, inactive discard guards, external conflict/reload and capacity; manual draft checkpoints, renderer reload/recovery, stale hash/token rejection and corrupt checkpoint discard.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);

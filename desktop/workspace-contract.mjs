@@ -7,6 +7,7 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fields = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const shapes = {
+  'recovery.read': [], 'recovery.write': ['expectedToken', 'snapshot'], 'recovery.clear': ['expectedToken'],
   'workspace.import': ['paths', 'folderId', 'expectedRevision', 'renameConflicts'],
   'workspace.export': ['archivePath', 'expectedRevision'],
   'workspace.restore': ['archivePath', 'path'],
@@ -29,7 +30,9 @@ const shapes = {
 export function assertRequest(method, params) {
   if (!Object.hasOwn(shapes, method) || !fields(params, shapes[method])) throw new Error('Unsupported or invalid workspace request');
   for (const [key, value] of Object.entries(params)) {
-    const valid = key === 'path' || key === 'archivePath' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
+    const valid = key === 'expectedToken' ? value === null || hash(value)
+      : key === 'snapshot' ? recoverySnapshot(value)
+      : key === 'path' || key === 'archivePath' ? typeof value === 'string' && value.length > 0 && value.length <= 4096
       : key === 'create' || key === 'allowUpgrade' || key === 'favourite' || key === 'rebuild' || key === 'renameConflicts' ? typeof value === 'boolean'
       : key === 'paths' ? Array.isArray(value) && value.length > 0 && value.length <= 32 && value.every(path => typeof path === 'string' && path.length > 0 && path.length <= 4096)
       : key === 'query' ? typeof value === 'string' && value.trim().length > 0 && value.length <= 120 && !/[\x00-\x1f\x7f-\x9f]/.test(value)
@@ -86,8 +89,25 @@ function document(value) {
   return object(value) && id(value.id) && name(value.name) && language(value.language) && optionalId(value.folderId)
     && typeof value.content === 'string' && Buffer.byteLength(value.content, 'utf8') <= MAX_SOURCE && hash(value.hash) && typeof value.externalChanged === 'boolean' && (value.classification === undefined || classification(value.classification));
 }
+export function recoverySnapshot(value) {
+  return fields(value, ['format', 'version', 'workspaceId', 'tabs']) && value.format === 'astelvo-draft-checkpoint' && value.version === 1 && id(value.workspaceId)
+    && Array.isArray(value.tabs) && value.tabs.length >= 1 && value.tabs.length <= 16
+    && value.tabs.every(tab => fields(tab, ['saved', 'draft', 'content', 'tagText', 'favourite'])
+      && fields(tab.saved, ['id', 'name', 'language', 'folderId', 'content', 'hash', 'externalChanged', 'classification']) && document(tab.saved) && classification(tab.saved.classification)
+      && fields(tab.draft, ['name', 'language', 'folderId']) && typeof tab.draft.name === 'string' && tab.draft.name.length <= 120 && language(tab.draft.language) && optionalId(tab.draft.folderId)
+      && typeof tab.content === 'string' && Buffer.byteLength(tab.content, 'utf8') <= MAX_SOURCE
+      && typeof tab.tagText === 'string' && tab.tagText.length <= 656 && typeof tab.favourite === 'boolean')
+    && new Set(value.tabs.map(tab => tab.saved.id.toLowerCase())).size === value.tabs.length
+    && Buffer.byteLength(JSON.stringify(value), 'utf8') <= 3 * 1024 * 1024;
+}
 export function assertResult(method, value, params) {
   const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
+    : method === 'recovery.read' ? fields(value, ['workspaceId', 'token', 'snapshot', 'problem']) && id(value.workspaceId)
+      && (value.token === null ? value.snapshot === null && value.problem === null : hash(value.token)
+        && (value.problem === null ? recoverySnapshot(value.snapshot) && value.snapshot.workspaceId === value.workspaceId
+          : value.snapshot === null && typeof value.problem === 'string' && value.problem.length > 0 && value.problem.length <= 500))
+    : method === 'recovery.write' ? fields(value, ['workspaceId', 'token']) && value.workspaceId === params.snapshot.workspaceId && hash(value.token)
+    : method === 'recovery.clear' ? fields(value, ['workspaceId', 'token']) && id(value.workspaceId) && value.token === null
     : method === 'workspace.close' ? value === null
     : ['workspace.open', 'workspace.restore', 'folder.create', 'folder.rename', 'folder.move'].includes(method) ? snapshot(value)
     : method === 'workspace.import' ? fields(value, ['workspace', 'importedIds', 'renamedCount']) && snapshot(value.workspace)

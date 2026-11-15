@@ -34,6 +34,13 @@ internal sealed class WorkspaceSession : IDisposable
         var active = workspace ?? throw new WorkspaceException("no_workspace", "Create or open a workspace first.");
         switch (method)
         {
+            case "recovery.read":
+                Keys(p); return active.ReadRecovery();
+            case "recovery.write":
+                Keys(p, "expectedToken", "snapshot");
+                return active.WriteRecovery(Token(p), p.GetProperty("snapshot"));
+            case "recovery.clear":
+                Keys(p, "expectedToken"); return active.ClearRecovery(Token(p));
             case "workspace.import":
                 Keys(p, "paths", "folderId", "expectedRevision", "renameConflicts");
                 var paths = p.GetProperty("paths").EnumerateArray().Select(path => path.GetString() ?? throw Invalid()).ToList();
@@ -105,6 +112,12 @@ internal sealed class WorkspaceSession : IDisposable
         Keys(filter, "nameContains", "language", "folderId", "tag", "favouritesOnly");
         return new(Text(filter, "nameContains"), filter.GetProperty("language").ValueKind == JsonValueKind.Null ? null : Text(filter, "language"),
             OptionalId(filter, "folderId"), filter.GetProperty("tag").ValueKind == JsonValueKind.Null ? null : Text(filter, "tag"), filter.GetProperty("favouritesOnly").GetBoolean());
+    }
+    private static string? Token(JsonElement p)
+    {
+        if (p.GetProperty("expectedToken").ValueKind == JsonValueKind.Null) return null;
+        var token = Text(p, "expectedToken");
+        return WorkspaceStore.ValidHash(token) ? token : throw Invalid();
     }
     private static long Revision(JsonElement p)
     {

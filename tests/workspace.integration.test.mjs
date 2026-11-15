@@ -1561,3 +1561,154 @@ test('abrupt import death publishes the complete batch or none and retains origi
     await rm(input, { recursive: true, force: true });
   }
 }));
+
+function draftCheckpoint(workspace, document, changes = {}) {
+  return { format: 'astelvo-draft-checkpoint', version: 1, workspaceId: workspace.id, tabs: [{ saved: document,
+    draft: { name: document.name, language: document.language, folderId: document.folderId }, content: '// বাংলা 🌞\r\ndraft', tagText: 'unfinished, label', favourite: true, ...changes }] };
+}
+
+test('draft checkpoints retain exact source/base hashes and incomplete fields without committing scripts', async () => fixture(async (host, root) => {
+  const initial = await create(host);
+  const before = await readFile(path.join(root, 'workspace.json'));
+  const snapshot = draftCheckpoint(initial.workspace, initial.document, { draft: { name: '', language: 'python', folderId: null }, tagText: 'unfinished, , tag', content: '\ufeff# বাংলা 🌞\r\n\0' });
+  assert.deepEqual(await host.request('recovery.read'), { workspaceId: initial.workspace.id, token: null, snapshot: null, problem: null });
+  const written = await host.request('recovery.write', { expectedToken: null, snapshot });
+  assert.equal(written.token, hash(await readFile(path.join(root, '.astelvo-recovery.json'))));
+  assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before);
+  assert.deepEqual(await host.request('script.read', { id: initial.document.id }), initial.document);
+  await host.request('workspace.close'); await host.request('workspace.open', { path: root, create: false });
+  assert.deepEqual((await host.request('recovery.read')).snapshot, snapshot);
+  const sourcePath = source(root, initial.workspace.scripts[0]);
+  await writeFile(sourcePath, 'external source');
+  await assert.rejects(save(host, snapshot.tabs[0].saved, snapshot.tabs[0].content), { code: 'conflict' });
+  assert.equal(await readFile(sourcePath, 'utf8'), 'external source');
+  assert.deepEqual((await host.request('recovery.read')).snapshot, snapshot, 'Conflicting save cannot consume a checkpoint');
+  await assert.rejects(host.request('recovery.clear', { expectedToken: 'a'.repeat(64) }), { code: 'conflict' });
+  await host.request('recovery.clear', { expectedToken: written.token });
+  assert.equal((await host.request('recovery.read')).token, null);
+  assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before);
+}));
+
+test('recovery checkpoint validation, optimistic tokens and corrupt-data review preserve the prior bytes', async () => fixture(async (host, root) => {
+  const initial = await create(host), snapshot = draftCheckpoint(initial.workspace, initial.document);
+  const written = await host.request('recovery.write', { expectedToken: null, snapshot });
+  const file = path.join(root, '.astelvo-recovery.json'), before = await readFile(file);
+  await assert.rejects(host.request('recovery.write', { expectedToken: null, snapshot }), { code: 'conflict' });
+  for (const invalid of [
+    { ...snapshot, workspaceId: randomUUID() },
+    { ...snapshot, tabs: [{ ...snapshot.tabs[0], saved: { ...initial.document, hash: 'a'.repeat(64) } }] }
+  ]) await assert.rejects(host.request('recovery.write', { expectedToken: written.token, snapshot: invalid }), { code: 'invalid_request' });
+  assert.deepEqual(await readFile(file), before);
+  const variants = ['{', '{"format":"astelvo-draft-checkpoint","format":"other"}', JSON.stringify({ ...snapshot, version: 99 }), JSON.stringify({ ...snapshot, extra: 'future metadata' }), JSON.stringify(snapshot).replace('\"version\":1', '\"version\":1,\"version\":1'), JSON.stringify(snapshot).replace('\"favourite\":true', '\"favourite\":true,\"favourite\":false')];
+  for (const text of variants) {
+    await writeFile(file, text);
+    const read = await host.request('recovery.read');
+    assert.equal(read.token, hash(text)); assert.equal(read.snapshot, null); assert.ok(read.problem);
+    assert.equal(await readFile(file, 'utf8'), text, 'Read does not repair or overwrite invalid data');
+  }
+  await assert.rejects(host.request('recovery.clear', { expectedToken: written.token }), { code: 'conflict' });
+  const current = await host.request('recovery.read');
+  await host.request('recovery.clear', { expectedToken: current.token });
+  assert.equal((await host.request('recovery.read')).snapshot, null);
+}));
+
+test('recovery bounds escaped source and serialized aggregate before replacing data, rejects linked checkpoints', async () => fixture(async (host, root) => {
+  const initial = await create(host), snapshot = draftCheckpoint(initial.workspace, initial.document, { content: '\0'.repeat(MAX_SOURCE) });
+  const written = await host.request('recovery.write', { expectedToken: null, snapshot });
+  assert.deepEqual((await host.request('recovery.read')).snapshot, snapshot, 'Maximum escaped source survives framing and storage');
+  const large = { ...snapshot, tabs: [] };
+  for (let i = 0; i < 4; i++) {
+    const script = i === 0 ? initial : await host.request('script.create', { name: 'Large' + i, language: 'javascript', folderId: null });
+    large.tabs.push(draftCheckpoint(initial.workspace, script.document, { content: '\u0080'.repeat(MAX_SOURCE / 2) }).tabs[0]);
+  }
+  await assert.rejects(host.request('recovery.write', { expectedToken: written.token, snapshot: large }), { code: 'limit_exceeded' });
+  assert.equal((await host.request('recovery.read')).token, written.token);
+  const file = path.join(root, '.astelvo-recovery.json'), external = path.join(root, 'held-checkpoint.json');
+  const originalBytes = await readFile(file);
+  await writeFile(file, JSON.stringify(large));
+  const expanded = await host.request('recovery.read');
+  assert.ok(expanded.problem); assert.equal(expanded.snapshot, null);
+  assert.equal((await host.info()).product, 'ASTELVO', 'Externally compact data must not produce an oversized response/disconnect');
+  await writeFile(file, originalBytes);
+  await rename(file, external); await symlink(external, file);
+  try {
+    for (const [method, params] of [['recovery.read', {}], ['recovery.clear', { expectedToken: written.token }], ['recovery.write', { expectedToken: written.token, snapshot }]])
+      await assert.rejects(host.request(method, params), { code: 'invalid_workspace' });
+    assert.equal(hash(await readFile(external)), written.token);
+  } finally { await rm(file); await rename(external, file); }
+}));
+
+test('recovery data is excluded from archives and stays reviewable after script recycling', async () => fixture(async (host, root) => {
+  const initial = await create(host), snapshot = draftCheckpoint(initial.workspace, initial.document);
+  const written = await host.request('recovery.write', { expectedToken: null, snapshot });
+  await host.request('script.delete', { id: initial.document.id, expectedHash: initial.document.hash, expectedRevision: initial.workspace.revision, allowUpgrade: true });
+  assert.deepEqual((await host.request('recovery.read')).snapshot, snapshot);
+  await assert.rejects(host.request('recovery.write', { expectedToken: written.token, snapshot }), { code: 'not_found' });
+  const area = await mkdtemp(path.join(os.tmpdir(), 'astelvo-checkpoint-export-'));
+  try {
+    const archivePath = path.join(area, 'snapshot.zip');
+    await host.request('workspace.export', { archivePath, expectedRevision: initial.workspace.revision + 1 });
+    const { readZip } = await import('./archive-fixtures.mjs');
+    const entries = readZip(await readFile(archivePath));
+    assert.equal(entries.some(entry => entry.name === '.astelvo-recovery.json'), false);
+  } finally { await rm(area, { recursive: true, force: true }); }
+}));
+
+test('abrupt checkpoint writer death retains either complete generation and canonical workspace bytes', async () => fixture(async (host, root) => {
+  const initial = await create(host), original = draftCheckpoint(initial.workspace, initial.document);
+  const beforeManifest = await readFile(path.join(root, 'workspace.json'));
+  await host.request('recovery.write', { expectedToken: null, snapshot: original });
+  const file = path.join(root, '.astelvo-recovery.json'), beforeRecovery = await readFile(file);
+  await host.request('workspace.close');
+  const { executable, args, env } = launch(), writer = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+  const exited = once(writer, 'close'); writer.stderr.resume(); writer.stdin.on('error', () => {});
+  const openId = randomUUID();
+  const opened = new Promise((resolve, reject) => {
+    const decoder = new FrameDecoder(); writer.once('error', reject);
+    writer.stdout.on('data', chunk => {
+      try { for (const reply of decoder.push(chunk)) if (reply.id === openId) reply.error ? reject(new Error(reply.error.message)) : resolve(reply.result); }
+      catch (error) { reject(error); }
+    });
+  });
+  const { watch } = await import('node:fs');
+  let observedStaging = false;
+  const watcher = watch(root, (_event, filename) => {
+    if (String(filename).startsWith('.astelvo-recovery.json.') && String(filename).endsWith('.tmp')) { observedStaging = true; writer.kill('SIGKILL'); }
+  });
+  const watchdog = setTimeout(() => writer.kill('SIGKILL'), 3000);
+  try {
+    writer.stdin.write(encodeFrame({version: 1, id: openId, method: 'workspace.open', params: { path: root, create: false }}));
+    await opened;
+    const next = draftCheckpoint(initial.workspace, initial.document, { content: '\0'.repeat(MAX_SOURCE) });
+    writer.stdin.write(encodeFrame({version: 1, id: randomUUID(), method: 'recovery.write', params: {expectedToken: hash(beforeRecovery), snapshot: next}}));
+    await exited;
+    assert.ok(observedStaging, 'Process termination must be triggered by a real checkpoint staging write');
+    await host.request('workspace.open', { path: root, create: false });
+    const recovered = await host.request('recovery.read');
+    assert.equal(recovered.problem, null);
+    assert.ok(JSON.stringify(recovered.snapshot) === JSON.stringify(original) || JSON.stringify(recovered.snapshot) === JSON.stringify(next));
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), beforeManifest);
+    assert.equal((await host.request('script.read', { id: initial.document.id })).content, initial.document.content);
+  } finally { clearTimeout(watchdog); watcher.close(); writer.kill(); await exited; }
+}));
+
+test('sixteen independent draft records round-trip and oversized/unreadable recovery never blocks ordinary editing', async () => fixture(async (host, root) => {
+  const initial = await create(host), snapshot = draftCheckpoint(initial.workspace, initial.document);
+  for (let i = 1; i < 16; i++) {
+    const script = await host.request('script.create', { name: 'Draft' + i, language: ['javascript', 'python', 'csharp'][i % 3], folderId: null });
+    snapshot.tabs.push(draftCheckpoint(initial.workspace, script.document, { content: '// draft ' + i }).tabs[0]);
+  }
+  await host.request('recovery.write', { expectedToken: null, snapshot });
+  assert.deepEqual((await host.request('recovery.read')).snapshot, snapshot);
+  const file = path.join(root, '.astelvo-recovery.json');
+  const oversized = Buffer.alloc(3 * 1024 * 1024 + 1, 32);
+  await writeFile(file, oversized);
+  await assert.rejects(host.request('recovery.read'), { code: 'limit_exceeded' });
+  assert.deepEqual(await readFile(file), oversized);
+  assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
+  await writeFile(file, Buffer.from([0xff, 0xfe]));
+  const invalid = await host.request('recovery.read');
+  assert.ok(invalid.problem); assert.equal(invalid.snapshot, null);
+  assert.equal(invalid.token, hash(Buffer.from([0xff, 0xfe])));
+  await host.request('recovery.clear', { expectedToken: invalid.token });
+}));

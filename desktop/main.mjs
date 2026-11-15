@@ -92,6 +92,14 @@ async function startDesktop() {
       buttons: ['Upgrade and save collection', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
+  ipcMain.handle('astelvo:confirm-discard-recovery', event => {
+    trusted(event);
+    return dialog.showMessageBoxSync(window, {
+      type: 'question', title: 'Discard draft checkpoint?', message: 'Delete the saved recovery checkpoint?',
+      detail: 'Open editor drafts and committed scripts stay unchanged. This removes only their checkpoint copy and cannot be undone.',
+      buttons: ['Discard checkpoint', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
+    }) === 0;
+  });
   ipcMain.handle('astelvo:confirm-delete-collection', event => {
     trusted(event);
     return dialog.showMessageBoxSync(window, {
@@ -150,7 +158,7 @@ async function startDesktop() {
   ipcMain.handle('astelvo:workspace-command', async (event, method, params) => {
     trusted(event);
     // Paths and executables cannot be supplied through this renderer channel.
-    if (!['workspace.close', 'workspace.search', 'collection.create', 'collection.update', 'collection.delete', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
+    if (!['recovery.read', 'recovery.write', 'recovery.clear', 'workspace.close', 'workspace.search', 'collection.create', 'collection.update', 'collection.delete', 'folder.create', 'folder.rename', 'folder.move', 'folder.duplicate', 'folder.delete', 'folder.restore', 'script.classify', 'script.create', 'script.read', 'script.save', 'script.duplicate', 'script.delete', 'script.restore'].includes(method))
       return { ok: false, code: 'invalid_request', message: 'Unsupported workspace operation.' };
     return command(method, params);
   });
