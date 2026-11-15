@@ -42,7 +42,7 @@
           256
         ]
       ],
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-1024.png",
@@ -50,7 +50,7 @@
       "width": 1024,
       "height": 1024,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-128.png",
@@ -58,7 +58,7 @@
       "width": 128,
       "height": 128,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-16.png",
@@ -66,7 +66,7 @@
       "width": 16,
       "height": 16,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-24.png",
@@ -74,7 +74,7 @@
       "width": 24,
       "height": 24,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-256.png",
@@ -82,7 +82,7 @@
       "width": 256,
       "height": 256,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-32.png",
@@ -90,7 +90,7 @@
       "width": 32,
       "height": 32,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-48.png",
@@ -98,7 +98,7 @@
       "width": 48,
       "height": 48,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-512.png",
@@ -106,7 +106,7 @@
       "width": 512,
       "height": 512,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
       "path": "branding/assets/icons/icon-64.png",
@@ -114,17 +114,17 @@
       "width": 64,
       "height": 64,
       "mode": "RGBA",
-      "source": "branding/assets/symbol-canonical-v1.png"
+      "source": "branding/assets/refs/symbol-canonical-v1.png"
     },
     {
-      "path": "branding/assets/readme-banner-v1.png",
+      "path": "branding/assets/readme-banner.png",
       "sha256": "d833b05d0598e692652be1facd85a15c74d90fa8626d87bd27bcf87f9019066d",
       "width": 2172,
       "height": 724,
       "mode": "RGB"
     },
     {
-      "path": "branding/assets/symbol-canonical-v1.png",
+      "path": "branding/assets/refs/symbol-canonical-v1.png",
       "sha256": "3dc2ddfccaafccf13175bd4f206ae48f578aa1d3b8e55a5c5260b1963f2f19ae",
       "width": 1254,
       "height": 1254,
