@@ -33,8 +33,9 @@
 - [x] Saved metadata collections baseline merged in [PR #28](https://github.com/sunstriker2009/sun-astelvo/pull/28), with explicit v5 migration, stable filters/identities and dormant recycled-folder scopes ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). CI passed; Windows acceptance remains open.
 - [x] Initial bounded in-memory source-word index/rebuild merged in [PR #29](https://github.com/sunstriker2009/sun-astelvo/pull/29), with source/metadata integrity checks and combined filters ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)); CI passed; Windows acceptance remains open.
 - [ ] Persistent SQLite catalog/index, multiple-tag/recency/source-query collection extensions and search performance acceptance.
-- [x] Current-state workspace archive export and fresh-folder restore locally implemented/validated on `feature/m1-workspace-archives`, with strict preflight, verified publication and manifest-last recovery ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
-- [ ] Loose script import/merge conflict handling, historical/retention backup design and Windows/clean-machine restore acceptance.
+- [x] Current-state workspace archive export and fresh-folder restore merged in [PR #30](https://github.com/sunstriker2009/sun-astelvo/pull/30), with strict preflight, verified publication and manifest-last recovery ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)); CI passed; Windows acceptance remains open.
+- [x] Loose UTF-8 JavaScript/Python/C# import with explicit copy conflicts and atomic batch commit locally implemented/validated on `feature/m1-loose-script-import` ([evidence](../operations/M1-IMPORT-VALIDATION.md)); PR/CI/merge and Windows acceptance remain separate.
+- [ ] Windows/clean-machine import and archive restore acceptance. Archive merges/history retention remain optional future enhancements.
 - [ ] Useful standard-library examples requiring no packages/network.
 
 ### M2 — Editor
@@ -110,3 +111,8 @@ Locally implemented/validated in `feature/m1-source-search`: bounded read-only s
 ### Workspace snapshot archives — 2026-11-15
 
 Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.
+
+
+### Loose-source import — 2026-11-15
+
+Locally implemented/validated in `feature/m1-loose-script-import`: native-selected JS/Python/C# UTF-8 copy, exact bytes/new IDs, explicit numbered name conflicts and single-commit complete-batch visibility. Release/TypeScript/renderer builds, 20 frontend/protocol tests, 57 host tests and headless Electron acceptance passed ([evidence](../operations/M1-IMPORT-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent catalog, collection extensions/examples and remaining M1–M5/Windows/clean-machine/final product gates stay open.

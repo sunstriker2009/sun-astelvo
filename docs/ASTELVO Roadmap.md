@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, branding and organizer/editor work through source-search PR #29 are merged with passing CI. Verified current-state archive export and fresh-folder restore are locally implemented/validated in `feature/m1-workspace-archives` ([evidence](operations/M1-ARCHIVES-VALIDATION.md)); [ADR-005](adr/0005-workspace-archives.md) records exact snapshot scope, preflight/limits and manifest-last recovery. Check the new PR for CI/merge state. Loose imports/merge, backup history/retention, persistent catalog, collection extensions and remaining M1–M5 work stay unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final product review. New organizer Windows, interactive/clean-machine and governance acceptance remain open; the M0 Windows baseline is distinct. No script runner is implemented.
+The foundation, branding and organizer/editor work through archive PR #30 are merged with passing CI. Loose UTF-8 JavaScript/Python/C# import is locally implemented/validated in `feature/m1-loose-script-import` ([evidence](operations/M1-IMPORT-VALIDATION.md)); [ADR-006](adr/0006-loose-script-import.md) records atomic copying, explicit conflict policy and recovery limits. Check the new PR for CI/merge state. Persistent catalog, collection extensions, useful examples and remaining M1–M5 work stay unfinished. [Owner steering](operations/DEVELOPMENT-AUTHORIZATION.md) authorizes CI-gated auto-merge and final product review. Windows organizer/import/restore, clean-machine and governance acceptance remain open; M0 Windows evidence is distinct. Current-state archive restore is the v1 backup path; archive merges/history retention are optional future enhancements. No script runner is implemented.
 
 ## Sources
 
@@ -261,3 +261,8 @@ Locally implemented/validated in `feature/m1-source-search`: bounded read-only s
 ### Workspace snapshot archives — 2026-11-15
 
 Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.
+
+
+### Loose-source import — 2026-11-15
+
+Locally implemented/validated in `feature/m1-loose-script-import`: native-selected JS/Python/C# UTF-8 copy, exact bytes/new IDs, explicit numbered name conflicts and single-commit complete-batch visibility. Release/TypeScript/renderer builds, 20 frontend/protocol tests, 57 host tests and headless Electron acceptance passed ([evidence](operations/M1-IMPORT-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent catalog, collection extensions/examples and remaining M1–M5/Windows/clean-machine/final product gates stay open.

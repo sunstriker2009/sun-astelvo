@@ -13,6 +13,7 @@ type Folder = { id: string; name: string; parentId: string | null };
 type Classification = { tags: string[]; favourite: boolean };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string; classification?: Classification };
 type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
+type ImportResult = { workspace: Workspace; importedIds: string[]; renamedCount: number };
 type ExportResult = { archivePath: string; workspaceId: string; revision: number; schemaVersion: number; scriptCount: number; sourceBytes: number };
 type SourceSearchResult = { workspaceId: string; revision: number; query: string; scriptIds: string[]; indexedCount: number; indexedBytes: number; rebuilt: boolean };
 type CollectionFilter = { nameContains: string; language: Language | null; folderId: string | null; tag: string | null; favouritesOnly: boolean };
@@ -36,6 +37,7 @@ declare global {
       workspace: {
         create: () => Promise<Result<Workspace>>;
         open: () => Promise<Result<Workspace>>;
+        importScripts: (input: { folderId: string | null; expectedRevision: number; renameConflicts: boolean }) => Promise<Result<ImportResult>>;
         exportArchive: (expectedRevision: number) => Promise<Result<ExportResult>>;
         restoreArchive: () => Promise<Result<Workspace>>;
         close: () => Promise<Result<null>>;
@@ -104,6 +106,7 @@ function App() {
   const [moveParent, setMoveParent] = useState<string | null>(null);
   const [folderCopyName, setFolderCopyName] = useState('');
   const [folderCopyParent, setFolderCopyParent] = useState<string | null>(null);
+  const [renameImportConflicts, setRenameImportConflicts] = useState(false);
   const [scriptName, setScriptName] = useState('');
   const [newLanguage, setNewLanguage] = useState<Language>('javascript');
   const [restoreTreeId, setRestoreTreeId] = useState('');
@@ -394,6 +397,14 @@ function App() {
             <label className="check-label"><input type="checkbox" checked={favouritesOnly} disabled={busy} onChange={event => setFavouritesOnly(event.target.checked)} />Favourites only</label>
             <p className="muted">{scripts.length} matching of {workspace.scripts.length} active scripts. Metadata filters combine with any active saved-source search.</p>
             <button disabled={busy} onClick={clearFilters}>Clear filters</button>
+          </details>
+          <details><summary>Import scripts</summary>
+            <p className="muted">Import 1–32 local UTF-8 .js, .py or .cs files into {selectedFolder ? folderLabel(selectedFolder) || 'the selected folder' : 'the workspace root'}. Originals stay unchanged. No code is run. Existing scripts are never replaced.</p>
+            <label className="check-label"><input type="checkbox" checked={renameImportConflicts} disabled={busy} onChange={event => setRenameImportConflicts(event.target.checked)} />Add numbered copies for name conflicts</label>
+            <button disabled={busy || scopeUnavailable} onClick={() => void run(async () => {
+              const next = unwrap(await window.astelvo.workspace.importScripts({ folderId: selectedFolder, expectedRevision: workspace.revision, renameConflicts: renameImportConflicts }));
+              setWorkspace(next.workspace); setStatus(`Imported ${next.importedIds.length} scripts (${next.renamedCount} numbered copies). The open editor is unchanged; active filters may hide new scripts.`);
+            })}>Choose files to import</button>
           </details>
           <details><summary>New script</summary>
           <form onSubmit={event => { event.preventDefault(); void run(async () => {

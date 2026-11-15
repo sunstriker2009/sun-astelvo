@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { HostClient } from './host-client.mjs';
 import { hostLaunch } from './launch-config.mjs';
+import { assertRequest } from './workspace-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const page = path.join(root, 'dist/index.html');
@@ -49,7 +50,7 @@ async function startDesktop() {
     return host;
   }
   async function command(method, params) {
-    try { return { ok: true, value: await getHost().request(method, params, ['workspace.export', 'workspace.restore', 'workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
+    try { return { ok: true, value: await getHost().request(method, params, ['workspace.import', 'workspace.export', 'workspace.restore', 'workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
   }
   function discard() {
@@ -100,6 +101,20 @@ async function startDesktop() {
     }) === 0;
   });
   let choosing = false;
+  ipcMain.handle('astelvo:import-scripts', async (event, input) => {
+    trusted(event);
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length !== 3
+      || !['folderId', 'expectedRevision', 'renameConflicts'].every(key => Object.hasOwn(input, key)) || choosing)
+      return { ok: false, code: 'invalid_request', message: 'Invalid import options or another selection is in progress.' };
+    try { assertRequest('workspace.import', { paths: ['native-selection.js'], ...input }); }
+    catch { return { ok: false, code: 'invalid_request', message: 'Invalid import destination, revision or conflict option.' }; }
+    choosing = true;
+    try {
+      const selection = await dialog.showOpenDialog(window, { title: 'Import local JavaScript, Python or C# files', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Supported UTF-8 source', extensions: ['js', 'py', 'cs'] }] });
+      if (selection.canceled || selection.filePaths.length === 0) return { ok: false, code: 'cancelled', message: 'Import cancelled.' };
+      return await command('workspace.import', { paths: selection.filePaths, ...input });
+    } finally { choosing = false; }
+  });
   ipcMain.handle('astelvo:export-workspace', async (event, expectedRevision) => {
     trusted(event);
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || choosing) return { ok: false, code: 'invalid_request', message: 'Invalid export revision or another selection is in progress.' };
