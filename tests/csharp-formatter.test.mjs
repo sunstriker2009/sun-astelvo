@@ -35,9 +35,9 @@ test('real owned process is reaped on deadline and cancellation and allows a fre
   const gone = async () => {const pid=Number(await readFile(pidPath,'utf8')); assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});};
   try {
     await assert.rejects(manager.format(input), {code:'timed_out'}); await gone();
+    const previous=await readFile(pidPath,'utf8');
     const pending=manager.format(input); const rejected=assert.rejects(pending,{code:'cancelled'});
     // Wait for this job's actual startup, rather than merely a timer firing.
-    const previous=await readFile(pidPath,'utf8');
     for(let attempt=0;attempt<100;attempt++) {if(await readFile(pidPath,'utf8')!==previous)break; await new Promise(r=>setTimeout(r,10));}
     assert.notEqual(await readFile(pidPath,'utf8'),previous);
     assert.equal(await manager.cancel(),true); await rejected; await gone();

@@ -110,7 +110,7 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/JavaScript/Python formatting merged (#32–#36); C#/Roslyn locally validated; Windows and full acceptance open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/all three formatters merged (#32–#37); Windows and full acceptance open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -213,7 +213,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, editor recovery and JavaScript/Python formatting through [PR #36](https://github.com/sunstriker2009/sun-astelvo/pull/36) are merged. Bundled C#/Roslyn formatting is locally implemented/validated on `feature/m2-csharp-formatting` ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); check the new PR for CI/merge state. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Branding, renderer policy and portable workspace schemas are unchanged.
+The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-astelvo/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Branding, renderer policy and portable workspace schemas are unchanged.
 
 ## Sources
 

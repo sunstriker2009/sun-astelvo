@@ -6,7 +6,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
 | M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore merged (#30); loose-source import merged (#31); Windows organizer, persistent catalog, collection extensions and remaining editor/runner acceptance open |
-| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/JavaScript/Python formatting merged (#32–#36); C#/Roslyn locally validated; Windows and full acceptance open |
+| M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/all three formatters merged (#32–#37); Windows and full acceptance open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
@@ -15,9 +15,9 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `588eb7e8` contains merged Python formatter PR #36 with passing CI; no open implementation PR overlapped this batch.
+Main `a194bfb6` contains merged C# formatter PR #37 with passing CI (run 43761307087).
 
-Bundled C#/Roslyn formatting is locally implemented/validated on `feature/m2-csharp-formatting` ([evidence](../operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](../adr/0012-csharp-formatting.md)). It uses a separate bounded formatter-only process with verified cancellation/deadline cleanup, preserving the leased workspace host and Monaco undo/canonical/label state. The freshly published self-contained Linux host passed the full 65-test integration suite without an installed runtime. Check the PR for required CI/merge state; [owner-authorized auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md) applies with final human review outstanding.
+Bundled C#/Roslyn formatting is merged in [PR #37](https://github.com/sunstriker2009/sun-astelvo/pull/37) ([evidence](../operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](../adr/0012-csharp-formatting.md)). It uses a separate bounded formatter-only process with verified cancellation/deadline cleanup, preserving the leased workspace host and Monaco undo/canonical/label state. The freshly published self-contained Linux host passed the full 65-test integration suite without an installed runtime. [Owner-authorized auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md) applies with final human review outstanding.
 
 All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/packaged/editor/recovery/import/restore, shutdown/power-loss, cold formatting performance/accessibility, compiled-dependency review, clean-machine and governance gates remain distinct from M0. Saved-state archives exclude recovery checkpoints; optional archive merge/history remains later work.
 
