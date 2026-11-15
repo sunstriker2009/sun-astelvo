@@ -1,5 +1,15 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('astelvo', Object.freeze({
+  onPrepareClose: handler => {
+    const listener = async (_event, id) => {
+      if (typeof id !== 'string') return;
+      let ready = false;
+      try { ready = await handler() === true; } catch { }
+      ipcRenderer.send('astelvo:prepared-close', id, ready);
+    };
+    ipcRenderer.on('astelvo:prepare-close', listener);
+    return () => ipcRenderer.removeListener('astelvo:prepare-close', listener);
+  },
   hostInfo: () => ipcRenderer.invoke('astelvo:host-info'),
   confirmClassificationUpgrade: () => ipcRenderer.invoke('astelvo:confirm-classification-upgrade'),
   confirmCollectionsUpgrade: () => ipcRenderer.invoke('astelvo:confirm-collections-upgrade'),

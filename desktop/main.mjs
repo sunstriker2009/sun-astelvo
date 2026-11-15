@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { HostClient } from './host-client.mjs';
 import { hostLaunch } from './launch-config.mjs';
@@ -56,7 +57,35 @@ async function startDesktop() {
   function discard() {
     return dialog.showMessageBoxSync(window, { type: 'question', title: 'Unsaved script', message: 'Discard unsaved script changes?', detail: 'Choose Cancel to return to the editor and save or copy your changes.', buttons: ['Discard changes', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true }) === 0;
   }
-  window.webContents.on('will-prevent-unload', event => { if (discard()) event.preventDefault(); });
+  let closePermit = false;
+  let pendingClose = null;
+  window.on('close', event => {
+    if (closePermit) return;
+    event.preventDefault();
+    if (pendingClose) return;
+    const id = randomUUID();
+    const timer = setTimeout(() => {
+      if (pendingClose?.id !== id) return;
+      pendingClose = null;
+      if (!window.isDestroyed()) dialog.showMessageBoxSync(window, {
+        type: 'error', title: 'Close postponed', message: 'The editor did not finish preparing to close.',
+        detail: 'The window and workspace remain open. Finish the current operation and review draft recovery before trying again.', buttons: ['Return to editor']
+      });
+    }, 12000);
+    pendingClose = { id, timer };
+    window.webContents.send('astelvo:prepare-close', id);
+  });
+  ipcMain.on('astelvo:prepared-close', (event, id, ready) => {
+    try { trusted(event); } catch { return; }
+    if (!pendingClose || id !== pendingClose.id || typeof ready !== 'boolean') return;
+    clearTimeout(pendingClose.timer); pendingClose = null;
+    if (!ready || window.isDestroyed()) return;
+    closePermit = true; window.close();
+  });
+  window.on('closed', () => { if (pendingClose) clearTimeout(pendingClose.timer); pendingClose = null; });
+  window.webContents.on('will-prevent-unload', event => {
+    if (discard()) event.preventDefault(); else closePermit = false;
+  });
   ipcMain.handle('astelvo:confirm-discard', event => { trusted(event); return discard(); });
   ipcMain.handle('astelvo:confirm-delete-script', (event, upgrade) => {
     trusted(event);
