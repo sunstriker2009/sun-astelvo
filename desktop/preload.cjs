@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('astelvo', Object.freeze({
   workspace: Object.freeze({
     create: () => ipcRenderer.invoke('astelvo:choose-workspace', true),
     open: () => ipcRenderer.invoke('astelvo:choose-workspace', false),
+    exportArchive: expectedRevision => ipcRenderer.invoke('astelvo:export-workspace', expectedRevision),
+    restoreArchive: () => ipcRenderer.invoke('astelvo:restore-workspace'),
     close: () => ipcRenderer.invoke('astelvo:workspace-command', 'workspace.close', {}),
     searchSource: input => ipcRenderer.invoke('astelvo:workspace-command', 'workspace.search', input),
     createCollection: input => ipcRenderer.invoke('astelvo:workspace-command', 'collection.create', input),

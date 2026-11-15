@@ -5,7 +5,7 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive/clean-machine and governance gates remain open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index locally validated; Windows organizer, persistent catalog/collection extensions and backup/import/export acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — persistence, folder moves and script duplication merged (#14–#16); folder subtree duplication merged (#18); script recycle bin merged (#25); folder delete/restore merged (#26); tags/favourites merged (#27); saved metadata collections merged (#28); source-word session index merged (#29); snapshot export/fresh restore locally validated; Windows organizer, persistent catalog, collection extensions and loose imports/history acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | Planned |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
@@ -15,11 +15,11 @@ Updated 2026-11-14. [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merg
 
 ## Next delivery
 
-Main `872422bd` contains saved collections PR #28 with passing CI; earlier organizer/editor, classification and recycle work is merged.
+Main `030b0aed` contains source-search PR #29 with passing CI; earlier organizer/editor, collections, classification and recycle work is merged.
 
-Initial indexed source search/rebuild is implemented and locally validated in `feature/m1-source-search` ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). The bounded in-memory index is read-only and detects changed source even on warm queries. No schema/dependency/cache files are added; persistent SQLite catalog and performance acceptance remain open. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
+Current-state workspace archive export and fresh-folder restore are locally implemented/validated in `feature/m1-workspace-archives` ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Exact metadata/current source across both recycle bins survives restore; validation precedes target writes and manifest-last commit bounds interrupted restore visibility. Check the new PR for required CI/merge state. Apply [owner-authorized CI-gated auto-merge](../operations/DEVELOPMENT-AUTHORIZATION.md); final product review remains required.
 
-Safe import/export/full backup remains unfinished, alongside persistent catalog, collection predicate extensions and remaining editor/runners/packaging. New organizer Windows, interactive/clean-machine and governance follow-ups remain open and distinct from the M0 baseline. Continue M1–M5 implementation and acceptance.
+Loose script import/merge, backup history/retention, persistent catalog, collection extensions and remaining editor/runners/packaging remain unfinished. New organizer Windows, interactive/clean-machine and governance follow-ups stay distinct from the M0 baseline. Continue M1–M5 implementation and acceptance.
 
 ## M0 foundation evidence
 
@@ -64,3 +64,8 @@ Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 mig
 ### Initial source-word index — 2026-11-15
 
 Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.
+
+
+### Workspace snapshot archives — 2026-11-15
+
+Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.

@@ -49,7 +49,7 @@ async function startDesktop() {
     return host;
   }
   async function command(method, params) {
-    try { return { ok: true, value: await getHost().request(method, params, ['workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
+    try { return { ok: true, value: await getHost().request(method, params, ['workspace.export', 'workspace.restore', 'workspace.search', 'folder.duplicate', 'folder.delete', 'folder.restore'].includes(method) ? 30000 : 5000) }; }
     catch (error) { return { ok: false, code: error.code ?? 'host_error', message: error.message }; }
   }
   function discard() {
@@ -100,6 +100,28 @@ async function startDesktop() {
     }) === 0;
   });
   let choosing = false;
+  ipcMain.handle('astelvo:export-workspace', async (event, expectedRevision) => {
+    trusted(event);
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || choosing) return { ok: false, code: 'invalid_request', message: 'Invalid export revision or another selection is in progress.' };
+    choosing = true;
+    try {
+      const selection = await dialog.showSaveDialog(window, { title: 'Export saved workspace to a new archive', defaultPath: `ASTELVO-${Date.now()}.astelvo.zip`, filters: [{ name: 'ASTELVO workspace archive', extensions: ['zip'] }] });
+      if (selection.canceled || !selection.filePath) return { ok: false, code: 'cancelled', message: 'Export cancelled.' };
+      return await command('workspace.export', { archivePath: selection.filePath, expectedRevision });
+    } finally { choosing = false; }
+  });
+  ipcMain.handle('astelvo:restore-workspace', async event => {
+    trusted(event);
+    if (choosing) return { ok: false, code: 'invalid_request', message: 'Another selection is in progress.' };
+    choosing = true;
+    try {
+      const archive = await dialog.showOpenDialog(window, { title: 'Choose ASTELVO archive to restore', properties: ['openFile'], filters: [{ name: 'ASTELVO workspace archive', extensions: ['zip'] }] });
+      if (archive.canceled || archive.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Restore cancelled.' };
+      const target = await dialog.showOpenDialog(window, { title: 'Restore into an empty local folder', properties: ['openDirectory', 'createDirectory'] });
+      if (target.canceled || target.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Restore cancelled.' };
+      return await command('workspace.restore', { archivePath: archive.filePaths[0], path: target.filePaths[0] });
+    } finally { choosing = false; }
+  });
   ipcMain.handle('astelvo:choose-workspace', async (event, create) => {
     trusted(event);
     if (typeof create !== 'boolean' || choosing) return { ok: false, code: 'invalid_request', message: 'A folder selection is already in progress.' };

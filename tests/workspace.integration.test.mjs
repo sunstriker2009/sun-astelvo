@@ -1267,3 +1267,163 @@ test('source index enforces aggregate byte and vocabulary caps without publishin
     assert.equal(recovered.rebuilt, true); assert.deepEqual(recovered.scriptIds, [scripts[0].id]);
   });
 });
+
+const exportArchive = (host, state, archivePath) => host.request('workspace.export', { archivePath, expectedRevision: state.revision }, 30000);
+const restoreArchive = (host, archivePath, root) => host.request('workspace.restore', { archivePath, path: root }, 30000);
+
+test('verified workspace archive round-trip preserves exact v5 metadata, Unicode, IDs, tags, collections and both recycle bins', async () => fixture(async (host, root) => {
+  const { readZip } = await import('./archive-fixtures.mjs');
+  const output = await mkdtemp(path.join(os.tmpdir(), 'astelvo-archive-'));
+  try {
+    let state = await host.request('folder.create', { name: 'Nested', parentId: null });
+    const folderId = state.folders[0].id;
+    const active = await create(host); const saved = await save(host, active.document, 'console.log("বাংলা 🌞");');
+    const trash = await host.request('script.create', { name: 'Deleted Python', language: 'python', folderId: null });
+    state = await removeScript(host, trash.workspace, trash.document, true);
+    const inside = await host.request('script.create', { name: 'Csharp in tree', language: 'csharp', folderId });
+    state = await removeFolder(host, inside.workspace, folderId, true);
+    state = await classifyScript(host, state, saved.document.id, ['archive', 'বাংলা'], true, true);
+    state = (await createCollection(host, state, 'Scoped', collectionFilter({ folderId }), true)).workspace;
+    await writeFile(path.join(root, 'workspace.json.orphan.tmp'), '{partial');
+    await writeFile(path.join(root, 'scripts', active.document.id, 'orphan.tmp'), 'must not be exported');
+    const before = await readFile(path.join(root, 'workspace.json')), archive = path.join(output, 'snapshot.astelvo.zip');
+    const result = await exportArchive(host, state, archive);
+    assert.equal(result.scriptCount, 3); assert.equal(result.workspaceId, state.id); assert.equal(result.revision, state.revision);
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), before);
+    const entries = readZip(await readFile(archive));
+    assert.equal(entries.length, 4); assert.deepEqual(entries.find(e => e.name === 'workspace.json').bytes, before);
+    assert.equal(entries.some(e => e.name.includes('orphan') || e.name.includes('lock')), false);
+    const destination = path.join(output, 'restored'); await mkdir(destination);
+    const restored = await restoreArchive(host, archive, destination);
+    assert.equal(restored.root, destination); assert.equal(restored.id, state.id); assert.equal(restored.schemaVersion, 5);
+    for (const field of ['folders', 'scripts', 'deletedScripts', 'deletedFolderTrees', 'collections']) assert.deepEqual(restored[field], state[field]);
+    assert.deepEqual(await readFile(path.join(destination, 'workspace.json')), before);
+    assert.equal((await host.request('script.read', { id: saved.document.id })).content, saved.document.content);
+    let next = await restoreFolder(host, restored, folderId, 'Recovered folder');
+    next = await restoreScript(host, next, next.deletedScripts[0]);
+    assert.equal(next.scripts.length, 3);
+    assert.equal((await searchSource(host, next, 'console')).scriptIds[0], saved.document.id);
+    // Successful switch releases the original workspace lease.
+    const second = client(); try { assert.equal((await second.request('workspace.open', { path: root, create: false })).id, state.id); } finally { await second.close(); }
+  } finally { await host.request('workspace.close'); await rm(output, { recursive: true, force: true }); }
+}));
+
+test('archive export refuses overwrite, stale/external source, managed paths and missing recycled source without publishing partial files', async () => fixture(async (host, root) => {
+  const output = await mkdtemp(path.join(os.tmpdir(), 'astelvo-export-reject-'));
+  try {
+    const initial = await create(host); let state = initial.workspace;
+    const archive = path.join(output, 'snapshot.zip');
+    await writeFile(archive, 'user file');
+    await assert.rejects(exportArchive(host, state, archive), { code: 'conflict' });
+    assert.equal(await readFile(archive, 'utf8'), 'user file'); await rm(archive);
+    await assert.rejects(exportArchive(host, state, path.join(root, 'snapshot.zip')), { code: 'invalid_request' });
+    await assert.rejects(exportArchive(host, { ...state, revision: 0 }, archive), { code: 'conflict' });
+    const sourceFile = source(root, state.scripts[0]); await writeFile(sourceFile, 'external');
+    await assert.rejects(exportArchive(host, state, archive), { code: 'conflict' });
+    assert.deepEqual(await readdir(output), []); assert.equal(await readFile(sourceFile, 'utf8'), 'external');
+    await writeFile(sourceFile, ''); state = await removeScript(host, state, initial.document, true); await rm(sourceFile);
+    await assert.rejects(exportArchive(host, state, archive), { code: 'io_error' });
+    assert.deepEqual(await readdir(output), []);
+  } finally { await rm(output, { recursive: true, force: true }); }
+}));
+
+test('restore rejects traversal, duplicate/extra/linked/encrypted/oversized entries and invalid metadata/source before touching destination', async () => fixture(async (host, root) => {
+  const { makeZip, readZip } = await import('./archive-fixtures.mjs');
+  const output = await mkdtemp(path.join(os.tmpdir(), 'astelvo-restore-reject-'));
+  try {
+    const initial = await create(host), archive = path.join(output, 'good.zip');
+    await exportArchive(host, initial.workspace, archive);
+    const entries = readZip(await readFile(archive)), manifest = entries.find(e => e.name === 'workspace.json'), sourceEntry = entries.find(e => e.name !== 'workspace.json');
+    const invalidMetadata = JSON.parse(manifest.bytes); invalidMetadata.futureMetadata = 'preserve';
+    const cases = [
+      [manifest, { ...sourceEntry, name: '../outside.js' }],
+      [manifest, sourceEntry, { name: '../../outside', bytes: 'escape' }],
+      [manifest, sourceEntry, { ...sourceEntry, name: sourceEntry.name.toUpperCase() }],
+      [manifest, { ...sourceEntry, attributes: 0xa1ff0000 }],
+      [manifest, { ...sourceEntry, flags: 0x801 }],
+      [manifest, { ...sourceEntry, declaredLength: MAX_SOURCE + 1 }],
+      [manifest, { ...sourceEntry, bytes: 'corrupted content' }],
+      [{ ...manifest, bytes: JSON.stringify(invalidMetadata) }, sourceEntry],
+      [{ ...manifest, declaredLength: 1024 * 1024 + 1 }, sourceEntry],
+      Array.from({ length: 1002 }, (_, i) => ({ name: `entry${i}`, bytes: '' }))
+    ];
+    const destination = path.join(output, 'target'); await mkdir(destination);
+    for (let i = 0; i < cases.length; i++) {
+      const bad = path.join(output, `bad${i}.zip`); await writeFile(bad, makeZip(cases[i]));
+      await assert.rejects(restoreArchive(host, bad, destination));
+      assert.deepEqual(await readdir(destination), [], `Malformed case ${i} must fail before writing even a lock`);
+      assert.equal((await host.request('script.read', { id: initial.document.id })).content, '', 'Failed restore preserves active host/lease');
+    }
+    // A valid-looking metadata change with a stale ZIP CRC must be rejected too.
+    const crcBroken = makeZip(entries), metadataOffset = crcBroken.indexOf(manifest.bytes), titleOffset = manifest.bytes.indexOf('Hello');
+    assert.ok(metadataOffset >= 0 && titleOffset >= 0); crcBroken[metadataOffset + titleOffset] = 'J'.charCodeAt(0);
+    const crcPath = path.join(output, 'bad-crc.zip'); await writeFile(crcPath, crcBroken);
+    await assert.rejects(restoreArchive(host, crcPath, destination), { code: 'invalid_archive' });
+    assert.deepEqual(await readdir(destination), []);
+    // Preflight compressed-file cap using a sparse file rather than a large fixture.
+    const huge = path.join(output, 'huge.zip'); await writeFile(huge, '');
+    const { truncate } = await import('node:fs/promises'); await truncate(huge, 66 * 1024 * 1024 + 1);
+    await assert.rejects(restoreArchive(host, huge, destination), { code: 'limit_exceeded' });
+    assert.deepEqual(await readdir(destination), []);
+    // Valid content still cannot merge/replace existing destination files.
+    await writeFile(path.join(destination, 'user.txt'), 'retain');
+    await assert.rejects(restoreArchive(host, archive, destination), { code: 'invalid_workspace' });
+    assert.equal(await readFile(path.join(destination, 'user.txt'), 'utf8'), 'retain');
+    assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
+  } finally { await rm(output, { recursive: true, force: true }); }
+}));
+
+test('v1 export/restore keeps schema and exact manifest; linked archive/destination and an occupied writer lease are rejected', async () => fixture(async (host, root) => {
+  const output = await mkdtemp(path.join(os.tmpdir(), 'astelvo-v1-archive-'));
+  try {
+    const initial = await create(host), archive = path.join(output, 'snapshot.zip');
+    await exportArchive(host, initial.workspace, archive);
+    const destination = path.join(output, 'restored'); await mkdir(destination);
+    const linked = path.join(output, 'linked'); await symlink(destination, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(restoreArchive(host, archive, linked), { code: 'invalid_workspace' });
+    const alias = path.join(output, 'archive-alias'); await symlink(output, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(restoreArchive(host, path.join(alias, 'snapshot.zip'), destination), { code: 'invalid_workspace' });
+    await assert.rejects(restoreArchive(host, archive, root), { code: 'invalid_workspace' });
+    const before = await readFile(path.join(root, 'workspace.json'));
+    const restored = await restoreArchive(host, archive, destination);
+    assert.equal(restored.schemaVersion, 1); assert.deepEqual(await readFile(path.join(destination, 'workspace.json')), before);
+  } finally { await host.request('workspace.close'); await rm(output, { recursive: true, force: true }); }
+}));
+
+test('abrupt restore termination leaves either no manifest or the complete workspace; original and archive remain usable', async () => fixture(async (host, root) => {
+  const output = await mkdtemp(path.join(os.tmpdir(), 'astelvo-restore-death-'));
+  const destination = path.join(output, 'interrupted'); await mkdir(destination);
+  const archive = path.join(output, 'snapshot.zip');
+  let writer, closed, watcher, deadline, observed = false;
+  try {
+    let state;
+    for (let i = 0; i < 8; i++) {
+      const created = await host.request('script.create', { name: `Script ${i}`, language: 'javascript', folderId: null });
+      state = (await save(host, created.document, 'retained '.repeat(8000))).workspace;
+    }
+    await exportArchive(host, state, archive); const archiveBytes = await readFile(archive), originalBytes = await readFile(path.join(root, 'workspace.json'));
+    const { executable, args, env } = launch(); writer = spawn(executable, args, { env, stdio: ['pipe', 'pipe', 'pipe'] });
+    closed = once(writer, 'close'); writer.stdout.resume(); writer.stderr.resume();
+    const { watch } = await import('node:fs');
+    watcher = watch(destination, (_event, filename) => { if (filename?.toString() === 'scripts') { observed = true; writer.kill('SIGKILL'); } });
+    deadline = setTimeout(() => writer.kill('SIGKILL'), 5000);
+    writer.stdin.write(encodeFrame({ version: 1, id: randomUUID(), method: 'workspace.restore', params: { archivePath: archive, path: destination } }));
+    await closed; watcher.close(); clearTimeout(deadline);
+    assert.equal(observed, true, 'Test must observe restore staging before termination');
+    if ((await readdir(destination)).includes('workspace.json')) {
+      const recovered = await host.request('workspace.open', { path: destination, create: false });
+      assert.deepEqual(recovered.scripts, state.scripts);
+      for (const script of recovered.scripts) assert.equal(await readFile(source(destination, script), 'utf8'), 'retained '.repeat(8000));
+    } else {
+      await assert.rejects(host.request('workspace.open', { path: destination, create: false }));
+      await assert.rejects(restoreArchive(host, archive, destination), { code: 'invalid_workspace' });
+    }
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), originalBytes);
+    assert.deepEqual(await readFile(archive), archiveBytes);
+    const fresh = path.join(output, 'fresh'); await mkdir(fresh);
+    assert.deepEqual((await restoreArchive(host, archive, fresh)).scripts, state.scripts);
+  } finally {
+    watcher?.close(); clearTimeout(deadline); if (writer) { writer.kill(); await closed; }
+    await host.request('workspace.close'); await rm(output, { recursive: true, force: true });
+  }
+}));

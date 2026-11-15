@@ -13,6 +13,7 @@ type Folder = { id: string; name: string; parentId: string | null };
 type Classification = { tags: string[]; favourite: boolean };
 type Script = { id: string; name: string; language: Language; folderId: string | null; sourceHash: string; classification?: Classification };
 type DeletedFolderTree = { rootId: string; folders: Folder[]; scripts: Script[]; deletedScripts: Script[] };
+type ExportResult = { archivePath: string; workspaceId: string; revision: number; schemaVersion: number; scriptCount: number; sourceBytes: number };
 type SourceSearchResult = { workspaceId: string; revision: number; query: string; scriptIds: string[]; indexedCount: number; indexedBytes: number; rebuilt: boolean };
 type CollectionFilter = { nameContains: string; language: Language | null; folderId: string | null; tag: string | null; favouritesOnly: boolean };
 type SmartCollection = { id: string; name: string; filter: CollectionFilter };
@@ -35,6 +36,8 @@ declare global {
       workspace: {
         create: () => Promise<Result<Workspace>>;
         open: () => Promise<Result<Workspace>>;
+        exportArchive: (expectedRevision: number) => Promise<Result<ExportResult>>;
+        restoreArchive: () => Promise<Result<Workspace>>;
         close: () => Promise<Result<null>>;
         searchSource: (input: { query: string; expectedRevision: number; rebuild: boolean }) => Promise<Result<SourceSearchResult>>;
         createCollection: (input: { name: string; filter: CollectionFilter; expectedRevision: number; allowUpgrade: boolean }) => Promise<Result<{ workspace: Workspace; collectionId: string }>>;
@@ -269,6 +272,20 @@ function App() {
     <div className="workspace-actions">
       <button disabled={busy} onClick={() => chooseWorkspace(true)}>New workspace</button>
       <button disabled={busy} onClick={() => chooseWorkspace(false)}>Open workspace</button>
+      <button disabled={busy || !workspace || dirty || classificationDirty || document?.externalChanged} onClick={() => {
+        if (!workspace || dirtyRef.current || classificationDirtyRef.current || documentRef.current?.externalChanged) return;
+        void run(async () => {
+          const result = unwrap(await window.astelvo.workspace.exportArchive(workspace.revision));
+          if (result.workspaceId !== workspace.id) throw new Error('Export workspace changed. Reopen it before continuing.');
+          setStatus(`Exported ${result.scriptCount} saved scripts, including recycle bins, to ${result.archivePath}`);
+        });
+      }}>Export workspace</button>
+      <button disabled={busy} onClick={() => void run(async () => {
+        if (!await canLeave()) return;
+        const next = unwrap(await window.astelvo.workspace.restoreArchive());
+        clearSourceSearch(); clearFilters(); setSelectedCollectionId(''); setCollectionName(''); setSelectedFolder(null); setRestoreId(''); setRestoreTreeId('');
+        setWorkspace(next); display(null); setStatus('Workspace restored into the selected empty folder. Sources and metadata verified.');
+      })}>Restore archive</button>
       <span className="workspace-title" title={workspace?.root}>{workspace?.name ?? 'No workspace open'}</span>
       <button disabled={busy || !workspace} onClick={() => void run(async () => {
         if (!await canLeave()) return;

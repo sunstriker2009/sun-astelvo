@@ -7,10 +7,19 @@ import os from 'node:os';
 import path from 'node:path';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'astelvo-editor-smoke-'));
+const archiveArea = await mkdtemp(path.join(os.tmpdir(), 'astelvo-editor-archive-'));
+const archivePath = path.join(archiveArea, 'snapshot.astelvo.zip');
+let restoreTarget = path.join(archiveArea, 'restored');
+let cancelExport = false, cancelRestoreArchive = false, cancelRestoreTarget = false;
 let allowDiscard = false;
 let prompts = 0;
 let stage = 'startup';
-dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [root] });
+dialog.showOpenDialog = async (_window, options) => {
+  if (options.title === 'Choose ASTELVO archive to restore') return { canceled: cancelRestoreArchive, filePaths: cancelRestoreArchive ? [] : [archivePath] };
+  if (options.title === 'Restore into an empty local folder') return { canceled: cancelRestoreTarget, filePaths: cancelRestoreTarget ? [] : [restoreTarget] };
+  return { canceled: false, filePaths: [root] };
+};
+dialog.showSaveDialog = async () => ({ canceled: cancelExport, filePath: cancelExport ? undefined : archivePath });
 dialog.showMessageBoxSync = () => { prompts++; return allowDiscard ? 0 : 1; };
 const deadline = setTimeout(() => { console.error(`Workspace smoke timed out: ${stage}`); app.exit(1); }, 30000);
 await import('./main.mjs');
@@ -73,6 +82,7 @@ void app.whenReady().then(async () => {
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Duplicate folder').disabled"), true, 'Folder duplication must require saved open edits');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Delete script').disabled"), true, 'Deletion must require saved edits');
     assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Delete folder').disabled"), true, 'Folder deletion must require saved edits');
+    assert.equal(await js("Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Export workspace').disabled"), true, 'Export must require saved source/label edits');
     // Move a parent while its script buffer is dirty. No editor discard or
     // source write is needed for a logical folder move.
     const beforeMove = JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8'));
@@ -422,18 +432,53 @@ void app.whenReady().then(async () => {
     await click('Clear source search');
     await wait("!document.querySelector('.source-search-status') && document.querySelectorAll('.script').length === 1", 'source filter cleared while collection remains applied');
     assert.deepEqual(JSON.parse(await readFile(path.join(root, 'workspace.json'), 'utf8')).collections, searchMetadata.collections);
+    await click('Delete script');
+    await wait("document.querySelector('[role=status]').textContent.includes('Script moved to recycle bin')", 'archive includes deleted script');
+    const beforeArchive = await readFile(path.join(root, 'workspace.json'));
+    cancelExport = true; await click('Export workspace');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Export workspace').disabled", 'cancelled native export');
+    await assert.rejects(readFile(archivePath));
+    cancelExport = false; await click('Export workspace');
+    await wait("document.querySelector('[role=status]').textContent.startsWith('Exported 3 saved scripts')", 'verified native export');
+    const { readZip } = await import('../tests/archive-fixtures.mjs');
+    const exportedBytes = await readFile(archivePath);
+    assert.deepEqual(readZip(exportedBytes).find(e => e.name === 'workspace.json').bytes, beforeArchive);
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), beforeArchive);
+    cancelRestoreArchive = true; await click('Restore archive');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Restore archive').disabled", 'cancelled archive chooser');
+    cancelRestoreArchive = false; cancelRestoreTarget = true; await click('Restore archive');
+    await wait("!Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Restore archive').disabled", 'cancelled restore target chooser');
+    cancelRestoreTarget = false;
+    const occupiedTarget = path.join(archiveArea, 'occupied'); await mkdir(occupiedTarget); await writeFile(path.join(occupiedTarget, 'user.txt'), 'retain');
+    restoreTarget = occupiedTarget; await click('Restore archive');
+    await wait("!!document.querySelector('.error')", 'nonempty restore target rejected');
+    assert.equal(await readFile(path.join(occupiedTarget, 'user.txt'), 'utf8'), 'retain');
+    assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(copiedScript.id)})`)).ok, true, 'Failed restore keeps active workspace usable');
+    restoreTarget = path.join(archiveArea, 'restored'); await mkdir(restoreTarget);
+    await click('Restore archive');
+    await wait("document.querySelector('[role=status]').textContent.includes('Workspace restored into the selected empty folder')", 'native restore switched workspace');
+    assert.deepEqual(await readFile(path.join(restoreTarget, 'workspace.json')), beforeArchive);
+    assert.deepEqual(await readFile(path.join(root, 'workspace.json')), beforeArchive, 'Restore must not change original workspace');
+    assert.equal(await js("document.querySelector('.workspace-title').title"), restoreTarget);
+    assert.equal(await js("document.querySelector('[aria-label=\"Script name\"]').value"), '', 'Restore clears the old document only after success');
+    await js("Array.from(document.querySelectorAll('summary')).find(s => s.textContent === 'Recycle bin (1)').click()");
+    await select('Deleted script', `Renamed greeting · JavaScript · Recovered archive / Utilities · ${source.id}`);
+    await click('Restore script');
+    await wait("document.querySelector('[role=status]').textContent.includes('Script restored')", 'restored archive recycle state usable');
+    assert.equal((await js(`window.astelvo.workspace.readScript(${JSON.stringify(source.id)})`)).value.content, 'externalfresh');
+    assert.deepEqual(await readFile(archivePath), exportedBytes, 'Working after restore must retain archive bytes');
     await mkdir('artifacts/diagnostics', { recursive: true });
     await writeFile('artifacts/diagnostics/workspace-editor.png', (await window.webContents.capturePage()).toPNG());
     await click('Close workspace');
     await wait("document.querySelector('.workspace-title').textContent === 'No workspace open'", 'lease release');
-    await rm(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true }); await rm(archiveArea, { recursive: true, force: true });
     clearTimeout(deadline);
-    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion and external-source recovery.');
+    console.log('Workspace editor smoke passed: folder move/copy and script duplicate conflicts/reopen, keyboard save, external adoption, dirty duplication/deletion guards, cancelled-quit preservation script/folder recycle-bin conflicts, tags/favourites upgrade and drafts, combined metadata filters, saved collection lifecycle/dormant scope, indexed source/rebuild, unsaved exclusion/external-source recovery, native archive cancellation, verified export and fresh-folder restore.');
     app.quit();
   } catch (error) {
     console.error(`Workspace editor smoke failed at ${stage}:`, error);
     try { if (!window.isDestroyed()) await js('window.astelvo.workspace.close()'); } catch { }
-    await rm(root, { recursive: true, force: true }).catch(() => {});
+    await rm(root, { recursive: true, force: true }).catch(() => {}); await rm(archiveArea, { recursive: true, force: true }).catch(() => {});
     clearTimeout(deadline); app.exit(1);
   }
 }).catch(error => { console.error(error); clearTimeout(deadline); app.exit(1); });

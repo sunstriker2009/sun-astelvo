@@ -24,3 +24,6 @@ Saved metadata collections extend the manifest with explicit schema v5 and exact
 
 
 [ADR-004](0004-source-search-index.md) selects a bounded host-memory inverted source-word index for the initial search implementation, with explicit rebuild, manifest binding and per-query source hash verification. It introduces no portable schema or cache files. The proposed persistent SQLite catalog, search-performance acceptance and collection predicate extensions remain open.
+
+
+[ADR-005](0005-workspace-archives.md) adds verified ZIP snapshot export and restore into an empty leased folder. Exact manifest bytes and every currently referenced source across live/recycle partitions are retained; unknown/unsafe members and integrity failures are rejected before target writes. Restore publishes the manifest last after staged-source verification. Historical/orphan revisions and unsaved drafts are outside this current-state snapshot. Loose-file import/merge, retention and Windows/power-loss acceptance remain open.
