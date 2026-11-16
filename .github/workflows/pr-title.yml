@@ -1,5 +1,6 @@
 name: PR title
 on:
+  workflow_dispatch:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 permissions:
@@ -9,12 +10,16 @@ jobs:
     name: conventional-title
     runs-on: ubuntu-latest
     env:
+      GH_TOKEN: ${{ github.token }}
       PR_TITLE: ${{ github.event.pull_request.title }}
     steps:
       - name: Validate Conventional Commit PR title
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            PR_TITLE=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --base main --json title --jq '.[0].title // empty')
+          fi
           if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|chore|refactor|test|ci|build|perf|revert)(\([a-zA-Z0-9._/-]+\))?!?:[[:space:]].+ ]]; then
             echo "::error::PR title must follow Conventional Commits, e.g. feat(api): add endpoint"
             exit 1
