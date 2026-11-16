@@ -1,5 +1,7 @@
 # ASTELVO master checklist
 
+Updated 2026-11-15. **Development paused until explicit owner resume.** [Continuation guide](../operations/CONTINUATION.md) records the verified checkpoint and restart order.
+
 [Full roadmap](../ASTELVO%20Roadmap.md). Record PRs and validation evidence beside completed items. [Owner development authorization](../operations/DEVELOPMENT-AUTHORIZATION.md) defers manual code review to final product acceptance and permits CI-gated squash auto-merge; configured GitHub protections remain unchanged.
 
 ### M0 — Foundation
@@ -81,44 +83,11 @@
 
 v1 acceptance: import JS/Python/C#, organize via folders and overlapping tags, save a collection, search/edit/format with undo, run saved input, stop an infinite loop without closing the app, recover an unsaved buffer and export/restore the workspace on another supported installation.
 
+### Additional merged safeguards
+
 - [x] Script write preflight rejects exhausted revisions/manifest size before staging source files; Release build and 25 host tests passed (2026-11-14). Windows acceptance remains open.
 
+- [x] Save preserves matching Monaco buffer undo, selection and scroll ([PR #21](https://github.com/sunstriker2009/sun-astelvo/pull/21)); full editor/Windows acceptance remains open.
+- [x] C# formatter cancellation-test ordering fix merged ([PR #38](https://github.com/sunstriker2009/sun-astelvo/pull/38)); [evidence](../operations/M2-CSHARP-FORMAT-VALIDATION.md).
 
-### Save buffer preservation — 2026-11-14
-
-Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
-
-
-### Script recycle bin — 2026-11-15
-
-Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](../operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.
-
-
-### Folder subtree recycle bin — 2026-11-15
-
-Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.
-
-
-### Tags and favourites — 2026-11-15
-
-Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.
-
-
-### Saved collections baseline — 2026-11-15
-
-Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](../operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.
-
-
-### Initial source-word index — 2026-11-15
-
-Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](../operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.
-
-
-### Workspace snapshot archives — 2026-11-15
-
-Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](../operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.
-
-
-### Loose-source import — 2026-11-15
-
-Locally implemented/validated in `feature/m1-loose-script-import`: native-selected JS/Python/C# UTF-8 copy, exact bytes/new IDs, explicit numbered name conflicts and single-commit complete-batch visibility. Release/TypeScript/renderer builds, 20 frontend/protocol tests, 57 host tests and headless Electron acceptance passed ([evidence](../operations/M1-IMPORT-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent catalog, collection extensions/examples and remaining M1–M5/Windows/clean-machine/final product gates stay open.
+Historical per-batch progress paragraphs were consolidated into the completed items and their linked evidence above. Do not use an older evidence file's “next” sentence as the current queue. Current next milestone and limits are in the [continuation guide](../operations/CONTINUATION.md).

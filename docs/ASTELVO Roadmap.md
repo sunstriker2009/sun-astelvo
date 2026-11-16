@@ -1,9 +1,11 @@
 # ASTELVO by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
-SUN-002 · `Sun.Workspace` · Updated 2026-11-14 · Architecture v0.1 (proposed)
+SUN-002 · `Sun.Workspace` · Updated 2026-11-15 · Architecture v0.1 (proposed)
 
-This revision supersedes the database-first kickoff. Name, tagline and product direction are approved. The Electron/Monaco/.NET foundation is implemented and automated Windows portable acceptance passed. The first M1 workspace/folder/script persistence slice is implemented; remaining organizer, editor and execution work is tracked below. SQL Server/PostgreSQL connections and Kubernetes forwarding move to future extensions.
+**Development is paused until explicit owner resume.** Start with [continuation and unfinished work](operations/CONTINUATION.md) for the verified checkpoint, next milestone and new-thread starter. The [master checklist](roadmap/MASTER-CHECKLIST.md) is the sole detailed completion checklist; this document describes product scope and architecture intent.
+
+This revision supersedes the database-first kickoff. Name, tagline and product direction are approved. The Electron/Monaco/.NET foundation is implemented and automated Windows portable acceptance passed. Organizer/import/archive, editor tabs/recovery and all three formatters are merged; remaining organizer/editor acceptance and all execution work are tracked in the master checklist. SQL Server/PostgreSQL connections and Kubernetes forwarding move to future extensions.
 
 ## Product and v1 scope
 
@@ -28,7 +30,7 @@ flowchart TD
   Supervisor --> Runtimes["Node.js, Python and .NET SDK"]
 ```
 
-All components above are planned. Script content is data in the renderer; never evaluate it inside Electron renderer, preload or main.
+The desktop bridge, workspace host, manifest/source storage, session search and formatter paths are implemented. Run coordination, script runtime adapters and persistent SQLite indexing remain planned; the diagram includes both implemented and proposed components. Script content is data in the renderer; never evaluate it inside Electron renderer, preload or main.
 
 | Boundary | Ownership |
 |---|---|
@@ -109,68 +111,22 @@ States: Planned → In progress → PR open → Merged → Validated → Complet
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|
 | M0 | Template, governance, architecture ADRs, shell/IPC spike and CI | Protected repo; packaged editor reaches worker; enforcement evidence recorded | Automated Windows foundation acceptance passed; interactive and governance evidence remains open |
-| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — workspace/folder/script persistence first slice; remaining organizer acceptance open |
+| M1 | Organizer and durable workspace | Folders/tags/collections/search persist; import/export, recovery and restore pass | In progress — organizer/recycle/tags/collections/session search/import/archive merged; persistent catalog, collection extensions and Windows acceptance open |
 | M2 | Everyday editor | Tabs, formatting, search/replace, recovery and external-edit conflicts work | In progress — tabs/recovery/automatic checkpoints/all three formatters merged (#32–#37); Windows and full acceptance open |
 | M3 | JavaScript/Python Try It | Snapshot execution, stdin, stop/timeout/tree cleanup and bounded output pass | Planned |
 | M4 | C# and reusable recipes | Compile/run diagnostics, saved inputs/arguments and examples work | Planned |
 | M5 | Desktop v1 packaging and acceptance | Clean-machine install, restore, accessibility and documented limitations pass | Planned |
 | M6 | Provider expansion | One real additional target validates extension contracts | Future, outside v1 |
 
-### M0 — Foundation
+### Detailed completion tracking
 
-- [x] Product name, ID and revised tagline approved.
-- [x] Inspect SUN template/provisioner and ORYVA milestone format; draft revised baseline.
-- [x] Generate product repository from template: `sunstriker2009/sun-astelvo`, public, `main`. Template files inspected; branch reports protected.
-- [ ] Discover exact template CI checks; plan/apply/verify governance and test failed-CI blocking.
-- [ ] Enforce sensitive-change review and real CODEOWNERS separately from baseline bootstrap.
-- [ ] ADR-001 shell/IPC; ADR-002 storage/recovery; ADR-003 local execution boundary.
-- [ ] .NET 10 solution, UI skeleton, dependency locks, worker lifecycle and packaged Monaco spike.
-- [ ] Add short backend/frontend CI with stable check names and concurrency cancellation.
-
-### M1 — Organizer
-
-- [ ] Workspace create/open, manifest schema, writer lease and recoverable writes.
-- [ ] Script/folder CRUD, move, duplicate, delete/restore and stable IDs.
-- [ ] Tags, favourites, smart collection filters and indexed search.
-- [ ] Safe import/export, index rebuild and backup/restore.
-- [ ] Useful standard-library examples requiring no packages/network.
-
-### M2 — Editor
-
-- [ ] Monaco tabs, language selection, shortcuts, find/replace and command palette.
-- [ ] Three formatter adapters with undo and failure handling.
-- [ ] Autosave/recovery and external-change conflict handling.
-- [ ] Separate edit/format/run capabilities and runtime setup view.
-
-### M3 — JavaScript/Python
-
-- [ ] Runtime discovery and explicit executable selection.
-- [ ] Shared supervisor/protocol, cancellation, output bounds and cleanup.
-- [ ] Node/Python adapters, stdin, arguments and run revision identity.
-- [ ] Missing-runtime guidance; errors, output, duration and exit-code display.
-- [ ] Infinite loop, child-process tree, output flood and app-shutdown acceptance.
-
-### M4 — C# and recipes
-
-- [ ] SDK discovery, controlled file-based compile/run and artifact cleanup.
-- [ ] Diagnostics/source mapping and explicit restore/dependency behaviour.
-- [ ] Saved recipes and named inputs with optional expected-output comparison.
-- [ ] Standard-library examples pass the shared runner contract across all three languages.
-
-### M5 — Release acceptance
-
-- [ ] Clean-machine installer/start/uninstall with runtimes present and missing.
-- [ ] Keyboard/focus accessibility, themes and readable results.
-- [ ] Forced shutdown recovery, import conflicts and fresh-workspace restore.
-- [ ] Proposed search target: 10,000 metadata records; warm p95 under 300 ms on a documented Windows reference machine. Agree measurement protocol before acceptance.
-- [ ] Set startup/memory budgets from M0 measurements; verify output stress and UI responsiveness.
-- [ ] Review IPC, imports, environment handling and supervision; document limits.
-- [ ] Dependency/license review, guide, release notes and SemVer.
-- [ ] Decide installer signing/update strategy. Publishing is a deliberate release step.
+See the [master checklist](roadmap/MASTER-CHECKLIST.md) for current M0–M5 item states and validation links, and [continuation](operations/CONTINUATION.md) for the unfinished-work inventory and next delivery. Avoid maintaining a second copy of checkbox state here.
 
 v1 acceptance: import JS/Python/C#, organize via folders and overlapping tags, save a collection, search/edit/format with undo, run saved input, stop an infinite loop without closing the app, recover an unsaved buffer and export/restore the workspace on another supported installation.
 
-## Repository provisioning: reuse existing SUN assets
+## Historical repository provisioning reference
+
+The following records the 2026-11-12 setup approach, not a command to rerun provisioning. Reconcile current FOUNDRY/SUN workflow documentation and live rules before changing settings; newer governance work may supersede these steps. This handoff does not establish current enforcement or change it.
 
 Inspected 2026-11-12: `sunstriker2009/sun-repo-template` is an enabled template; `sun-repo-bootstrap` operates on existing repos. It does not create repos. Template generation does not copy rulesets, secrets, environment approvals or CI history.
 
@@ -213,7 +169,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-astelvo/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. Branding, renderer policy and portable workspace schemas are unchanged.
+The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-astelvo/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. PR #38 subsequently merged the cancellation-test fix. PR #39 merged automatic branding ZIP installation and uploaded Workbench artwork without changing ASTELVO product identity. Use current canonical assets and manifests, not older chat references. Development remains paused; see the continuation guide before starting work.
 
 ## Sources
 
@@ -226,43 +182,3 @@ The foundation, organizer/import/archive, editor recovery and all three formatte
 - [.NET file-based apps](https://learn.microsoft.com/en-us/dotnet/core/sdk/file-based-apps)
 
 Validate dependency versions, formatter packaging and platform behaviour during implementation; this roadmap does not claim integrations already work.
-
-
-### Save buffer preservation — 2026-11-14
-
-Saving the current document no longer calls Monaco setValue when its content already matches the committed response. This retains the undo stack, selection and scroll while updating saved metadata and dirty state. Document switches and changed reload content still reset the buffer. Local TypeScript and renderer builds passed. Desktop undo/redo, Windows and manual acceptance were not run for this slice and remain open. Organizer delete/restore and remaining M1–M5 work remain unfinished. Owner-authorized CI-gated squash auto-merge applies.
-
-
-### Script recycle bin — 2026-11-15
-
-Implemented on `feature/m1-script-recycle-bin`: recoverable script deletion, explicit v1-to-v2 upgrade with exact metadata checkpoint, retained source revisions and identity-preserving restore with name/destination conflict handling. Release build, TypeScript/renderer builds, 14 frontend/protocol tests, 29 real-host tests and headless Electron workspace acceptance passed. [Detailed evidence](operations/M1-SCRIPT-RECYCLE-VALIDATION.md). Owner-authorized CI-gated squash auto-merge applies; merge/CI state must be checked on the PR. Folder subtree delete/restore is next. Windows organizer, interactive/clean-machine, final product review and remaining M1–M5 gates remain open; the M0 Windows baseline is unchanged.
-
-
-### Folder subtree recycle bin — 2026-11-15
-
-Locally implemented/validated in `feature/m1-folder-recycle`: atomic folder subtree delete/restore, explicit v3 upgrade/checkpoint, original IDs/source files and preservation of previously deleted script state. Release/TypeScript/renderer builds, 15 frontend/protocol tests, 34 distinct real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-FOLDER-RECYCLE-VALIDATION.md)). Check the new PR for required CI/merge state. Owner-authorized squash auto-merge applies. Windows organizer, interactive/clean-machine, final human product review and remaining M1–M5 gates stay open. Tags/favourites/collections/search is next.
-
-
-### Tags and favourites — 2026-11-15
-
-Locally implemented/validated in `feature/m1-tags-favourites`: explicit v4 migration/checkpoint, persisted classification across active/deleted scripts and folder trash, and combined metadata filters. Release/TypeScript/renderer builds, 16 frontend/protocol tests, 38 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-TAGS-FAVOURITES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Saved collections/indexed search and remaining M1–M5, Windows/clean-machine and final product acceptance stay open.
-
-
-### Saved collections baseline — 2026-11-15
-
-Locally implemented/validated in `feature/m1-saved-collections`: explicit v5 migration/checkpoints, saved folder/name/language/single-tag/favourite definitions, create/update/delete and stable dormant recycled-folder scopes. Release/TypeScript/renderer builds, 17 frontend/protocol tests, 42 real-host tests and headless Electron workspace acceptance passed ([evidence](operations/M1-COLLECTIONS-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Indexed source search/index rebuild, multiple-tag/recency collection extensions and remaining M1–M5/Windows/clean-machine/final product gates stay open.
-
-
-### Initial source-word index — 2026-11-15
-
-Locally implemented/validated in `feature/m1-source-search`: bounded read-only session index, whole-word Unicode AND, explicit rebuild, source/metadata freshness checks and combined metadata/collection filters. Release/TypeScript/renderer builds, 18 frontend/protocol tests, 47 real-host tests and headless Electron acceptance passed ([evidence](operations/M1-SOURCE-SEARCH-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent SQLite catalog, collection extensions, safe import/export/full backup and remaining M1–M5/Windows/performance/final product gates remain open.
-
-
-### Workspace snapshot archives — 2026-11-15
-
-Locally implemented/validated in `feature/m1-workspace-archives`: verified no-overwrite export, strict archive preflight and fresh-folder manifest-last restore preserving exact current metadata/source/recycle state. Release/TypeScript/renderer builds, 19 frontend/protocol tests, 52 distinct host tests and headless Electron acceptance passed ([evidence](operations/M1-ARCHIVES-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Loose imports/merge, history/retention, persistent catalog and remaining M1–M5/Windows/clean-machine/power-loss/final product gates stay open.
-
-
-### Loose-source import — 2026-11-15
-
-Locally implemented/validated in `feature/m1-loose-script-import`: native-selected JS/Python/C# UTF-8 copy, exact bytes/new IDs, explicit numbered name conflicts and single-commit complete-batch visibility. Release/TypeScript/renderer builds, 20 frontend/protocol tests, 57 host tests and headless Electron acceptance passed ([evidence](operations/M1-IMPORT-VALIDATION.md)). Check the new PR for CI/merge state. Owner-authorized squash auto-merge applies. Persistent catalog, collection extensions/examples and remaining M1–M5/Windows/clean-machine/final product gates stay open.
