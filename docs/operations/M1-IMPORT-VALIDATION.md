@@ -1,6 +1,6 @@
 # M1 loose-source import validation — 2026-11-15
 
-Branch `feature/m1-loose-script-import`, based on main `f97f16240572cd9b29a9502830282ca3f8f08acd`. Archive PR #30 is merged; [its CI passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43721899376). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding, protection, CI trigger/matrix, publishing or M6 changes.
+Branch `feature/m1-loose-script-import`, based on main `f97f16240572cd9b29a9502830282ca3f8f08acd`. Archive PR #30 is merged; [its CI passed](https://github.com/sunstriker2009/sun-workbench/actions/runs/43721899376). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding, protection, CI trigger/matrix, publishing or M6 changes.
 
 Implemented native multi-file import of local UTF-8 JavaScript/Python/C# source into a selected active folder/root, with explicit numbered-copy collision handling, independent IDs/source storage and one manifest commit. [ADR-006](../adr/0006-loose-script-import.md) records limits/recovery. Source/metadata bytes are preserved without schema migration or code execution; imports retain unsaved editor/label drafts.
 

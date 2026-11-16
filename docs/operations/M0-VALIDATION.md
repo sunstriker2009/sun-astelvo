@@ -1,6 +1,6 @@
 # M0 foundation validation
 
-Updated 2026-11-14. Automated Windows foundation acceptance passed on commit 517277cbee5bd958748d5e5a25bb77c1a2c81cb1 in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010), including package, bundled host and desktop smoke. The historical diagnostics below describe the foundation path and its earlier failures. M0 still has interactive/clean-machine and governance gates; this is not a release.
+Updated 2026-11-14. Automated Windows foundation acceptance passed on commit 517277cbee5bd958748d5e5a25bb77c1a2c81cb1 in [run 43609933010](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010), including package, bundled host and desktop smoke. The historical diagnostics below describe the foundation path and its earlier failures. M0 still has interactive/clean-machine and governance gates; this is not a release.
 
 The first M1 slice extends the formerly information-only bridge with validated workspace operations and a 4 MiB frame ceiling. Current storage/bridge limits and evidence live in [Workspace format v1](../architecture/WORKSPACE-FORMAT.md). Its new Windows editor acceptance remains pending.
 
@@ -22,7 +22,7 @@ The first M1 slice extends the formerly information-only bridge with validated w
 
 ### Fresh-install failure and fix
 
-[Windows acceptance run 1](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43584284121) failed with ENOENT while copying `node_modules/electron/dist`. Electron 45's npm package installs its binary lazily through its CLI; packaging copied the directory directly and never triggered the download. This was a packaging bootstrap defect, not a failed .NET publish or desktop-smoke result.
+[Windows acceptance run 1](https://github.com/sunstriker2009/sun-workbench/actions/runs/43584284121) failed with ENOENT while copying `node_modules/electron/dist`. Electron 45's npm package installs its binary lazily through its CLI; packaging copied the directory directly and never triggered the download. This was a packaging bootstrap defect, not a failed .NET publish or desktop-smoke result.
 
 The builder now invokes `node node_modules/electron/install.js` from the pinned installed package before publishing/staging, checks that the native executable exists, and propagates installer failures immediately. Existing matching installs reuse Electron's own installed/cache checks. Unit regression uses a fresh package fixture without dist and exercises installer failure and missing-output cases. A separate clean Linux dependency install without lifecycle scripts confirms that packaging prepares the real pinned runtime and completes; this does not establish Windows desktop acceptance.
 
@@ -30,7 +30,7 @@ After merging the fix, start a **new** manual workflow run on main. Re-running t
 
 ### Entry/readiness cycle and fix
 
-[Windows acceptance run 2](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43587093807) built the portable directory and passed both real bundled-host tests. It then timed out during desktop startup. The old diagnostic did not identify the stalled stage.
+[Windows acceptance run 2](https://github.com/sunstriker2009/sun-workbench/actions/runs/43587093807) built the portable directory and passed both real bundled-host tests. It then timed out during desktop startup. The old diagnostic did not identify the stalled stage.
 
 The main ESM entry awaited `app.whenReady()` at module scope. Electron 45.3.2's [entry loader](https://github.com/electron/electron/blob/v45.3.2/lib/browser/init.ts) awaits that module import before signaling app-code completion. Startup now registers a readiness callback and finishes entry evaluation immediately; window creation still occurs only after readiness. Errors from readiness/window/page startup share the same failure handler. A child-process regression imports the actual production entry with readiness held until after import and then verifies window/page startup after release; it fails with the old entry and passes with this fix.
 

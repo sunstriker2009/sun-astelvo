@@ -50,7 +50,7 @@ node node_modules/electron/cli.js desktop/smoke.mjs --ozone-platform=headless --
 
 Run it after building both sides. This selects a headless display backend and software rendering; the smoke still asserts renderer sandboxing, context isolation and web security. It does not replace Windows or interactive visual validation.
 
-Automated Windows foundation acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). The first organizer slice still needs its own Windows acceptance run; interactive/clean-machine and governance follow-ups remain open. See [workspace format/limits](../architecture/WORKSPACE-FORMAT.md). Save is manual; only explicitly checkpointed drafts can be recovered after a crash. Only acknowledged snapshots are protected; abrupt termination, reload and OS shutdown can interrupt the latest write. Windows/full shutdown acceptance remains open. See [tabs contract](../adr/0007-editor-tabs.md).
+Automated Windows foundation acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010). The first organizer slice still needs its own Windows acceptance run; interactive/clean-machine and governance follow-ups remain open. See [workspace format/limits](../architecture/WORKSPACE-FORMAT.md). Save is manual; only explicitly checkpointed drafts can be recovered after a crash. Only acknowledged snapshots are protected; abrupt termination, reload and OS shutdown can interrupt the latest write. Windows/full shutdown acceptance remains open. See [tabs contract](../adr/0007-editor-tabs.md).
 
 ## Workspace editor acceptance
 

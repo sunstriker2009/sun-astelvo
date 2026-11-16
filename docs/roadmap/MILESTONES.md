@@ -22,7 +22,7 @@ M1/M2 remain open for persistent SQLite indexing, richer collections/examples, c
 
 At this handoff, main was `29060a8f69015bb6825e8c58c4d46a02ce3c1467`, with no open PRs/issues before the handoff PR. Formatter PR #37 and cancellation-test follow-up #38 are merged; branding installer/artwork PR #39 is also merged. See [continuation](../operations/CONTINUATION.md) for exact links, CI limitations, pause status and a new-thread starter.
 
-- [M0 Windows foundation acceptance](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010) validates the older foundation only.
+- [M0 Windows foundation acceptance](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010) validates the older foundation only.
 - M1 completed-item evidence is linked from the [checklist](MASTER-CHECKLIST.md): move/copy/recycle, tags/collections/search, import and archive restore.
 - M2 evidence covers [tabs](../operations/M2-TABS-VALIDATION.md), [recovery](../operations/M2-RECOVERY-VALIDATION.md), [automatic checkpoints](../operations/M2-AUTOMATIC-CHECKPOINT-VALIDATION.md), [JavaScript](../operations/M2-JAVASCRIPT-FORMAT-VALIDATION.md), [Python](../operations/M2-PYTHON-FORMAT-VALIDATION.md) and [C#](../operations/M2-CSHARP-FORMAT-VALIDATION.md).
 - C# evidence records 41 frontend tests, 65 host tests against both Linux host builds and headless checks, with explicit sandbox/Windows/manual limitations. No application suites were repeated for the documentation handoff.

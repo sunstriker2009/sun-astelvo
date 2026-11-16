@@ -1,6 +1,6 @@
 # M1 tags/favourites validation — 2026-11-15
 
-Branch `feature/m1-tags-favourites`, based on main `30651e8a62d6b73b3d8396596d006b2131c74a1e`. Folder recycle PR #26 is merged; [its CI passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43701017839). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding, protection, CI schedule/matrix, release publication or M6 changes.
+Branch `feature/m1-tags-favourites`, based on main `30651e8a62d6b73b3d8396596d006b2131c74a1e`. Folder recycle PR #26 is merged; [its CI passed](https://github.com/sunstriker2009/sun-workbench/actions/runs/43701017839). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding, protection, CI schedule/matrix, release publication or M6 changes.
 
 Implemented persisted Unicode tags/favourite state, explicit v4 upgrade/checkpoints across all live/recycle partitions, metadata-only revision-checked classification writes, preservation through ordinary operations, and combined folder/name/language/tag/favourite list filters. Saved collections and indexed source search are not implemented by this batch.
 

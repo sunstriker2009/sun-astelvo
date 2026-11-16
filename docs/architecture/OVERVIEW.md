@@ -21,6 +21,6 @@ Formatting is implemented for JavaScript (Prettier worker), Python (Ruff WASM wo
 
 All script runners are planned M3/M4 work under [ADR-003](../adr/0003-local-execution.md): explicit runtime selection, immutable run snapshots, owned external processes, bounded output, cancellation/deadlines and verified tree cleanup. Formatter supervision is not a completed runner.
 
-Windows-first acceptance remains distinct from Linux checks. The older [automated Windows foundation run](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010) does not establish acceptance of current features. Clean-machine, accessibility, shutdown/power-loss, performance, governance and final product gates remain tracked in the checklist.
+Windows-first acceptance remains distinct from Linux checks. The older [automated Windows foundation run](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010) does not establish acceptance of current features. Clean-machine, accessibility, shutdown/power-loss, performance, governance and final product gates remain tracked in the checklist.
 
 Local script execution will use the user's OS permissions; renderer isolation does not sandbox scripts. SQL/database providers and Kubernetes remain outside v1.
