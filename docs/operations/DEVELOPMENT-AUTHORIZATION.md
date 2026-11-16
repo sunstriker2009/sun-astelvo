@@ -1,5 +1,11 @@
 # ASTELVO development authorization — 2026-11-14
 
+## Current operating state — 2026-11-15
+
+**Paused until the owner explicitly resumes.** The hourly ASTELVO task was verified disabled during the thread-archive documentation handoff. This document preserves the prior merge preference, not permission to restart work. Archiving chats or clearing memory does not resume implementation or scheduling. See [continuation guide](CONTINUATION.md). The current documentation-only request does not resume feature development.
+
+## Merge preference after explicit resume
+
 Owner instruction: “enable auto-merge on all next commits and skip human review. I will review the final product”. This supersedes the earlier per-PR human-review hold for ASTELVO implementation through the agreed local-workspace v1 (M1–M5), until the owner takes control or final handoff. The instruction is recorded here as the repository-specific review exception to SUN governance; it does not change the ecosystem policy for other repositories.
 
 Use feature branches and PRs, validate concrete changes and enable squash auto-merge for ready PRs. If existing stacks do not support auto-merge, use only supported GitHub merge operations after required checks succeed; do not self-approve or bypass enforced controls. No direct main commits, failed-check bypass, protection weakening, user-owned history rewrites, release publication or deployment is authorized.

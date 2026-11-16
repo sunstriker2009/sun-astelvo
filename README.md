@@ -8,9 +8,9 @@
 
 **A local code organizer and interactive scripting workspace.**
 
-Keep useful scripts in a workspace you control, organize them into folders, and return to your work without losing context. ASTELVO is growing toward a unified place to organize, edit and try JavaScript, Python and C# through local runtime adapters, with tags, smart collections and language-aware tools planned.
+Keep useful scripts in a workspace you control, organize them into folders, and return to your work without losing context. ASTELVO is growing toward a unified place to organize, edit and try JavaScript, Python and C# through local runtime adapters, with tags, saved collections and explicit formatting already available; script execution remains planned.
 
-[Local Development](docs/operations/LOCAL-DEVELOPMENT.md) · [Architecture](docs/architecture/OVERVIEW.md) · [Roadmap](docs/roadmap/MILESTONES.md)
+[Restart / Unfinished Work](docs/operations/CONTINUATION.md) · [Local Development](docs/operations/LOCAL-DEVELOPMENT.md) · [Architecture](docs/architecture/OVERVIEW.md) · [Roadmap](docs/roadmap/MILESTONES.md)
 
 </div>
 
@@ -18,9 +18,13 @@ Keep useful scripts in a workspace you control, organize them into folders, and 
 
 ## Project status
 
-The first M1 organizer slice supports creating/opening a local workspace, nested folders, and manually saving/reopening JavaScript, Python and C# scripts. Scripts can be renamed, moved between folders and assigned a language. Folders can be moved with their subtree to another parent or the workspace root while retaining identities and current editor changes. A saved script can be duplicated to an explicit name and destination with a new independent identity; unsaved or unadopted external edits must be saved first. A folder can also be duplicated with its saved scripts and nested folders as an independent subtree (8 MiB source limit per copy). Exclusive workspace ownership and hash checks protect against competing instances and stale saves. The editor currently opens one script at a time; runners, formatting, tags, search and import/export remain planned.
+**Development is paused until the owner explicitly resumes it.** See the [continuation guide](docs/operations/CONTINUATION.md) for the verified checkpoint, unfinished work and new-thread starter.
 
-Automated Windows portable acceptance passed for the merged foundation. The new organizer has local real-host and headless editor-flow validation; its Windows acceptance still needs a run after merge. Interactive clean-machine and governance follow-ups remain open.
+The merged preview supports durable local workspaces, nested folder/script moves and duplication, recycle/restore, tags/favourites, saved metadata collections, bounded in-memory source-word search, loose-file import and verified snapshot export/fresh-folder restore. Monaco tabs retain independent drafts and undo history, with find/replace, explicit recovery, opt-in automatic checkpoints and bundled JavaScript, Python and C# formatting.
+
+**All script runners remain unfinished.** M3 JavaScript/Python runtime discovery and execution is the next major feature milestone. Persistent SQLite indexing, richer collections and remaining M1/M2 acceptance also remain open. The [master checklist](docs/roadmap/MASTER-CHECKLIST.md) tracks these separately from M4 C#/recipes and M5 release acceptance.
+
+Automated Windows portable acceptance passed for the older foundation only. Current organizer/editor/formatter Windows, interactive clean-machine, shutdown/power-loss and final product acceptance remain open. This is an unsigned portable preview, not a completed v1 release.
 
 ## Development
 
@@ -34,6 +38,7 @@ The approved panoramic banner and transparent symbol are the raster sources of t
 
 ## Planning
 
+- [Continuation and unfinished work](docs/operations/CONTINUATION.md)
 - [ASTELVO Roadmap](docs/ASTELVO%20Roadmap.md)
 - [Milestones](docs/roadmap/MILESTONES.md)
 - [Master checklist](docs/roadmap/MASTER-CHECKLIST.md)
