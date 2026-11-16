@@ -1,4 +1,4 @@
-# ASTELVO by Sun — Architecture roadmap and milestones
+# WORKBENCH by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
 SUN-002 · `Sun.Workspace` · Updated 2026-11-15 · Architecture v0.1 (proposed)
@@ -169,7 +169,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-workbench/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. PR #38 subsequently merged the cancellation-test fix. PR #39 merged automatic branding ZIP installation and uploaded Workbench artwork without changing ASTELVO product identity. Use current canonical assets and manifests, not older chat references. Development remains paused; see the continuation guide before starting work.
+The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-workbench/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. PR #38 subsequently merged the cancellation-test fix. PR #39 merged automatic branding ZIP installation and uploaded Workbench artwork while the product was still named ASTELVO; the owner subsequently approved WORKBENCH. Use current canonical assets and manifests, not older chat references. Development remains paused; see the continuation guide before starting work.
 
 ## Sources
 

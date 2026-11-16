@@ -103,7 +103,7 @@ export function recoverySnapshot(value) {
     && Buffer.byteLength(JSON.stringify(value), 'utf8') <= 3 * 1024 * 1024;
 }
 export function assertResult(method, value, params) {
-  const valid = method === 'host.info' ? value?.product === 'ASTELVO' && value?.protocol === 1 && typeof value?.runtime === 'string'
+  const valid = method === 'host.info' ? value?.product === 'WORKBENCH' && value?.protocol === 1 && typeof value?.runtime === 'string'
     : method === 'format.csharp' ? fields(value, ['formatted', 'cursorOffset']) && typeof value.formatted === 'string' && value.formatted.isWellFormed() && Buffer.byteLength(value.formatted, 'utf8') <= MAX_SOURCE
       && Number.isSafeInteger(value.cursorOffset) && value.cursorOffset >= 0 && value.cursorOffset <= value.formatted.length
     : method === 'recovery.read' ? fields(value, ['workspaceId', 'token', 'snapshot', 'problem']) && id(value.workspaceId)

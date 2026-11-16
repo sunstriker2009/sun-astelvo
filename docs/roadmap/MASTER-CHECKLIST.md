@@ -1,8 +1,8 @@
-# ASTELVO master checklist
+# WORKBENCH master checklist
 
 Updated 2026-11-15. **Development paused until explicit owner resume.** [Continuation guide](../operations/CONTINUATION.md) records the verified checkpoint and restart order.
 
-[Full roadmap](../ASTELVO%20Roadmap.md). Record PRs and validation evidence beside completed items. [Owner development authorization](../operations/DEVELOPMENT-AUTHORIZATION.md) defers manual code review to final product acceptance and permits CI-gated squash auto-merge; configured GitHub protections remain unchanged.
+[Full roadmap](../WORKBENCH-Roadmap.md). Record PRs and validation evidence beside completed items. [Owner development authorization](../operations/DEVELOPMENT-AUTHORIZATION.md) defers manual code review to final product acceptance and permits CI-gated squash auto-merge; configured GitHub protections remain unchanged.
 
 ### M0 — Foundation
 

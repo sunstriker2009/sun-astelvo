@@ -7,7 +7,7 @@ internal sealed class WorkspaceSession : IDisposable
     private WorkspaceStore? workspace;
     public object? Execute(string method, JsonElement request)
     {
-        if (method == "host.info") return new { product = "ASTELVO", protocol = 1, runtime = Environment.Version.ToString() };
+        if (method == "host.info") return new { product = "WORKBENCH", protocol = 1, runtime = Environment.Version.ToString() };
         var p = request.TryGetProperty("params", out var parameters) && parameters.ValueKind == JsonValueKind.Object ? parameters : throw Invalid();
         if (method == "workspace.open")
         {

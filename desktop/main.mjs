@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, dialog } from 'electron';
 import path from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CsharpFormatter } from './csharp-formatter.mjs';
@@ -20,7 +21,11 @@ const deadline = smoke ? setTimeout(() => {
   console.error(`Desktop smoke timed out at: ${phase}`);
   app.exit(1);
 }, 20000) : undefined;
-app.setName('ASTELVO by Sun');
+// Keep the existing profile location when changing the public product name.
+const legacyProfile = path.join(app.getPath('appData'), 'ASTELVO by Sun');
+mkdirSync(legacyProfile, { recursive: true });
+app.setPath('userData', legacyProfile);
+app.setName('WORKBENCH by Sun');
 if (process.platform === 'win32') app.setAppUserModelId('Sun.ASTELVO');
 
 async function startDesktop() {
@@ -29,7 +34,7 @@ async function startDesktop() {
   session.defaultSession.setPermissionCheckHandler(() => false);
   const window = new BrowserWindow({
     width: 1280, height: 820, minWidth: 900, minHeight: 600,
-    title: 'ASTELVO by Sun', backgroundColor: '#0B1020',
+    title: 'WORKBENCH by Sun', backgroundColor: '#0B1020',
     icon: path.join(root, 'dist/icon.png'),
     webPreferences: { preload: path.join(root, 'desktop/preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true }
   });
@@ -108,7 +113,7 @@ async function startDesktop() {
     if (typeof upgrade !== 'boolean') return false;
     return dialog.showMessageBoxSync(window, {
       type: 'question', title: 'Move script to recycle bin?', message: 'Move the saved script to the recycle bin?',
-      detail: 'Source files are retained. Restore the script from the recycle bin.' + (upgrade ? ' This upgrades this workspace to format v2, which older ASTELVO builds cannot open. An exact v1 metadata backup will be retained beside workspace.json before upgrading.' : ''),
+      detail: 'Source files are retained. Restore the script from the recycle bin.' + (upgrade ? ' This upgrades this workspace to format v2, which older WORKBENCH builds cannot open. An exact v1 metadata backup will be retained beside workspace.json before upgrading.' : ''),
       buttons: [upgrade ? 'Upgrade and move to bin' : 'Move to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
@@ -117,7 +122,7 @@ async function startDesktop() {
     if (typeof upgrade !== 'boolean') return false;
     return dialog.showMessageBoxSync(window, {
       type: 'question', title: 'Move folder to recycle bin?', message: 'Move the selected folder and all nested folders/scripts to the recycle bin?',
-      detail: 'Source files and original identities are retained. Scripts already deleted stay deleted when the folder is restored.' + (upgrade ? ' This upgrades this workspace to format v3, which older ASTELVO builds cannot open. Exact pre-upgrade metadata is retained beside workspace.json.' : ''),
+      detail: 'Source files and original identities are retained. Scripts already deleted stay deleted when the folder is restored.' + (upgrade ? ' This upgrades this workspace to format v3, which older WORKBENCH builds cannot open. Exact pre-upgrade metadata is retained beside workspace.json.' : ''),
       buttons: [upgrade ? 'Upgrade and move folder to bin' : 'Move folder to bin', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
@@ -125,7 +130,7 @@ async function startDesktop() {
     trusted(event);
     return dialog.showMessageBoxSync(window, {
       type: 'question', title: 'Enable tags and favourites?', message: 'Upgrade this workspace to format v4 for tags and favourites?',
-      detail: 'Older ASTELVO builds cannot open format v4. Exact pre-upgrade metadata is retained beside workspace.json. Script identities, source files and recycle-bin contents are preserved.',
+      detail: 'Older WORKBENCH builds cannot open format v4. Exact pre-upgrade metadata is retained beside workspace.json. Script identities, source files and recycle-bin contents are preserved.',
       buttons: ['Upgrade and save', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
@@ -133,7 +138,7 @@ async function startDesktop() {
     trusted(event);
     return dialog.showMessageBoxSync(window, {
       type: 'question', title: 'Enable saved collections?', message: 'Upgrade this workspace to format v5 for saved collections?',
-      detail: 'Older ASTELVO builds cannot open format v5. Exact pre-upgrade metadata is retained beside workspace.json. Scripts, tags, favourites and recycle-bin contents are preserved.',
+      detail: 'Older WORKBENCH builds cannot open format v5. Exact pre-upgrade metadata is retained beside workspace.json. Scripts, tags, favourites and recycle-bin contents are preserved.',
       buttons: ['Upgrade and save collection', 'Cancel'], defaultId: 1, cancelId: 1, noLink: true
     }) === 0;
   });
@@ -173,7 +178,7 @@ async function startDesktop() {
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || choosing) return { ok: false, code: 'invalid_request', message: 'Invalid export revision or another selection is in progress.' };
     choosing = true;
     try {
-      const selection = await dialog.showSaveDialog(window, { title: 'Export saved workspace to a new archive', defaultPath: `ASTELVO-${Date.now()}.astelvo.zip`, filters: [{ name: 'ASTELVO workspace archive', extensions: ['zip'] }] });
+      const selection = await dialog.showSaveDialog(window, { title: 'Export saved workspace to a new archive', defaultPath: `WORKBENCH-${Date.now()}.astelvo.zip`, filters: [{ name: 'WORKBENCH workspace archive', extensions: ['zip'] }] });
       if (selection.canceled || !selection.filePath) return { ok: false, code: 'cancelled', message: 'Export cancelled.' };
       return await command('workspace.export', { archivePath: selection.filePath, expectedRevision });
     } finally { choosing = false; }
@@ -183,7 +188,7 @@ async function startDesktop() {
     if (choosing) return { ok: false, code: 'invalid_request', message: 'Another selection is in progress.' };
     choosing = true;
     try {
-      const archive = await dialog.showOpenDialog(window, { title: 'Choose ASTELVO archive to restore', properties: ['openFile'], filters: [{ name: 'ASTELVO workspace archive', extensions: ['zip'] }] });
+      const archive = await dialog.showOpenDialog(window, { title: 'Choose WORKBENCH archive to restore', properties: ['openFile'], filters: [{ name: 'WORKBENCH workspace archive', extensions: ['zip'] }] });
       if (archive.canceled || archive.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Restore cancelled.' };
       const target = await dialog.showOpenDialog(window, { title: 'Restore into an empty local folder', properties: ['openDirectory', 'createDirectory'] });
       if (target.canceled || target.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Restore cancelled.' };
@@ -195,7 +200,7 @@ async function startDesktop() {
     if (typeof create !== 'boolean' || choosing) return { ok: false, code: 'invalid_request', message: 'A folder selection is already in progress.' };
     choosing = true;
     try {
-      const selection = await dialog.showOpenDialog(window, { title: create ? 'Create workspace in an empty folder' : 'Open ASTELVO workspace', properties: ['openDirectory', 'createDirectory'] });
+      const selection = await dialog.showOpenDialog(window, { title: create ? 'Create workspace in an empty folder' : 'Open WORKBENCH workspace', properties: ['openDirectory', 'createDirectory'] });
       if (selection.canceled || selection.filePaths.length !== 1) return { ok: false, code: 'cancelled', message: 'Selection cancelled.' };
       return await command('workspace.open', { path: selection.filePaths[0], create });
     } finally { choosing = false; }
@@ -212,7 +217,7 @@ async function startDesktop() {
     try {
       if (smoke) report('requesting host information');
       return { ok: true, info: await getHost().info() };
-    } catch { return { ok: false, message: app.isPackaged ? 'Bundled host unavailable. Extract the complete portable folder and restart ASTELVO.' : 'Host unavailable. Build the .NET host, then restart ASTELVO.' }; }
+    } catch { return { ok: false, message: app.isPackaged ? 'Bundled host unavailable. Extract the complete portable folder and restart WORKBENCH.' : 'Host unavailable. Build the .NET host, then restart WORKBENCH.' }; }
   });
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {

@@ -1,6 +1,6 @@
-# ASTELVO architecture overview
+# WORKBENCH architecture overview
 
-[Continuation and unfinished work](../operations/CONTINUATION.md) · [Architecture roadmap](../ASTELVO%20Roadmap.md)
+[Continuation and unfinished work](../operations/CONTINUATION.md) · [Architecture roadmap](../WORKBENCH-Roadmap.md)
 
 The implemented desktop uses Electron/React/Monaco and an owned .NET 10 host with framed stdio. A narrow native picker/command bridge separates renderer code from workspace operations. Portable staging includes the workspace host; organizing/editing does not require a global .NET runtime.
 

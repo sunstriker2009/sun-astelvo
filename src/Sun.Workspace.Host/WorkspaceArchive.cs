@@ -189,6 +189,6 @@ internal sealed partial class WorkspaceStore
         if (!checksums.TryGetValue(entry.FullName, out var expected) || ~crc != expected) throw InvalidArchive();
     }
 
-    private static WorkspaceException InvalidArchive() => new("invalid_archive", "Unsupported or invalid workspace archive. Use an ASTELVO export with exact manifest/source entries; directories, links, extra paths, duplicates, ZIP64 and encrypted archives are rejected.");
+    private static WorkspaceException InvalidArchive() => new("invalid_archive", "Unsupported or invalid workspace archive. Use an WORKBENCH export with exact manifest/source entries; directories, links, extra paths, duplicates, ZIP64 and encrypted archives are rejected.");
     private static WorkspaceException ArchiveLimit() => new("limit_exceeded", "Workspace archive limit: 64 MiB referenced source, 1 MiB manifest, 1,001 entries and 66 MiB archive file. No partial archive was published.");
 }

@@ -45,7 +45,7 @@ const stage = await mkdtemp(path.join(portable, `.stage-${rid}-`));
 const bundle = path.join(stage, 'bundle');
 try {
   await stagePortable({ root, runtimeDirectory, hostDirectory, destination: bundle, platform: process.platform });
-  const destination = path.join(portable, `ASTELVO-${rid}`);
+  const destination = path.join(portable, `WORKBENCH-${rid}`);
   await rm(destination, { recursive: true, force: true });
   await rename(bundle, destination);
   console.log(`Portable preview ready: ${destination}`);

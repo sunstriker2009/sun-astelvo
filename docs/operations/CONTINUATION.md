@@ -1,10 +1,10 @@
-# ASTELVO continuation and unfinished work
+# WORKBENCH continuation and unfinished work
 
 Checkpoint: 2026-11-15 (America/Toronto). This is the restart entry point when the previous chat or memory is unavailable.
 
 ## Operating state: paused
 
-The owner paused ASTELVO development until explicitly resumed. The hourly **ASTELVO Development** task was verified disabled during this documentation handoff. Archiving a chat, clearing memory, reading this file or merging this documentation does not resume implementation or the schedule. This handoff is documentation-only authorization.
+The owner paused WORKBENCH development until explicitly resumed. The historically named hourly **ASTELVO Development** task was verified disabled during this documentation handoff. Archiving a chat, clearing memory, reading this file or merging this documentation does not resume implementation or the schedule. The naming migration does not resume implementation or scheduling.
 
 After an explicit resume, follow [development authorization](DEVELOPMENT-AUTHORIZATION.md): feature branches and PRs, CI-gated squash auto-merge, manual product review deferred until the final product. Required GitHub checks and enforced approvals still apply; no self-approval or protection bypass. Release publication requires a separate deliberate decision. Do not automatically recreate or enable a schedule merely because a new thread starts.
 
@@ -14,7 +14,7 @@ After an explicit resume, follow [development authorization](DEVELOPMENT-AUTHORI
 - Inspected main: [29060a8f69015bb6825e8c58c4d46a02ce3c1467](https://github.com/sunstriker2009/sun-workbench/commit/29060a8f69015bb6825e8c58c4d46a02ce3c1467).
 - No open PRs or issues were returned before this handoff PR was created. Re-query on restart.
 - [PR #38](https://github.com/sunstriker2009/sun-workbench/pull/38) merged as `c7eb8fd7`: cancellation-test race fix, no production change. [CI](https://github.com/sunstriker2009/sun-workbench/actions/runs/43761695295) passed.
-- [PR #39](https://github.com/sunstriker2009/sun-workbench/pull/39) merged: shared FOUNDRY branding ZIP installation and uploaded Workbench artwork. Do not restore older assets from chat memory. Product name/ID remain ASTELVO/SUN-002; the artwork change did not rename the product. App-specific branding copies and rollback pilot are separate follow-ups.
+- [PR #39](https://github.com/sunstriker2009/sun-workbench/pull/39) merged: shared FOUNDRY branding ZIP installation and uploaded Workbench artwork. Do not restore older assets from chat memory. At that checkpoint the product was still ASTELVO/SUN-002; the artwork change itself did not rename it. The owner subsequently approved WORKBENCH (same SUN-002). App-specific branding copies and rollback pilot are separate follow-ups.
 - Main [CI run 43793054504](https://github.com/sunstriker2009/sun-workbench/actions/runs/43793054504) passed. Main push CI skips application build jobs; it is not fresh full application acceptance. The final #39 PR [CI run](https://github.com/sunstriker2009/sun-workbench/actions/runs/43791414327) passed separately.
 
 This checkpoint is historical after later commits. Live repository contents, PR/check state and newer owner instructions take precedence. No application tests or Windows acceptance were rerun for this documentation audit.
@@ -29,7 +29,7 @@ This checkpoint is historical after later commits. Live repository contents, PR/
 | Execution (M3/M4) | Architecture proposal only; formatter process cleanup provides experience, not a completed runner | No JavaScript, Python or C# script runner exists |
 | Release (M5) | Foundation Windows automated portable evidence exists | Current-feature Windows, clean-machine and final human acceptance remain open |
 
-Use the [master checklist](../roadmap/MASTER-CHECKLIST.md) for item state and evidence; [milestones](../roadmap/MILESTONES.md) for delivery order; [architecture roadmap](../ASTELVO%20Roadmap.md) for design intent. Evidence files under this directory record the actual validation and its limits.
+Use the [master checklist](../roadmap/MASTER-CHECKLIST.md) for item state and evidence; [milestones](../roadmap/MILESTONES.md) for delivery order; [architecture roadmap](../WORKBENCH-Roadmap.md) for design intent. Evidence files under this directory record the actual validation and its limits.
 
 ## Next delivery after resume
 
@@ -65,7 +65,7 @@ No unavailable manual/Windows gate should prevent independent authorized impleme
 
 M6 covers optional execution providers: SQL Server/PostgreSQL connections, Kubernetes forwarding and other targets. Debugger, TTY/terminal, persistent REPL state, arbitrary selection execution, multi-file projects, team/cloud sync, AI execution, public plugin marketplace and automatic dependency installation are deferred. Archive merge/history retention are optional enhancements; current exports contain committed current state, not all revisions or recovery checkpoints.
 
-Do not expand scope to these items to avoid completing M1–M5. See the roadmap for design details. Shared branding installer/rollback development belongs primarily in FOUNDRY; ASTELVO adoption does not authorize product identity changes.
+Do not expand scope to these items to avoid completing M1–M5. See the roadmap for design details. Shared branding installer/rollback development belongs primarily in FOUNDRY; Future product identity changes require explicit owner approval.
 
 ## Restart procedure and validation
 
@@ -77,4 +77,4 @@ For each resumed batch, update checklist/milestones and a focused evidence file,
 
 ## Starter for a new thread
 
-> Resume ASTELVO development in sunstriker2009/sun-workbench from docs/operations/CONTINUATION.md. Verify current main, open PRs/checks, latest owner instructions, roadmap/checklist, ADRs and SUN governance before changing code. Continue the next unfinished v1 batch, beginning with M3 runtime discovery/capability setup unless newer repository evidence changes the order, while retaining all open M1/M2 and acceptance work. Use feature branches and CI-gated squash auto-merge under the recorded review exception; I will review the final product. Do not bypass checks or publish a release. This resumes implementation for this request; ask separately only if you need a decision about scheduling future runs.
+> Resume WORKBENCH development in sunstriker2009/sun-workbench from docs/operations/CONTINUATION.md. Verify current main, open PRs/checks, latest owner instructions, roadmap/checklist, ADRs and SUN governance before changing code. Continue the next unfinished v1 batch, beginning with M3 runtime discovery/capability setup unless newer repository evidence changes the order, while retaining all open M1/M2 and acceptance work. Use feature branches and CI-gated squash auto-merge under the recorded review exception; I will review the final product. Do not bypass checks or publish a release. This resumes implementation for this request; ask separately only if you need a decision about scheduling future runs.

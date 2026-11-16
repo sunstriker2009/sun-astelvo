@@ -1,6 +1,6 @@
-# ASTELVO milestones
+# WORKBENCH milestones
 
-Updated 2026-11-15. **Paused until explicit owner resume.** [Continuation guide](../operations/CONTINUATION.md). [Full roadmap](../ASTELVO%20Roadmap.md). Keep planning, merged work, CI evidence and manual validation distinct.
+Updated 2026-11-15. **Paused until explicit owner resume.** [Continuation guide](../operations/CONTINUATION.md). [Full roadmap](../WORKBENCH-Roadmap.md). Keep planning, merged work, CI evidence and manual validation distinct.
 
 | Milestone | Deliverable | Exit gate | State |
 |---|---|---|---|

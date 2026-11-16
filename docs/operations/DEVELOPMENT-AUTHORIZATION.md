@@ -1,8 +1,8 @@
-# ASTELVO development authorization — 2026-11-14
+# WORKBENCH development authorization — 2026-11-14
 
 ## Current operating state — 2026-11-15
 
-**Paused until the owner explicitly resumes.** The hourly ASTELVO task was verified disabled during the thread-archive documentation handoff. This document preserves the prior merge preference, not permission to restart work. Archiving chats or clearing memory does not resume implementation or scheduling. See [continuation guide](CONTINUATION.md). The current documentation-only request does not resume feature development.
+**Paused until the owner explicitly resumes.** The hourly ASTELVO task was verified disabled during the thread-archive documentation handoff. This document preserves the prior merge preference, not permission to restart work. Archiving chats or clearing memory does not resume implementation or scheduling. See [continuation guide](CONTINUATION.md). The product naming migration does not resume feature development.
 
 ## Merge preference after explicit resume
 
@@ -11,3 +11,7 @@ Owner instruction: “enable auto-merge on all next commits and skip human revie
 Use feature branches and PRs, validate concrete changes and enable squash auto-merge for ready PRs. If existing stacks do not support auto-merge, use only supported GitHub merge operations after required checks succeed; do not self-approve or bypass enforced controls. No direct main commits, failed-check bypass, protection weakening, user-owned history rewrites, release publication or deployment is authorized.
 
 Manual code review is deferred to final product review. Existing configured approvals, if any, still apply until the owner changes them. Windows organizer, interactive clean-machine, recovery and other acceptance gates remain unverified until actually run; auto-merge is not acceptance evidence. Record final merged work, remaining PRs, test evidence and manual acceptance gaps at v1 handoff. This exception is reviewed at that handoff and expires when the owner takes control or v1 delivery ends.
+
+## Product rename
+
+The owner approved ASTELVO → WORKBENCH and repository `sun-workbench`. The recorded historical instructions above apply to the same SUN-002 product (`Sun.Workspace`). This naming migration does not resume implementation or the historically named ASTELVO Development schedule.

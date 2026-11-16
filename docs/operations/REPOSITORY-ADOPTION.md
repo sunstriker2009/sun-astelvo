@@ -1,4 +1,4 @@
-# ASTELVO repository adoption
+# WORKBENCH repository adoption
 
 Inspected 2026-11-12.
 

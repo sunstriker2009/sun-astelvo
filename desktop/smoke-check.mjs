@@ -23,7 +23,7 @@ export async function verifyDesktop(window, { packaged }) {
   assert.deepEqual(result.bridge.sort(), ['cancelCsharpFormat', 'confirmClassificationUpgrade', 'confirmCollectionsUpgrade', 'confirmDeleteCollection', 'confirmDeleteFolder', 'confirmDeleteScript', 'confirmDiscard', 'confirmDiscardRecovery', 'formatCsharp', 'hostInfo', 'onPrepareClose', 'workspace']);
   assert.deepEqual(result.workspaceMethods.sort(), ['classifyScript', 'clearRecovery', 'close', 'create', 'createCollection', 'createFolder', 'createScript', 'deleteCollection', 'deleteFolder', 'deleteScript', 'duplicateFolder', 'duplicateScript', 'exportArchive', 'importScripts', 'moveFolder', 'open', 'readRecovery', 'readScript', 'renameFolder', 'restoreArchive', 'restoreFolder', 'restoreScript', 'saveScript', 'searchSource', 'updateCollection', 'writeRecovery']);
   assert.equal(result.host.ok, true, result.host.message);
-  assert.equal(result.host.info.product, 'ASTELVO');
+  assert.equal(result.host.info.product, 'WORKBENCH');
   assert.equal(result.host.info.protocol, 1);
   console.log(`Desktop smoke passed (${packaged ? 'packaged' : 'development'}): Monaco, renderer isolation, real host IPC.`);
 }

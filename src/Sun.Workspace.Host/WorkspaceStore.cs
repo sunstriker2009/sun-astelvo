@@ -77,7 +77,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         PlainPath(lockPath);
         FileStream lease;
         try { lease = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { throw Error("locked", "This workspace is already open in another ASTELVO instance, or its lock is unavailable."); }
+        catch (IOException) { throw Error("locked", "This workspace is already open in another WORKBENCH instance, or its lock is unavailable."); }
         try
         {
             var manifestPath = Path.Combine(root, "workspace.json");
@@ -151,7 +151,7 @@ internal sealed partial class WorkspaceStore : IDisposable
     private byte[] VerifiedSearchSource(Script script)
     {
         var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
-        if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A saved source changed outside ASTELVO. Reload and save the reviewed script before searching. No external bytes were adopted or overwritten.");
+        if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A saved source changed outside WORKBENCH. Reload and save the reviewed script before searching. No external bytes were adopted or overwritten.");
         return bytes;
     }
 
@@ -227,7 +227,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         foreach (var script in originals)
         {
             var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
-            if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A folder source changed outside ASTELVO. Reload and save the reviewed script before copying.");
+            if (Hash(bytes) != script.SourceHash) throw Error("conflict", "A folder source changed outside WORKBENCH. Reload and save the reviewed script before copying.");
             _ = Utf8.GetString(bytes);
             totalBytes += bytes.Length;
             if (totalBytes > maxCopyBytes) throw Error("limit_exceeded", "Folder copies are limited to 8 MiB of source per operation in this preview.");
@@ -277,7 +277,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         CheckManifest();
         var original = Find(id);
         var current = ReadBytes(SourcePath(original), MaxSourceBytes);
-        if (Hash(current) != expectedHash) throw Error("conflict", "This script changed outside ASTELVO. Your editor buffer is intact; reopen the script to review the external version.");
+        if (Hash(current) != expectedHash) throw Error("conflict", "This script changed outside WORKBENCH. Your editor buffer is intact; reopen the script to review the external version.");
         var bytes = Utf8.GetBytes(content);
         if (bytes.Length > MaxSourceBytes) throw Error("limit_exceeded", "Scripts are limited to 256 KiB in this preview.");
         var script = original with { Name = Name(name), Language = Language(language), FolderId = folderId, SourceHash = Hash(bytes) };
@@ -298,7 +298,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         var original = Find(id);
         VerifyCommittedSource(original, expectedHash);
         if (manifest.SchemaVersion == 1 && !allowUpgrade)
-            throw Error("upgrade_required", "Script deletion requires workspace format v2. Confirm the upgrade; older ASTELVO builds cannot open v2 workspaces.");
+            throw Error("upgrade_required", "Script deletion requires workspace format v2. Confirm the upgrade; older WORKBENCH builds cannot open v2 workspaces.");
         var next = manifest with
         {
             SchemaVersion = Math.Max(2, manifest.SchemaVersion),
@@ -333,7 +333,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         CheckRevision(expectedRevision);
         if (!manifest.Folders.Any(f => f.Id == id)) throw Error("not_found", "Folder not found.");
         if (manifest.SchemaVersion < 3 && !allowUpgrade)
-            throw Error("upgrade_required", "Folder deletion requires workspace format v3. Confirm the upgrade; older ASTELVO builds cannot open v3 workspaces.");
+            throw Error("upgrade_required", "Folder deletion requires workspace format v3. Confirm the upgrade; older WORKBENCH builds cannot open v3 workspaces.");
         var subtree = new HashSet<Guid> { id };
         var pending = new Queue<Guid>(); pending.Enqueue(id);
         while (pending.TryDequeue(out var parent))
@@ -384,7 +384,7 @@ internal sealed partial class WorkspaceStore : IDisposable
         var classification = new Classification(tags, favourite);
         ValidateClassification(classification);
         if (manifest.SchemaVersion < 4 && !allowUpgrade)
-            throw Error("upgrade_required", "Tags and favourites require workspace format v4. Confirm the upgrade; older ASTELVO builds cannot open v4 workspaces.");
+            throw Error("upgrade_required", "Tags and favourites require workspace format v4. Confirm the upgrade; older WORKBENCH builds cannot open v4 workspaces.");
         var next = UpgradeMetadata(4);
         next = next with { Scripts = next.Scripts.Select(script => script.Id == id ? script with { Classification = classification } : script).ToList() };
         PreflightCommit(next);
@@ -397,7 +397,7 @@ internal sealed partial class WorkspaceStore : IDisposable
     {
         CheckRevision(expectedRevision);
         if (manifest.SchemaVersion < 5 && !allowUpgrade)
-            throw Error("upgrade_required", "Saved collections require workspace format v5. Confirm the upgrade; older ASTELVO builds cannot open v5 workspaces.");
+            throw Error("upgrade_required", "Saved collections require workspace format v5. Confirm the upgrade; older WORKBENCH builds cannot open v5 workspaces.");
         var collection = new SmartCollection(Guid.NewGuid(), Name(name), filter);
         var next = UpgradeMetadata(5);
         next = next with { Collections = [.. next.Collections!, collection] };
@@ -488,7 +488,7 @@ internal sealed partial class WorkspaceStore : IDisposable
     {
         var bytes = ReadBytes(SourcePath(script), MaxSourceBytes);
         if (script.SourceHash != expectedHash || Hash(bytes) != expectedHash)
-            throw Error("conflict", "The source changed outside ASTELVO. Review it before deleting or restoring; no source was overwritten.");
+            throw Error("conflict", "The source changed outside WORKBENCH. Review it before deleting or restoring; no source was overwritten.");
         _ = Utf8.GetString(bytes);
     }
 
