@@ -32,7 +32,7 @@ npm run smoke:portable
 
 The build machine needs Node.js 24, the .NET 10 SDK, and dependency restore access. Before publishing, the package command explicitly runs the pinned local Electron installer and checks the native executable. It then publishes a self-contained .NET host, rebuilds the renderer, and stages an explicit app allowlist with that Electron distribution. It preserves Electron and runtime-pack license notices. No additional packaging dependency is installed, and no broad npm lifecycle-script approval is enabled.
 
-The output is `artifacts/portable/ASTELVO-win-x64/` or the matching platform/RID. Extract/copy the **whole folder**, then start `ASTELVO.exe` on Windows or `./astelvo` on Linux. Both runtimes are included. Packaged host startup never falls back to a globally installed runtime. macOS and Linux musl are outside this spike.
+The output is `artifacts/portable/WORKBENCH-win-x64/` or the matching platform/RID. Extract/copy the **whole folder**, then start `WORKBENCH.exe` on Windows or `./workbench` on Linux. Both runtimes are included. Packaged host startup never falls back to a globally installed runtime. macOS and Linux musl are outside this spike.
 
 The application window uses the approved raster icon; the native executable retains Electron's default resource icon/metadata. This is an unsigned portable preview. Signing, installer/uninstaller, native resource branding and updates remain M5 work.
 
@@ -50,7 +50,7 @@ node node_modules/electron/cli.js desktop/smoke.mjs --ozone-platform=headless --
 
 Run it after building both sides. This selects a headless display backend and software rendering; the smoke still asserts renderer sandboxing, context isolation and web security. It does not replace Windows or interactive visual validation.
 
-Automated Windows foundation acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010). The first organizer slice still needs its own Windows acceptance run; interactive/clean-machine and governance follow-ups remain open. See [workspace format/limits](../architecture/WORKSPACE-FORMAT.md). Save is manual; only explicitly checkpointed drafts can be recovered after a crash. Only acknowledged snapshots are protected; abrupt termination, reload and OS shutdown can interrupt the latest write. Windows/full shutdown acceptance remains open. See [tabs contract](../adr/0007-editor-tabs.md).
+Automated Windows foundation acceptance passed in [run 43609933010](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010). The first organizer slice still needs its own Windows acceptance run; interactive/clean-machine and governance follow-ups remain open. See [workspace format/limits](../architecture/WORKSPACE-FORMAT.md). Save is manual; only explicitly checkpointed drafts can be recovered after a crash. Only acknowledged snapshots are protected; abrupt termination, reload and OS shutdown can interrupt the latest write. Windows/full shutdown acceptance remains open. See [tabs contract](../adr/0007-editor-tabs.md).
 
 ## Workspace editor acceptance
 

@@ -173,7 +173,7 @@ test('invalid requests and oversize scripts do not consume the client pending bu
     await assert.rejects(save(host, initial.document, 'x'.repeat(MAX_SOURCE + 1)), /Invalid content/);
     await assert.rejects(host.request('script.read', { id: '../../outside' }), /Invalid id/);
   }
-  assert.equal((await host.info()).product, 'ASTELVO');
+  assert.equal((await host.info()).product, 'WORKBENCH');
   assert.equal((await host.request('script.read', { id: initial.document.id })).content, '');
 }));
 
@@ -252,7 +252,7 @@ test('folder move detects external metadata conflicts including no-ops and prese
     { id: state.folders[0].id, parentId: '../../escape' },
     { id: state.folders[0].id, parentId: null, path: root }
   ]) await assert.rejects(host.request('folder.move', params), /invalid|Invalid/);
-  assert.equal((await host.info()).product, 'ASTELVO');
+  assert.equal((await host.info()).product, 'WORKBENCH');
 }));
 
 const duplicate = (host, document, name, folderId = document.folderId) => host.request('script.duplicate', { id: document.id, name, folderId, expectedHash: document.hash });
@@ -1241,7 +1241,7 @@ test('source query bounds and invalid UTF-8 fail without writes or partial resul
   const state = await host.request('workspace.open', { path: root, create: false });
   await assert.rejects(searchSource(host, state, 'word'), { code: 'invalid_request' });
   assert.deepEqual(await readFile(source(root, metadata.scripts[0])), invalid);
-  assert.equal((await host.info()).product, 'ASTELVO');
+  assert.equal((await host.info()).product, 'WORKBENCH');
 }));
 
 test('source index enforces aggregate byte and vocabulary caps without publishing a partial cache', async () => {
@@ -1628,7 +1628,7 @@ test('recovery bounds escaped source and serialized aggregate before replacing d
   await writeFile(file, JSON.stringify(large));
   const expanded = await host.request('recovery.read');
   assert.ok(expanded.problem); assert.equal(expanded.snapshot, null);
-  assert.equal((await host.info()).product, 'ASTELVO', 'Externally compact data must not produce an oversized response/disconnect');
+  assert.equal((await host.info()).product, 'WORKBENCH', 'Externally compact data must not produce an oversized response/disconnect');
   await writeFile(file, originalBytes);
   await rename(file, external); await symlink(external, file);
   try {

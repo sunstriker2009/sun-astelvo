@@ -490,7 +490,7 @@ function App() {
     && (!favouritesOnly || s.classification?.favourite)).sort((a, b) => a.name.localeCompare(b.name));
 
   return <main>
-    <header><div className="brand"><img src="icon.png" alt="" /><div><strong>ASTELVO <small>by Sun</small></strong><p>Organize. Script. Explore.</p></div></div><span className="badge">Organizer preview</span></header>
+    <header><div className="brand"><img src="icon.png" alt="" /><div><strong>WORKBENCH <small>by Sun</small></strong><p>Organize. Script. Explore.</p></div></div><span className="badge">Organizer preview</span></header>
     <div className="workspace-actions">
       <button disabled={busy} onClick={() => chooseWorkspace(true)}>New workspace</button>
       <button disabled={busy} onClick={() => chooseWorkspace(false)}>Open workspace</button>

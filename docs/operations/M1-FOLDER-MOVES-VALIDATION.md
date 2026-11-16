@@ -1,6 +1,6 @@
 # M1 folder move validation — 2026-11-14
 
-Status: implemented and locally validated in `feature/m1-folder-moves`, a stacked draft on open [PR #14](https://github.com/sunstriker2009/sun-astelvo/pull/14), head `95cd7e1ab0bbedbaab91f929a7eff4750c9718f3`. This is not merged work or completion of M1. No AGENTS.md was found in repository search; SUN Git Workflow policy applies.
+Status: implemented and locally validated in `feature/m1-folder-moves`, a stacked draft on open [PR #14](https://github.com/sunstriker2009/sun-workbench/pull/14), head `95cd7e1ab0bbedbaab91f929a7eff4750c9718f3`. This is not merged work or completion of M1. No AGENTS.md was found in repository search; SUN Git Workflow policy applies.
 
 ## Behavior and integrity
 
@@ -23,6 +23,6 @@ No Windows workflow, packaged application rebuild, interactive desktop/clean-mac
 
 ## Remaining gates
 
-Review and merge PR #14 before retargeting this stacked draft to main; refresh required CI on the final merge candidate. Human filesystem/IPC review and new organizer Windows acceptance remain open. The M0 Windows baseline [run 43609933010](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010) applies only to foundation commit `517277c`, not these organizer changes. Interactive/clean-machine and governance enforcement follow-ups are distinct open gates.
+Review and merge PR #14 before retargeting this stacked draft to main; refresh required CI on the final merge candidate. Human filesystem/IPC review and new organizer Windows acceptance remain open. The M0 Windows baseline [run 43609933010](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010) applies only to foundation commit `517277c`, not these organizer changes. Interactive/clean-machine and governance enforcement follow-ups are distinct open gates.
 
 Duplicate/delete/restore, tags/favourites/collections/search, safe import/export and backup/restore, M2–M5 and release acceptance remain unfinished. Local scripts will use the user's OS permissions; renderer isolation does not sandbox script execution.

@@ -1,14 +1,14 @@
 <div align="center">
 
-<img src="branding/assets/readme-banner.png" alt="ASTELVO by Sun — layered script files over a sun arc. Organize. Script. Explore." width="100%" />
+<img src="branding/assets/readme-banner.png" alt="WORKBENCH by Sun — approved Workbench W2 banner. Organize. Script. Explore." width="100%" />
 
-# ASTELVO by Sun
+# WORKBENCH by Sun
 
 **Organize. Script. Explore.**
 
 **A local code organizer and interactive scripting workspace.**
 
-Keep useful scripts in a workspace you control, organize them into folders, and return to your work without losing context. ASTELVO is growing toward a unified place to organize, edit and try JavaScript, Python and C# through local runtime adapters, with tags, saved collections and explicit formatting already available; script execution remains planned.
+Keep useful scripts in a workspace you control, organize them into folders, and return to your work without losing context. WORKBENCH is growing toward a unified place to organize, edit and try JavaScript, Python and C# through local runtime adapters, with tags, saved collections and explicit formatting already available; script execution remains planned.
 
 [Restart / Unfinished Work](docs/operations/CONTINUATION.md) · [Local Development](docs/operations/LOCAL-DEVELOPMENT.md) · [Architecture](docs/architecture/OVERVIEW.md) · [Roadmap](docs/roadmap/MILESTONES.md)
 
@@ -39,7 +39,7 @@ The approved panoramic banner and transparent symbol are the raster sources of t
 ## Planning
 
 - [Continuation and unfinished work](docs/operations/CONTINUATION.md)
-- [ASTELVO Roadmap](docs/ASTELVO%20Roadmap.md)
+- [WORKBENCH Roadmap](docs/WORKBENCH-Roadmap.md)
 - [Milestones](docs/roadmap/MILESTONES.md)
 - [Master checklist](docs/roadmap/MASTER-CHECKLIST.md)
 - [Architecture](docs/architecture/OVERVIEW.md)

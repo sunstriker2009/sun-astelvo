@@ -76,8 +76,8 @@ for (const platform of ['win32', 'linux']) {
       await fixture(path.join(host, 'LICENSE.txt'), 'host-license');
       await fixture(path.join(host, 'nested/runtime-file'));
       await stagePortable({ root, runtimeDirectory: runtime, hostDirectory: host, destination: output, platform });
-      await access(path.join(output, platform === 'win32' ? 'ASTELVO.exe' : 'astelvo'));
-      if (platform === 'win32') await access(path.join(output, 'ASTELVO_wer.dll'));
+      await access(path.join(output, platform === 'win32' ? 'WORKBENCH.exe' : 'workbench'));
+      if (platform === 'win32') await access(path.join(output, 'WORKBENCH_wer.dll'));
       const application = path.join(output, 'resources/app');
       assert.equal(JSON.parse(await readFile(path.join(application, 'package.json'), 'utf8')).dependencies, undefined);
       await access(path.join(application, 'dist/editor.worker.js'));

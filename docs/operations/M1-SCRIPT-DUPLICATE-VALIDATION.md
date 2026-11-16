@@ -1,6 +1,6 @@
 # M1 script duplication validation — 2026-11-14
 
-Status: implemented and locally validated in `feature/m1-script-duplicate`, stacked on open draft [PR #15](https://github.com/sunstriker2009/sun-astelvo/pull/15), head `1a24b421ccb2b07642065cb41d5f46d4e1b9798f`. Parent PR #14 also remains open. This is not merged work or completion of M1. PR #15 CI [run 43622957290](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43622957290) passed; this is separate from new duplication validation below. Repository search found no AGENTS.md. SUN governance still requires human review of filesystem/IPC changes.
+Status: implemented and locally validated in `feature/m1-script-duplicate`, stacked on open draft [PR #15](https://github.com/sunstriker2009/sun-workbench/pull/15), head `1a24b421ccb2b07642065cb41d5f46d4e1b9798f`. Parent PR #14 also remains open. This is not merged work or completion of M1. PR #15 CI [run 43622957290](https://github.com/sunstriker2009/sun-workbench/actions/runs/43622957290) passed; this is separate from new duplication validation below. Repository search found no AGENTS.md. SUN governance still requires human review of filesystem/IPC changes.
 
 ## Behavior
 

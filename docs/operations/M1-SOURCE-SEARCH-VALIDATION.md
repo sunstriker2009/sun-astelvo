@@ -1,6 +1,6 @@
 # M1 indexed source search validation — 2026-11-15
 
-Branch `feature/m1-source-search`, based on main `872422bd7e5eb8a2fba9dda292f6ec367b601fe1`. Saved collections PR #28 is merged; [its CI passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43711387643). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final manual product review. No branding, protection, CI trigger/matrix, publishing or M6 changes.
+Branch `feature/m1-source-search`, based on main `872422bd7e5eb8a2fba9dda292f6ec367b601fe1`. Saved collections PR #28 is merged; [its CI passed](https://github.com/sunstriker2009/sun-workbench/actions/runs/43711387643). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final manual product review. No branding, protection, CI trigger/matrix, publishing or M6 changes.
 
 Implemented a bounded host-memory inverted index over committed active source, explicit rebuild, per-query manifest/source integrity checks, typed search IPC and intersection with metadata/collection filters. [ADR-004](../adr/0004-source-search-index.md) describes whole-word Unicode AND semantics and budgets. No new dependency/cache file/schema migration. Persistent SQLite catalog and Windows performance acceptance remain open.
 

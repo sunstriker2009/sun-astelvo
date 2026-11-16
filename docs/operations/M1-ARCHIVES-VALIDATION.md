@@ -1,6 +1,6 @@
 # M1 workspace archive validation — 2026-11-15
 
-Branch `feature/m1-workspace-archives`, based on main `030b0aed90370db8d900466c135abcf89d4d41c4`. Source-search PR #29 is merged; [its CI passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43716426889). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding/protection/CI trigger/matrix, publishing or M6 changes.
+Branch `feature/m1-workspace-archives`, based on main `030b0aed90370db8d900466c135abcf89d4d41c4`. Source-search PR #29 is merged; [its CI passed](https://github.com/sunstriker2009/sun-workbench/actions/runs/43716426889). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final product review. No branding/protection/CI trigger/matrix, publishing or M6 changes.
 
 Implemented native-selected current-state workspace snapshot export, verified no-overwrite publication, and restore into a fresh empty leased folder. Exact schema/metadata and current referenced source across all active/recycle partitions are retained. [ADR-005](../adr/0005-workspace-archives.md) records formats, resource limits, validation, commit/recovery behaviour and exclusions. No dependency/schema migration or script execution is added. Loose-file import/merge and historical backups remain separate.
 

@@ -1,4 +1,4 @@
-# ASTELVO by Sun — Architecture roadmap and milestones
+# WORKBENCH by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
 SUN-002 · `Sun.Workspace` · Updated 2026-11-15 · Architecture v0.1 (proposed)
@@ -130,7 +130,7 @@ The following records the 2026-11-12 setup approach, not a command to rerun prov
 
 Inspected 2026-11-12: `sunstriker2009/sun-repo-template` is an enabled template; `sun-repo-bootstrap` operates on existing repos. It does not create repos. Template generation does not copy rulesets, secrets, environment approvals or CI history.
 
-1. Completed: `sunstriker2009/sun-astelvo` exists with template files, public visibility and `main`. Retain the selected visibility. The following is the reference adoption procedure; audit existing protections before any further apply.
+1. Completed: `sunstriker2009/sun-workbench` exists with template files, public visibility and `main`. Retain the selected visibility. The following is the reference adoption procedure; audit existing protections before any further apply.
 2. Wait for `repository-validation` on main; open the architecture documentation PR so PR-only `conventional-title` runs. Keep it open for bootstrap discovery.
 3. Scope existing `SUN_REPO_ADMIN_TOKEN` to the new target and verify provisioning environments. Never paste tokens into chat or commits.
 4. Use the existing workflow with the exact inputs below, plan → apply → verify. Apply may wait for the existing administration environment reviewer.
@@ -138,10 +138,10 @@ Inspected 2026-11-12: `sunstriker2009/sun-repo-template` is an enabled template;
 | Workflow input | Value |
 |---|---|
 | Workflow/ref | `sun-repo-bootstrap/.github/workflows/provision.yml`, `main` |
-| repository | `sunstriker2009/sun-astelvo` |
+| repository | `sunstriker2009/sun-workbench` |
 | operation | `plan`, then `apply`, then `verify` |
 | required_checks | `repository-validation,conventional-title` after checking actual emitted names |
-| confirm_repository | `sunstriker2009/sun-astelvo` for apply |
+| confirm_repository | `sunstriker2009/sun-workbench` for apply |
 
 5. Verify squash only, auto-merge/delete branches, PR protection, strict checks, resolved conversations and no routine bypass. Use a failing PR to verify merge blocking before repairing it.
 6. Add real CODEOWNERS and review enforcement for execution/IPC/security changes. Current bootstrap creates zero mandatory approvals; its verifier also expects zero approvals. Stronger review settings need a manual audit or separately reviewed provisioner enhancement, never weakening protection to satisfy the verifier.
@@ -169,7 +169,7 @@ CI budget: preserve template/title validation, use short Linux .NET/UI checks, c
 
 ## Current status and reporting
 
-The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-astelvo/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. PR #38 subsequently merged the cancellation-test fix. PR #39 merged automatic branding ZIP installation and uploaded Workbench artwork without changing ASTELVO product identity. Use current canonical assets and manifests, not older chat references. Development remains paused; see the continuation guide before starting work.
+The foundation, organizer/import/archive, editor recovery and all three formatters through [PR #37](https://github.com/sunstriker2009/sun-workbench/pull/37) are merged. Bundled C#/Roslyn formatting passed CI and local validation ([evidence](operations/M2-CSHARP-FORMAT-VALIDATION.md), [ADR-012](adr/0012-csharp-formatting.md)); Windows/full formatter acceptance remains open. All three formatters remain explicit and undoable; only Save changes canonical source. All runners, persistent catalog, collection extensions/examples and remaining M1–M5 work stay unfinished. Windows/package/clean-machine, shutdown/power-loss, accessibility/performance, compiled-dependency review, governance and final human gates remain distinct from M0. [Owner authorization](operations/DEVELOPMENT-AUTHORIZATION.md) permits CI-gated squash auto-merge. PR #38 subsequently merged the cancellation-test fix. PR #39 merged automatic branding ZIP installation and uploaded Workbench artwork while the product was still named ASTELVO; the owner subsequently approved WORKBENCH. Use current canonical assets and manifests, not older chat references. Development remains paused; see the continuation guide before starting work.
 
 ## Sources
 

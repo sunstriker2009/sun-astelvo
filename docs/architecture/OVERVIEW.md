@@ -1,6 +1,6 @@
-# ASTELVO architecture overview
+# WORKBENCH architecture overview
 
-[Continuation and unfinished work](../operations/CONTINUATION.md) · [Architecture roadmap](../ASTELVO%20Roadmap.md)
+[Continuation and unfinished work](../operations/CONTINUATION.md) · [Architecture roadmap](../WORKBENCH-Roadmap.md)
 
 The implemented desktop uses Electron/React/Monaco and an owned .NET 10 host with framed stdio. A narrow native picker/command bridge separates renderer code from workspace operations. Portable staging includes the workspace host; organizing/editing does not require a global .NET runtime.
 
@@ -21,6 +21,6 @@ Formatting is implemented for JavaScript (Prettier worker), Python (Ruff WASM wo
 
 All script runners are planned M3/M4 work under [ADR-003](../adr/0003-local-execution.md): explicit runtime selection, immutable run snapshots, owned external processes, bounded output, cancellation/deadlines and verified tree cleanup. Formatter supervision is not a completed runner.
 
-Windows-first acceptance remains distinct from Linux checks. The older [automated Windows foundation run](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43609933010) does not establish acceptance of current features. Clean-machine, accessibility, shutdown/power-loss, performance, governance and final product gates remain tracked in the checklist.
+Windows-first acceptance remains distinct from Linux checks. The older [automated Windows foundation run](https://github.com/sunstriker2009/sun-workbench/actions/runs/43609933010) does not establish acceptance of current features. Clean-machine, accessibility, shutdown/power-loss, performance, governance and final product gates remain tracked in the checklist.
 
 Local script execution will use the user's OS permissions; renderer isolation does not sandbox scripts. SQL/database providers and Kubernetes remain outside v1.

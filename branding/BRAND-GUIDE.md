@@ -1,67 +1,30 @@
-# ASTELVO by Sun — Brand Guide
+# WORKBENCH by Sun — Brand Guide
 
-**Organize. Script. Explore.** · SUN-002 · `Sun.Workspace`
+**Product:** SUN-002 (formerly ASTELVO)  
+**Repository:** `sunstriker2009/sun-workbench`  
+**Technical identity:** `Sun.Workspace`, `Sun.Workspace.*`, `@sun-workspace/*`  
+**Tagline:** Organize. Script. Explore.
 
-## Approved identity
+The owner approved the public product rename to WORKBENCH by Sun. This is the same product and SUN ID; it does not resume paused feature development or establish commercial naming clearance.
 
-Concept 02 is the approved direction: three overlapping script files over a luminous sun arc, with a play triangle on the front file. Files express organization, the play triangle expresses Try It, and the arc connects ASTELVO to SUN. A letter A is optional and is not part of this identity.
+## Current approved raster artwork
 
-On 2026-11-14 the owner returned to this direction after the A-shaped experiments and explicitly approved the transparent raster symbol shown in the conversation. The existing panoramic banner remains approved. The transparent symbol is a separately approved image-assisted derivative of that banner, **not a pixel-exact extraction or the original layered source**.
+The active source is the approved Workbench W2 package, installed through the branding ZIP workflow and merged in product PR #39. See `branding/revisions/current.json` and the immutable `v2.zip` snapshot for that installation; `v1.zip` preserves the previous asset tree. Do not regenerate or reconstruct the approved PNG artwork as SVG.
 
-## Active assets
-
-| Path relative to `branding/assets/` | Purpose |
+| Path | Use |
 | --- | --- |
-| `readme-banner.png` | Original approved 2172 × 724 panoramic banner, unchanged |
-| `refs/symbol-canonical-v1.png` | Approved 1254 × 1254 transparent RGBA raster symbol (versioned source) |
-| `symbol.png` | Byte-identical canonical alias for SUN ecosystem registry synchronization |
-| `icons/icon-{size}.png` | Transparent PNG exports: 16, 24, 32, 48, 64, 128, 256, 512, 1024 px |
-| `icons/app.ico` | Windows ICO with 16, 24, 32, 48, 64, 128, 256 px frames |
-| `tokens.json` / `tokens.css` | Working brand palette; not a complete UI theme |
-| `FONT-LICENSE.txt` | Retained license notice for historical typography work |
+| `branding/assets/readme-banner.png` | Panoramic README banner |
+| `branding/assets/symbol.png` | Canonical symbol |
+| `branding/assets/icons/icon-{size}.png` | Supplied compact raster icons |
+| `branding/assets/social-card.png`, `social-preview.png` | Supplied social exports |
+| `branding/assets/refs/` | Historical/source references; not active app icons |
 
-The owner selected **raster variants** to preserve gradients, material and glow. This product-specific decision overrides the ecosystem standard's default complementary SVG recommendation. SVG adaptations and their PNG exports are retired; do not use them as production masters or regenerate the active icons from vectors. No raster-in-SVG wrappers are provided.
+Preserve aspect ratio, transparency and supplied artwork. Alt text and surrounding UI identify WORKBENCH by Sun. Application build copies should derive from canonical assets, not archived concepts. Native executable resource-icon/metadata acceptance remains an open packaging gate.
 
-Use the transparent color symbol on both light and dark surfaces. It is the same approved artwork, rather than a recolored theme variant. Flat monochrome and alternate light lockups are not approved production variants. Use the panoramic banner when the full name, endorsement and tagline are needed.
+## Historical material and working UI tokens
 
-## Source provenance
+The older files/arc direction, raster extraction notes and retired vectors are historical. Original decisions and `branding/archive/` remain intact. The pre-W2 `branding/asset-manifest.json` and older reference copies do not certify current W2 bytes. Consult revision snapshots for installed provenance rather than treating old manifest checksums as current validation.
 
-- The original banner and its exact archive copy share Git blob SHA `6abd707eefaf79659047346311083937bdec5ad1`.
-- The approved transparent symbol is preserved byte-for-byte in both `assets/refs/symbol-canonical-v1.png` and `archive/originals/symbol-canonical-v1.png`.
-- The symbol was produced by image-assisted background extraction from the approved banner and then explicitly approved. It preserves the three files, blue gradients, play triangle and blue-white arc; it is not claimed to preserve every source pixel.
-- PNG icons and the ICO are deterministic exports of that approved symbol, without geometry changes, recoloring or fresh image generation.
-- No editable layered source or original font file for the raster wordmark is available. Do not infer one from the archived geometric reconstruction.
-- SHA-256 checksums and export sizes are recorded in `asset-manifest.json`.
+Existing working UI palette tokens remain in `branding/assets/tokens.json` and `tokens.css`. The legacy `--astelvo-*` CSS prefix is retained for compatibility; this rename does not assert that old UI palette values describe the W2 artwork. Theme/palette redesign is separate work.
 
-## Palette and typography
-
-| Role | Working hex |
-| --- | --- |
-| Deep Space | `#0B1020` |
-| Midnight Slate | `#151D30` |
-| Periwinkle | `#879BFF` |
-| Deep accent | `#5865D8` |
-| Intermediate layer | `#7184F2` |
-| Soft White | `#F5F7FA` |
-| Stellar Gray | `#9CA8BC` |
-| SUN Solar Gold | `#F6C453` |
-
-These values guide surrounding UI; the approved raster gradients remain authoritative. The banner uses white ASTELVO typography, a gold “by Sun” endorsement and the exact tagline **Organize. Script. Explore.** Preserve the original raster typography. Liberation Sans was an approximation used by the retired vector generator, not an identified source font for the raster banner.
-
-## Usage and size review
-
-Preserve aspect ratio, the three files, play triangle and arc together. Never stretch, rotate, recolor or add a forced A, detached star, security shield or database cylinder. Allow at least one eighth of the symbol width as surrounding clear space; the transparent source already includes padding.
-
-Prefer 32 px or larger for the complete mark. At 16–24 px only the silhouette and arc remain useful; script strokes and the play triangle lose detail. These are direct downscaled raster exports, not separately approved simplified drawings. Avoid using the icon alone for actions that need a clear label.
-
-The full banner should have sufficient rendered width for its tagline; provide ordinary text and accessible labels in the surrounding document or UI. Alt text should identify ASTELVO by Sun. Check contrast for the actual UI placement rather than assuming the palette establishes accessibility compliance.
-
-The transparent symbol has been reviewed on white and navy, and all PNG sizes at native scale. ICO frame dimensions and alpha have been checked. Windows taskbar, installer and packaging validation remain part of the desktop milestones.
-
-## Rebuild
-
-Run `bash scripts/brand/build_brand.sh`, or the compatible `python3 scripts/brand/build_brand.py` entry point. Requires ImageMagick 7 and Bash. The script reads the approved canonical `branding/assets/symbol.png`, resizes with Lanczos, and exports RGBA PNGs and a multi-frame ICO. It does not overwrite either approved master or generate vectors. Different ImageMagick versions may encode different bytes; record tool version when replacing exports.
-
-Review sheets belong in `archive/intermediate/`, never in application asset paths. Active banner and symbol paths remain stable as `assets/readme-banner.png` and `assets/symbol.png`. Retain versioned reference masters under `assets/refs/`; changes to artwork follow the normal branding PR approval process.
-
-See [archive history](archive/README.md), [migration mapping](archive/MIGRATION-NOTES.md), and the [SUN standard](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/PRODUCT-BRANDING.md). This branding update does not complete any application milestone or establish commercial naming clearance.
+The export scripts resize the supplied canonical symbol; they do not recreate a layered master or replace approved artwork. Any future artwork change uses a visually reviewed branding PR and the shared [SUN branding standard](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/PRODUCT-BRANDING.md).

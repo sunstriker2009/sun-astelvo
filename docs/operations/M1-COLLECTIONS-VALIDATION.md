@@ -1,6 +1,6 @@
 # M1 saved collections validation — 2026-11-15
 
-Branch `feature/m1-saved-collections`, based on main `425ba972dd33502390eb16d8d0bdad39744f6fb8`. Tags/favourites PR #27 is merged; [its CI passed](https://github.com/sunstriker2009/sun-astelvo/actions/runs/43705941522). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final manual product review. No branding, protection, CI trigger/matrix, release publication or M6 changes.
+Branch `feature/m1-saved-collections`, based on main `425ba972dd33502390eb16d8d0bdad39744f6fb8`. Tags/favourites PR #27 is merged; [its CI passed](https://github.com/sunstriker2009/sun-workbench/actions/runs/43705941522). No open PR or AGENTS.md was found at run start. [Owner authorization](DEVELOPMENT-AUTHORIZATION.md) continues to permit CI-gated squash auto-merge and final manual product review. No branding, protection, CI trigger/matrix, release publication or M6 changes.
 
 Implemented saved metadata collection create/apply/rename/update/delete, explicit v5 migration/checkpoints, global collection identity/name/filter validation and preservation of definitions through ordinary workspace writes/recycling. Filters cover the existing folder/name/language/single-tag/favourite conditions. Recycled folder scopes stay empty rather than widening, and restore reactivates them. Missing tags keep their saved condition. Indexed source search, multiple-tag/recency predicates and full backup/import remain follow-ups.
 

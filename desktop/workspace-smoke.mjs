@@ -17,7 +17,7 @@ let allowDiscard = false;
 let prompts = 0;
 let stage = 'startup';
 dialog.showOpenDialog = async (_window, options) => {
-  if (options.title === 'Choose ASTELVO archive to restore') return { canceled: cancelRestoreArchive, filePaths: cancelRestoreArchive ? [] : [archivePath] };
+  if (options.title === 'Choose WORKBENCH archive to restore') return { canceled: cancelRestoreArchive, filePaths: cancelRestoreArchive ? [] : [archivePath] };
   if (options.title === 'Restore into an empty local folder') return { canceled: cancelRestoreTarget, filePaths: cancelRestoreTarget ? [] : [restoreTarget] };
   if (options.title === 'Import local JavaScript, Python or C# files') return { canceled: cancelImport, filePaths: cancelImport ? [] : importFiles };
   return { canceled: false, filePaths: [workspacePickerRoot] };

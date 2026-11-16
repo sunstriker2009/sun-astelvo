@@ -1,10 +1,16 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { rmSync } from 'node:fs';
 import { registerHooks } from 'node:module';
 
 // Electron finishes importing its ESM entry before releasing native app startup.
 // Model that ordering while evaluating the actual production entry module.
 const source = `
   import { EventEmitter } from 'node:events';
+  import { mkdtempSync } from 'node:fs';
+  import { tmpdir } from 'node:os';
+  import path from 'node:path';
+  export const profileRoot = mkdtempSync(path.join(tmpdir(), 'workbench-startup-'));
   import { pathToFileURL } from 'node:url';
   export let windowCreated = false;
   export let pageLoaded = false;
@@ -15,7 +21,9 @@ const source = `
   export const app = Object.assign(new EventEmitter(), {
     commandLine: { hasSwitch: () => false },
     whenReady: () => readiness,
-    setName() {}, setAppUserModelId() {}, quit() {},
+    getPath(name) { if (name !== 'appData') throw new Error('Unexpected path'); return profileRoot; },
+    setPath(name, value) { if (name !== 'userData') throw new Error('Unexpected path'); this.profilePath = value; },
+    setName(value) { this.productName = value; }, setAppUserModelId() {}, quit() {},
     exit(code) { throw new Error('Unexpected startup exit ' + code); },
     releaseReady() { ready = true; release(); }
   });
@@ -48,6 +56,8 @@ registerHooks({
 });
 const electron = await import('electron');
 await import('../desktop/main.mjs');
+assert.equal(electron.app.productName, 'WORKBENCH by Sun');
+assert.equal(electron.app.profilePath, path.join(electron.profileRoot, 'ASTELVO by Sun'));
 assert.equal(electron.windowCreated, false);
 electron.app.releaseReady();
 await new Promise(resolve => setImmediate(resolve));
@@ -71,4 +81,5 @@ electron.ipcMain.emit('astelvo:prepared-close', event, window.requests[0].id, tr
 assert.equal(window.isDestroyed(), false, 'Superseded acknowledgement cannot close a later attempt');
 electron.ipcMain.emit('astelvo:prepared-close', event, window.requests[1].id, true);
 assert.equal(window.isDestroyed(), true);
+rmSync(electron.profileRoot, { recursive: true, force: true });
 console.log('Entry import finished before readiness; window/page startup followed readiness.');
