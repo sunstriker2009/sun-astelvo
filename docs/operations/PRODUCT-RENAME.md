@@ -13,3 +13,5 @@ Portable output becomes `WORKBENCH-{rid}/WORKBENCH.exe` on Windows or `WORKBENCH
 ## Authorization
 
 This is a naming migration only. The paused product-development state and disabled historical ASTELVO Development schedule stay paused. No release, publishing, feature milestone completion or commercial clearance is implied. Current Windows/native packaging acceptance remains open.
+
+Workbench’s current registry ID after the [SUN family ID migration](https://github.com/sunstriker2009/sun-ecosystem/blob/main/decisions/sun-family-ids.md) is `SUN-P001`.

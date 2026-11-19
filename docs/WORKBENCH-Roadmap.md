@@ -1,7 +1,7 @@
 # WORKBENCH by Sun — Architecture roadmap and milestones
 
 **Organize. Script. Explore.**  
-SUN-002 · `Sun.Workspace` · Updated 2026-11-15 · Architecture v0.1 (proposed)
+SUN-P001 · `Sun.Workspace` · Updated 2026-11-15 · Architecture v0.1 (proposed)
 
 **Development is paused until explicit owner resume.** Start with [continuation and unfinished work](operations/CONTINUATION.md) for the verified checkpoint, next milestone and new-thread starter. The [master checklist](roadmap/MASTER-CHECKLIST.md) is the sole detailed completion checklist; this document describes product scope and architecture intent.
 

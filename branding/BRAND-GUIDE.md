@@ -1,6 +1,6 @@
 # WORKBENCH by Sun — Brand Guide
 
-**Product:** SUN-002 (formerly ASTELVO)  
+**Product:** SUN-P001 (formerly ASTELVO)  
 **Repository:** `sunstriker2009/sun-workbench`  
 **Technical identity:** `Sun.Workspace`, `Sun.Workspace.*`, `@sun-workspace/*`  
 **Tagline:** Organize. Script. Explore.

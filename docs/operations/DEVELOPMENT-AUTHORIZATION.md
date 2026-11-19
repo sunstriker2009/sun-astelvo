@@ -15,3 +15,5 @@ Manual code review is deferred to final product review. Existing configured appr
 ## Product rename
 
 The owner approved ASTELVO → WORKBENCH and repository `sun-workbench`. The recorded historical instructions above apply to the same SUN-002 product (`Sun.Workspace`). This naming migration does not resume implementation or the historically named ASTELVO Development schedule.
+
+Workbench’s current registry ID after the [SUN family ID migration](https://github.com/sunstriker2009/sun-ecosystem/blob/main/decisions/sun-family-ids.md) is `SUN-P001`.
