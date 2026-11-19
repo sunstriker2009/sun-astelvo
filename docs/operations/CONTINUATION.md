@@ -10,7 +10,7 @@ After an explicit resume, follow [development authorization](DEVELOPMENT-AUTHORI
 
 ## Verified repository checkpoint
 
-- Repository: [sunstriker2009/sun-workbench](https://github.com/sunstriker2009/sun-workbench), product SUN-002, capability `Sun.Workspace`.
+- Repository: [sunstriker2009/sun-workbench](https://github.com/sunstriker2009/sun-workbench), product SUN-P001, capability `Sun.Workspace`.
 - Inspected main: [29060a8f69015bb6825e8c58c4d46a02ce3c1467](https://github.com/sunstriker2009/sun-workbench/commit/29060a8f69015bb6825e8c58c4d46a02ce3c1467).
 - No open PRs or issues were returned before this handoff PR was created. Re-query on restart.
 - [PR #38](https://github.com/sunstriker2009/sun-workbench/pull/38) merged as `c7eb8fd7`: cancellation-test race fix, no production change. [CI](https://github.com/sunstriker2009/sun-workbench/actions/runs/43761695295) passed.

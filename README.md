@@ -48,4 +48,4 @@ The approved panoramic banner and transparent symbol are the raster sources of t
 
 SQL/database connections, Kubernetes and additional execution providers are future extensions. Local user scripts run with the user's OS permissions; separate processes are not a security sandbox.
 
-Governance: [SUN Git Workflow & Merge Policy](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/GIT-WORKFLOW.md). Product ID SUN-002; capability namespace Sun.Workspace.
+Governance: [SUN Git Workflow & Merge Policy](https://github.com/sunstriker2009/sun-ecosystem/blob/main/docs/governance/GIT-WORKFLOW.md). Product ID SUN-P001; capability namespace Sun.Workspace.
