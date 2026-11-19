@@ -32,9 +32,9 @@ See [local development](docs/operations/LOCAL-DEVELOPMENT.md) for prerequisites 
 
 ## Brand
 
-[Brand guide](branding/BRAND-GUIDE.md) · [Assets](branding/assets/) · [Archive](branding/archive/README.md)
+[Brand assets](branding/assets/) · [Product metadata](branding/manifest.json)
 
-The approved panoramic banner and transparent symbol are the raster sources of truth. PNG and ICO exports preserve their gradients; earlier SVG adaptations are archived.
+The approved panoramic banner and transparent symbol are the raster sources of truth. PNG and ICO exports preserve their gradients.
 
 ## Planning
 
