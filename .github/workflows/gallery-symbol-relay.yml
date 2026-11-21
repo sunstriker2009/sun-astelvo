@@ -8,7 +8,8 @@ on:
 permissions: {}
 jobs:
   notify:
-    uses: sunstriker2009/sun-foundry/.github/workflows/notify-gallery-symbol.yml@01f000012a3f75f9e6ffc738d5c8367fd6de09f3
+    if: github.event.repository.private
+    uses: sunstriker2009/sun-foundry/.github/workflows/notify-gallery-symbol.yml@09deaa145a8febb19df8b5457abab8cac4cfa494
     secrets:
       app_id: ${{ secrets.SUN_SYMBOL_RELAY_APP_ID }}
       app_private_key: ${{ secrets.SUN_SYMBOL_RELAY_APP_PRIVATE_KEY }}
