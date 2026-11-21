@@ -1,0 +1,14 @@
+name: Notify Foundry of a symbol update
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'branding/assets/symbol.png'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  notify:
+    uses: sunstriker2009/sun-foundry/.github/workflows/notify-gallery-symbol.yml@01f000012a3f75f9e6ffc738d5c8367fd6de09f3
+    secrets:
+      app_id: ${{ secrets.SUN_SYMBOL_RELAY_APP_ID }}
+      app_private_key: ${{ secrets.SUN_SYMBOL_RELAY_APP_PRIVATE_KEY }}
